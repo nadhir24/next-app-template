@@ -173,6 +173,7 @@ export default function Home() {
           textAlign="justify"
         />
       </div>
+	  
     </>
   );
 }
