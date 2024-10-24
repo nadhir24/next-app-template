@@ -39,6 +39,7 @@ export default function Home() {
             repeat order untuk berbagai acara, baik kecil maupun besar. Produk
             kami disukai oleh berbagai kalangan, mulai dari anak-anak hingga
             orang dewasa.
+			love you
           </p>
           <div className="mt-2">
             <Link href="/katalog" passHref>
