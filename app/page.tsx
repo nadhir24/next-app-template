@@ -11,8 +11,8 @@ import Link from "next/link";
 import { Icon } from "@iconify/react";
 import { Button } from "@nextui-org/button";
 import { Toaster, toast } from "sonner";
-import "react-toastify/dist/ReactToastify.css";
 import jaja1 from "@/public/jaja1.png";
+import Choco from "@/public/choco.jpg";
 export default function Home() {
   const [loading, setLoading] = useState(false);
 
@@ -25,22 +25,21 @@ export default function Home() {
 
   return (
     <>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 px-4 lg:px-12 py-8">
+      <div className="grid-cols-2 lg:grid-cols-2  lg:px-12 py-8">
         <div className={`${subtitle({ fullWidth: true })} text-justify`}>
           <div
             className={title({ color: "blue", size: "lg", fullWidth: true })}
           >
-            Selamat Datang di Toko Rano Cake
-          </div>{" "}
-          <p>
+            Rano Cake selangkah lebih dekat
+          </div>
+          {/* <p>
             Selamat datang di toko Rano Cake! Kami menjual aneka kue
             tradisional, kue ulang tahun, kue kering lebaran, hingga asinan
             Betawi. Toko kami telah dipercaya oleh puluhan pelanggan yang selalu
             repeat order untuk berbagai acara, baik kecil maupun besar. Produk
             kami disukai oleh berbagai kalangan, mulai dari anak-anak hingga
-            orang dewasa.
-			love you
-          </p>
+            orang dewasa. love you
+          </p> */}
           <div className="mt-2">
             <Link href="/katalog" passHref>
               <NextUIButton
@@ -62,7 +61,7 @@ export default function Home() {
         </div>
 
         {/* Scrollable Image Section */}
-        <div className="overflow-x-auto py-4 snap-x snap-mandatory">
+        {/* <div className="overflow-x-auto py-4 snap-x snap-mandatory">
           <div className="flex space-x-4 min-w-max">
             <div className="snap-center flex-none w-64">
               <Image src={wkwkwk} alt="wkwkwk" className="w-full h-auto" />
@@ -83,22 +82,9 @@ export default function Home() {
               <Image src={wkwkwkwk} alt="wkwkwkwk" className="w-full h-auto" />
             </div>
           </div>
-        </div>
+        </div> */}
       </div>
-      <div>
-        <Button
-          color="primary"
-          size="md"
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-          onClick={() => toast("My first toast")}
-        >
-          Click Me
-        </Button>
 
-        <Toaster position="top-right" richColors />
-
-        {/* Example of different toasts */}
-      </div>
       {/* <div className="col-span-12 flex justify-center pt-10">
         <h1 className={`${title()} pb-10`}>Galeri Kecil Kami</h1>
       </div>{" "} */}
@@ -134,9 +120,46 @@ export default function Home() {
           subtitle="nasi tumpeng"
         />
       </div> */}
-      <div className="grid grid-cols-3">
-        <h1 className={title()}>Dapat di pesan</h1>
+      <div className="grid grid-cols-2 px-12 py-8">
+        <h1 className={title()}> Koleksi Rano Cake</h1>
       </div>
+      <div className="flex grid-col mx-8 gap-4 pb-8 my-2">
+        <Kartu
+          logoSrc={Choco}
+          title={"Kue UlangTahun"}
+          subTitle={""}
+          description={"Kue UlangTahun"}
+          logoClassName="justify-center" // Add classes for sizing
+          height={350}
+          width={350}
+          imageRadius="lg"
+        />
+        <Kartu
+          logoSrc={Choco}
+          title={""}
+          subTitle={""}
+          description={"Nasi kontol"}
+          logoClassName="justify-center" // Add classes for sizing
+          height={350}
+          width={350}
+          imageRadius="lg"
+        />
+        <Kartu
+          logoSrc={Choco}
+          title={""}
+          subTitle={""}
+          description={"Nasi kontol"}
+          logoClassName="justify-center" // Add classes for sizing
+          height={350}
+          width={350}
+          imageRadius="lg"
+        />
+      </div>
+      <span className="box-decoration-clone bg-gradient-to-r from-indigo-600 to-pink-500 text-white px-2 ...">
+        Hello
+        <br />
+        World
+      </span>
 
       <div className="w-full h-64 relative flex items-center justify-center">
         <Image
@@ -173,7 +196,6 @@ export default function Home() {
           textAlign="justify"
         />
       </div>
-	  
     </>
   );
 }
