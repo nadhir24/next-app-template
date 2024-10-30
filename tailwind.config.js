@@ -13,6 +13,9 @@ module.exports = {
         sans: ["var(--font-sans)"],
         mono: ["var(--font-mono)"],
       },
+      animation: {
+        scaleBounce: "scaleBounce 2s ease-in-out", // Add the custom animation here
+      },
     },
   },
   darkMode: "class",

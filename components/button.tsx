@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
 import { Button as NextUIButton } from "@nextui-org/button";
+import { motion } from "framer-motion"; // Import framer-motion
 
 interface TombolProps {
   size: "sm" | "md" | "lg";
@@ -22,7 +23,7 @@ interface TombolProps {
 const Tombol: React.FC<TombolProps> = ({
   size,
   label,
-  variant = "ghost", // Menggunakan variant "ghost" agar tombol terlihat seperti ghost button
+  variant = "ghost",
   isLoading = false,
   onClick,
   style,
@@ -34,24 +35,30 @@ const Tombol: React.FC<TombolProps> = ({
     lg: "Get Started",
   };
 
-  // Mendefinisikan style untuk tombol
+  // Define style for the button
   const buttonStyle = {
-    backgroundColor: "#0072f5", // Menggunakan warna primer yang Anda tentukan
-    color: "#fff", // Warna teks diatur menjadi putih untuk kontras dengan latar belakang
-    // Tambahkan properti style lain sesuai kebutuhan
+    backgroundColor: "#0072f5", // Primary color
+    color: "#fff", // White text for contrast
+    // Add other style properties as needed
   };
 
   return (
-    <NextUIButton
-      size={size}
-      variant={variant}
-      isLoading={isLoading}
-      onClick={onClick}
-      style={style} // Menambahkan properti style untuk menentukan warna latar belakang
-      endContent={endContent}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }} // Start from invisible and below
+      animate={{ opacity: 1, y: 0 }}    // Fade in and slide to original position
+      transition={{ duration: 0.5 }}     // Animation duration
     >
-      {label || labels[size]}
-    </NextUIButton>
+      <NextUIButton
+        size={size}
+        variant={variant}
+        isLoading={isLoading}
+        onClick={onClick}
+        style={{ ...buttonStyle, ...style }} // Combine button style and additional styles
+        endContent={endContent}
+      >
+        {label || labels[size]}
+      </NextUIButton>
+    </motion.div>
   );
 };
 
