@@ -1,12 +1,12 @@
-"use client";
-import { useEffect, useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardBody, CardFooter } from "@nextui-org/card";
 import { Button as NextUIButton } from "@nextui-org/button";
 import { Input } from "@nextui-org/input";
-import axios from "axios";
+import { Slider } from "@nextui-org/slider";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { Spacer } from "@nextui-org/spacer";
+import { useRouter } from "next/router";
+import { GetServerSideProps } from "next";
+import axios from "axios";
 
 interface Size {
   size: string;
@@ -24,39 +24,54 @@ interface Catalog {
   description: string;
 }
 
-export default function FilterableCatalog() {
+interface FilterableCatalogProps {
+  catalogs: Catalog[];
+}
+
+export const getServerSideProps: GetServerSideProps = async () => {
+  try {
+    const response = await axios.get("http://localhost:5000/catalog/");
+    return { props: { catalogs: response.data } };
+  } catch (error) {
+    console.error("Error fetching catalog data:", error);
+    return { props: { catalogs: [] } };
+  }
+};
+
+export default function FilterableCatalog({ catalogs }: FilterableCatalogProps) {
   const [filter, setFilter] = useState("");
-  const [catalogs, setCatalogs] = useState<Catalog[]>([]);
-  const [filteredCatalogs, setFilteredCatalogs] = useState<Catalog[]>([]);
+  const [budget, setBudget] = useState<number[]>([100, 300]); // Default budget range
+  const [filteredCatalogs, setFilteredCatalogs] = useState<Catalog[]>(catalogs);
   const router = useRouter();
 
-  // Fetch catalog data from the API
-  useEffect(() => {
-    const fetchCatalogs = async () => {
-      try {
-        const response = await axios.get("http://localhost:5000/catalog/");
-        setCatalogs(response.data);
-        setFilteredCatalogs(response.data); // Show all catalogs initially
-      } catch (error) {
-        console.error("Error fetching catalog data:", error);
-      }
-    };
-
-    fetchCatalogs();
-  }, []);
-
-  // Handle filter changes
-  const handleFilterChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const searchValue = event.target.value.toLowerCase();
-    setFilter(searchValue);
-
-    const filtered = catalogs.filter((catalog) =>
-      catalog.name.toLowerCase().includes(searchValue)
-    );
+  // Memoized filter function to avoid unnecessary re-renders
+  const filterCatalogs = useCallback(() => {
+    const filtered = catalogs.filter((catalog) => {
+      const isInNameFilter = catalog.name.toLowerCase().includes(filter);
+      const isInBudgetFilter = catalog.sizes.some((size) => {
+        const price = parseFloat(size.price.replace(/[^0-9.-]+/g, ""));
+        return price >= budget[0] && price <= budget[1];
+      });
+      return isInNameFilter && isInBudgetFilter;
+    });
     setFilteredCatalogs(filtered);
+  }, [filter, budget, catalogs]);
+
+  // Re-run filter when filter or budget changes
+  useEffect(() => {
+    filterCatalogs();
+  }, [filter, budget, filterCatalogs]);
+
+  const handleFilterChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setFilter(event.target.value.toLowerCase());
   };
 
-  // Navigate to product detail page
+  const handleBudgetChange = (value: number | number[]) => {
+    if (Array.isArray(value)) {
+      setBudget(value);
+    }
+  };
+
   const viewProductDetails = (categorySlug: string, productSlug: string) => {
     router.push(`/katalog/${categorySlug}/${productSlug}`);
   };
@@ -64,23 +79,39 @@ export default function FilterableCatalog() {
   return (
     <div className="container mx-auto p-4 flex gap-4">
       {/* Filter Sidebar */}
-      <div className="w-full md:w-1/4">
-        <Card className="shadow-lg p-4 mb-8">
+      <aside className="w-full md:w-1/4 mb-8">
+        <Card className="shadow-lg p-4">
           <h3 className="text-xl font-semibold mb-4">Filter Options</h3>
+          
+          {/* Search by name */}
           <Input
             placeholder="Search by name..."
             value={filter}
             onChange={handleFilterChange}
             className="mb-4"
           />
-          {/* Additional filter options can be added here if needed */}
+
+          {/* Budget Filter */}
+          <Slider
+            label="Select a budget"
+            formatOptions={{ style: "currency", currency: "USD" }}
+            step={10}
+            maxValue={1000}
+            minValue={0}
+            value={budget}
+            onChange={handleBudgetChange}
+            className="max-w-md"
+          />
+          <p className="text-default-500 font-medium text-small mt-2">
+            Selected budget: ${budget[0]} – ${budget[1]}
+          </p>
         </Card>
-      </div>
+      </aside>
 
       {/* Catalog Items */}
-      <div className="w-full md:w-3/4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredCatalogs.map((catalog, index) => (
-          <Card key={index} className="shadow-lg">
+      <section className="w-full md:w-3/4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredCatalogs.map((catalog) => (
+          <Card key={catalog.id} className="shadow-lg">
             <CardBody>
               <Image
                 src={`http://localhost:5000/catalog/images/${catalog.image?.split("/").pop()}`}
@@ -90,7 +121,6 @@ export default function FilterableCatalog() {
                 quality={75}
                 className="rounded-xl"
               />
-
               <div className="mt-4">
                 <h4 className="font-bold text-lg">{catalog.name}</h4>
                 <p className="text-black-600">{catalog.description}</p>
@@ -101,14 +131,16 @@ export default function FilterableCatalog() {
             <CardFooter>
               <NextUIButton
                 className="w-full"
-                onPress={() => viewProductDetails(catalog.categorySlug, catalog.productSlug)}
+                onPress={() =>
+                  viewProductDetails(catalog.categorySlug, catalog.productSlug)
+                }
               >
                 View Details
               </NextUIButton>
             </CardFooter>
           </Card>
         ))}
-      </div>
+      </section>
     </div>
   );
 }

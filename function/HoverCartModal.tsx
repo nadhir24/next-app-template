@@ -9,6 +9,7 @@ import {
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { Button } from "@nextui-org/button";
+import Image from "next/image";
 
 interface CartItem {
   id: number;
@@ -74,7 +75,7 @@ export default function HoverCartModal() {
                 ) : (
                   cartItems.map((item) => (
                     <div key={item.id} className="flex items-center mb-4">
-                      <img
+                      <Image
                         src={item.image}
                         alt={item.name}
                         className="w-16 h-16 mr-4"
