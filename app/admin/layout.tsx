@@ -1,13 +1,20 @@
-export default function AboutLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+// Tambahkan "use client" di bagian atas file ini
+"use client"; 
+
+import React from "react";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { useDynamicNavigation } from "@/data/usersNavigation"; // Mengimpor hook dinamis
+import { AppSidebar } from "@/components/app-sidebar"; // Komponen Sidebar
+
+export default function UsersLayout({ children }: { children: React.ReactNode }) {
+  const navigationData = useDynamicNavigation(); // Ambil navigasi dinamis
+  
   return (
-    <section className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
-      <div className="min-h-screen bg-background font-sans antialiased justify-center">
-        {children}
+    <SidebarProvider>
+      <div className="flex">
+        <AppSidebar navigationData={navigationData} className="w-64" />
+        <div className="flex-1 p-6">{children}</div>
       </div>
-    </section>
+    </SidebarProvider>
   );
 }

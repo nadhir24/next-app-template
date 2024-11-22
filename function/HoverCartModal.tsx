@@ -76,9 +76,13 @@ export default function HoverCartModal() {
                   cartItems.map((item) => (
                     <div key={item.id} className="flex items-center mb-4">
                       <Image
-                        src={item.image}
-                        alt={item.name}
-                        className="w-16 h-16 mr-4"
+                        src={`http://localhost:5000/catalog/images/${item.image
+                          .split("/")
+                          .pop()}`}
+                        alt={item.name || "Product Image"}
+                        width={150}
+                        height={150}
+                        className="rounded-xl"
                       />
                       <div className="flex-grow">
                         <h3>{item.name}</h3>

@@ -118,7 +118,7 @@ export default function Home() {
 
         <Link href="/katalog" passHref>
           <Kartu
-            logoSrc={Choco}
+            logoSrc={wkwkwkwk}
             title={" "}
             subTitle={""}
             description={"nasi dan asinan"}
