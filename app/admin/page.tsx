@@ -2,41 +2,21 @@
 
 import * as React from "react";
 import {
-  ColumnDef,
-  ColumnFiltersState,
-  SortingState,
-  VisibilityState,
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
-import { ArrowUpDown, ChevronDown, MoreHorizontal } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { TrendingUp } from "lucide-react";
-import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
-import { Bar, BarChart } from "recharts";
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { PieChart } from "recharts";
+import { TrendingUp, UsersRound } from "lucide-react";
+import { CircleDollarSign } from "lucide-react";
+
 import {
   Card,
   CardContent,
@@ -45,21 +25,59 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { title } from "@/components/primitives";
 import {
-  ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-// Chart Data
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SidebarProvider } from "@/components/ui/sidebar";
+const salesTrendsData = [
+  { month: "Jan", sales: 5 },
+  { month: "Feb", sales: 10 },
+  { month: "Mar", sales: 20 },
+  { month: "Apr", sales: 30 },
+  { month: "May", sales: 40 },
+  { month: "Jun", sales: 50 },
+];
+const bestSellingProducts = [
+  { productName: "Rano Cake", quantity: 120 },
+  { productName: "Nastar", quantity: 95 },
+  { productName: "Brownies", quantity: 110 },
+  { productName: "Kue Cubir", quantity: 85 },
+  { productName: "Tart", quantity: 130 },
+];
+const revenueProjectionData = [
+  { month: "Jan", revenue: 200000 },
+  { month: "Feb", revenue: 220000 },
+  { month: "Mar", revenue: 240000 },
+  { month: "Apr", revenue: 250000 },
+  { month: "May", revenue: 270000 },
+  { month: "Jun", revenue: 290000 },
+];
+const userDemographicsData = [
+  { category: "Pengguna Baru", value: 350 },
+  { category: "Pengguna Lama", value: 150 },
+];
+
+const salesData = [
+  {
+    name: "Olivia Martin",
+    email: "olivia.martin@email.com",
+    amount: "+$1,999.00",
+  },
+  { name: "Jackson Lee", email: "jackson.lee@email.com", amount: "+$39.00" },
+  {
+    name: "Isabella Nguyen",
+    email: "isabella.nguyen@email.com",
+    amount: "+$299.00",
+  },
+  { name: "William Kim", email: "will@email.com", amount: "+$99.00" },
+  { name: "Sofia Davis", email: "sofia.davis@email.com", amount: "+$39.00" },
+];
+
 const chartData = [
   { month: "January", desktop: 186, mobile: 80 },
   { month: "February", desktop: 305, mobile: 200 },
@@ -69,481 +87,286 @@ const chartData = [
   { month: "June", desktop: 214, mobile: 140 },
 ];
 
-const chartConfig: ChartConfig = {
-  desktop: {
-    label: "Desktop",
-    color: "hsl(var(--chart-1))",
-  },
-  mobile: {
-    label: "Mobile",
-    color: "hsl(var(--chart-2))",
-  },
+const chartConfig = {
+  desktop: { label: "Desktop", color: "hsl(var(--chart-1))" },
+  mobile: { label: "Mobile", color: "hsl(var(--chart-2))" },
 };
 
-// Payment Data Type
-export type Payment = {
-  id: string;
-  amount: number;
-  status: "pending" | "processing" | "success" | "failed";
-  email: string;
-};
+interface InfoCardProps {
+  title: string;
+  description?: string;
+  value: string;
+  icon?: React.ReactNode; // Untuk ikon opsional
+}
 
-const data: Payment[] = [
-  { id: "m5gr84i9", amount: 316, status: "success", email: "ken99@yahoo.com" },
-  { id: "3u1reuv4", amount: 242, status: "success", email: "Abe45@gmail.com" },
-  {
-    id: "derv1ws0",
-    amount: 837,
-    status: "processing",
-    email: "Monserrat44@gmail.com",
-  },
-  {
-    id: "5kma53ae",
-    amount: 874,
-    status: "success",
-    email: "Silas22@gmail.com",
-  },
-  {
-    id: "bhqecj4p",
-    amount: 721,
-    status: "failed",
-    email: "carmella@hotmail.com",
-  },
-];
+const InfoCard: React.FC<InfoCardProps> = ({
+  title,
+  description,
+  value,
+  icon,
+}) => (
+  <Card className="w-[350px] mt-4">
+    <CardHeader>
+      <div className="flex items-center gap-2">
+        {icon && <div className="text-primary">{icon}</div>} {/* Render ikon */}
+        <CardTitle>{title}</CardTitle>
+      </div>
+    </CardHeader>
+    <CardContent>
+      <div className="grid w-full items-center gap-4 capitalize">
+        <div className="flex flex-col space-y-1.5">
+          <Label htmlFor="name" className="text-lg font-bold">
+            {value}
+          </Label>
+          {description && <CardDescription>{description}</CardDescription>}
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+);
 
-// Table Columns
-export const columns: ColumnDef<Payment>[] = [
-  {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: "status",
-    header: "Status",
-    cell: ({ row }) => (
-      <div className="capitalize">{row.getValue("status")}</div>
-    ),
-  },
-  {
-    accessorKey: "email",
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-      >
-        Email <ArrowUpDown />
-      </Button>
-    ),
-    cell: ({ row }) => <div className="lowercase">{row.getValue("email")}</div>,
-  },
-  {
-    accessorKey: "amount",
-    header: () => <div className="text-right">Amount</div>,
-    cell: ({ row }) => {
-      const amount = parseFloat(row.getValue("amount"));
-      const formatted = new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-      }).format(amount);
-      return <div className="text-right font-medium">{formatted}</div>;
-    },
-  },
-  {
-    id: "actions",
-    enableHiding: false,
-    cell: ({ row }) => {
-      const payment = row.original;
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(payment.id)}
-            >
-              Copy payment ID
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>View customer</DropdownMenuItem>
-            <DropdownMenuItem>View payment details</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
-    },
-  },
-];
-
-export default function DataTableDemo() {
-  const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
-  );
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({});
-  const [rowSelection, setRowSelection] = React.useState({});
-
-  const table = useReactTable({
-    data,
-    columns,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
-    state: { sorting, columnFilters, columnVisibility, rowSelection },
-  });
-
+export default function AdminPage() {
   return (
-    <div className="w-full">
-      <div className="flex items-center py-4">
-        <Input
-          placeholder="Filter emails..."
-          value={(table.getColumn("email")?.getFilterValue() as string) ?? ""}
-          onChange={(event) =>
-            table.getColumn("email")?.setFilterValue(event.target.value)
-          }
-          className="max-w-sm"
-        />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
-              Columns <ChevronDown />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {table
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => (
-                <DropdownMenuCheckboxItem
-                  key={column.id}
-                  checked={column.getIsVisible()}
-                  onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                >
-                  {column.id}
-                </DropdownMenuCheckboxItem>
-              ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+    <>
+      <div className={title({ color: "red", size: "lg", fullWidth: true })}>
+        selamat datang admin
       </div>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  No results.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <Tabs defaultValue="overview" className="w-full pt-4">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="analysis">Analysis</TabsTrigger>
+        </TabsList>
+        <TabsContent value="overview">
+          <div className="flex flex-row w-full gap-4 mt-6">
+            {/* Project Creation Form Cards */}
+            <InfoCard
+              title="Penghasilan Total"
+              value="Rp.100.000"
+              description="penghasilan hari ini"
+              icon={<CircleDollarSign className="w-6 h-6" />} // Ikon dengan ukuran tertentu
+            />
+            <InfoCard
+              title="Pengguna baru"
+              value="50"
+              description="bertambah +10"
+              icon={<UsersRound className="w-6 h-6" />}
+            />
+            <InfoCard
+              title="Total Penjualan Makanan"
+              value="Rp.100.000"
+              icon={<CircleDollarSign />}
+            />
+            <InfoCard
+              title="stock produk"
+              value="5"
+              description="segera restock produk"
+              icon={<PieChart />}
+            />
+          </div>
 
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="flex-1 text-sm text-muted-foreground">
-          {table.getFilteredSelectedRowModel().rows.length} of{" "}
-          {table.getFilteredRowModel().rows.length} row(s) selected.
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.previousPage()}
-          disabled={!table.getCanPreviousPage()}
-        >
-          Previous
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.nextPage()}
-          disabled={!table.getCanNextPage()}
-        >
-          Next
-        </Button>
-      </div>
+          {/* Wrapper untuk jarak */}
+          <div className="flex flex-col gap-8 mt-8">
+            <div className="flex flex-row gap-6">
+              {/* Bar Chart */}
+              <div className="aspect-video rounded-xl bg-muted/50 flex-1 capitalize">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>pendapatan tiap tahun</CardTitle>
+                    <CardDescription>January - June 2024</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ChartContainer config={chartConfig}>
+                      <BarChart accessibilityLayer data={chartData}>
+                        <CartesianGrid vertical={false} />
+                        <XAxis
+                          dataKey="month"
+                          tickLine={false}
+                          tickMargin={10}
+                          axisLine={false}
+                          tickFormatter={(value) => value.slice(0, 3)}
+                        />
+                        <ChartTooltip
+                          cursor={false}
+                          content={<ChartTooltipContent hideLabel />}
+                        />
+                        <Bar
+                          dataKey="desktop"
+                          fill="var(--color-desktop)"
+                          radius={8}
+                        />
+                      </BarChart>
+                    </ChartContainer>
+                  </CardContent>
+                  <CardFooter className="flex-col items-start gap-2 text-sm">
+                    <div className="flex gap-2 font-medium leading-none">
+                      Trending up by x.x% this month{" "}
+                      <TrendingUp className="h-4 w-4" />
+                    </div>
+                    <div className="leading-none text-muted-foreground">
+                      Showing total visitors for the last x months
+                    </div>
+                  </CardFooter>
+                </Card>
+              </div>
 
-      {/* Grid for displaying charts */}
-      <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-        {/* Area Chart */}
-        <div className="aspect-video rounded-xl bg-muted/50">
+              {/* Recent Sales */}
+              <Card className="w-full max-w-md ">
+                <CardHeader className="capitalize">
+                  <CardTitle>sales terbaru</CardTitle>
+                  <CardDescription>
+                    Rano cake telah menjual x produk bulan ini.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-4">
+                    {salesData.map((sale, index) => (
+                      <li
+                        key={index}
+                        className="flex items-center justify-between"
+                      >
+                        <div className="flex items-center space-x-4">
+                          <div className="w-10 h-10 rounded-full bg-gray-300" />
+                          <div>
+                            <p>{sale.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {sale.email}
+                            </p>
+                          </div>
+                        </div>
+                        <p>{sale.amount}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </TabsContent>
+        <TabsContent value="analysis" className="space-y-8 overflow-auto">
+          {/* Grafik Tren Penjualan */}
           <Card>
             <CardHeader>
-              <CardTitle>Area Chart - Stacked</CardTitle>
-              <CardDescription>
-                Showing total visitors for the last 6 months
-              </CardDescription>
+              <CardTitle>Tren Penjualan Bulanan</CardTitle>
             </CardHeader>
             <CardContent>
-              <ChartContainer config={chartConfig}>
-                <AreaChart
-                  accessibilityLayer
-                  data={chartData}
-                  margin={{ left: 12, right: 12 }}
-                >
-                  <CartesianGrid vertical={false} />
-                  <XAxis
-                    dataKey="month"
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                    tickFormatter={(value) => value.slice(0, 3)}
-                  />
-                  <ChartTooltip
-                    cursor={false}
-                    content={<ChartTooltipContent indicator="dot" />}
-                  />
-                  <Area
-                    dataKey="mobile"
-                    type="natural"
-                    fill="var(--color-mobile)"
-                    fillOpacity={0.4}
-                    stroke="var(--color-mobile)"
-                    stackId="a"
-                  />
-                  <Area
-                    dataKey="desktop"
-                    type="natural"
-                    fill="var(--color-desktop)"
-                    fillOpacity={0.4}
-                    stroke="var(--color-desktop)"
-                    stackId="a"
-                  />
-                </AreaChart>
-              </ChartContainer>
+              <LineChart data={salesTrendsData} width={800} height={300}>
+                <Line type="monotone" dataKey="sales" stroke="#8884d8" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip formatter={(value) => `Rp ${value} Juta rupiah`} />
+                <Legend />
+              </LineChart>
             </CardContent>
-            <CardFooter>
-              <div className="flex w-full items-start gap-2 text-sm">
-                <div className="grid gap-2">
-                  <div className="flex items-center gap-2 font-medium leading-none">
-                    Trending up by 5.2% this month{" "}
-                    <TrendingUp className="h-4 w-4" />
-                  </div>
-                  <div className="flex items-center gap-2 leading-none text-muted-foreground">
-                    January - June 2024
-                  </div>
-                </div>
-              </div>
-            </CardFooter>
           </Card>
-        </div>
 
-        {/* Bar Chart */}
-        <div className="aspect-video rounded-xl bg-muted/50">
+          {/* Produk Terlaris */}
           <Card>
             <CardHeader>
-              <CardTitle>Bar Chart</CardTitle>
-              <CardDescription>January - June 2024</CardDescription>
+              <CardTitle>Produk Terlaris</CardTitle>
             </CardHeader>
             <CardContent>
-              <ChartContainer config={chartConfig}>
-                <BarChart accessibilityLayer data={chartData}>
-                  <CartesianGrid vertical={false} />
-                  <XAxis
-                    dataKey="month"
-                    tickLine={false}
-                    tickMargin={10}
-                    axisLine={false}
-                    tickFormatter={(value) => value.slice(0, 3)}
-                  />
-                  <ChartTooltip
-                    cursor={false}
-                    content={<ChartTooltipContent hideLabel />}
-                  />
-                  <Bar
-                    dataKey="desktop"
-                    fill="var(--color-desktop)"
-                    radius={8}
-                  />
-                </BarChart>
-              </ChartContainer>
+              <BarChart width={800} height={300} data={bestSellingProducts}>
+                <Bar dataKey="quantity" fill="#8884d8" />
+                <XAxis dataKey="productName" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+              </BarChart>
             </CardContent>
-            <CardFooter className="flex-col items-start gap-2 text-sm">
-              <div className="flex gap-2 font-medium leading-none">
-                Trending up by 5.2% this month{" "}
-                <TrendingUp className="h-4 w-4" />
-              </div>
-              <div className="leading-none text-muted-foreground">
-                Showing total visitors for the last 6 months
-              </div>
-            </CardFooter>
           </Card>
-        </div>
 
-        {/* Additional charts can be added here */}
-      </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Pengguna Baru vs Lama</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <PieChart width={1150} height={400}>
+                <Pie
+                  data={userDemographicsData}
+                  dataKey="value"
+                  nameKey="category"
+                  outerRadius={150}
+                  fill="#8884d8"
+                  label
+                />
+                <Tooltip />
+              </PieChart>
+            </CardContent>
+          </Card>
 
-      {/* Project Creation Form */}
-      <Card className="w-[350px] mt-4">
-        <CardHeader>
-          <CardTitle>Create project</CardTitle>
-          <CardDescription>
-            Deploy your new project in one-click.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form>
-            <div className="grid w-full items-center gap-4">
-              <div className="flex flex-col space-y-1.5">
-                <Label htmlFor="name">Name</Label>
-                <Input id="name" placeholder="Name of your project" />
-              </div>
-              <div className="flex flex-col space-y-1.5">
-                <Label htmlFor="framework">Framework</Label>
-                <Select>
-                  <SelectTrigger id="framework">
-                    <SelectValue placeholder="Select" />
-                  </SelectTrigger>
-                  <SelectContent position="popper">
-                    <SelectItem value="next">Next.js</SelectItem>
-                    <SelectItem value="sveltekit">SvelteKit</SelectItem>
-                    <SelectItem value="astro">Astro</SelectItem>
-                    <SelectItem value="nuxt">Nuxt.js</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </form>
-        </CardContent>
-        <CardFooter className="flex justify-between">
-          <Button variant="outline">Cancel</Button>
-          <Button>Deploy</Button>
-        </CardFooter>
-      </Card>
-      <Card className="w-[350px] mt-4">
-        <CardHeader>
-          <CardTitle>Create project</CardTitle>
-          <CardDescription>
-            Deploy your new project in one-click.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form>
-            <div className="grid w-full items-center gap-4">
-              <div className="flex flex-col space-y-1.5">
-                <Label htmlFor="name">Name</Label>
-                <Input id="name" placeholder="Name of your project" />
-              </div>
-              <div className="flex flex-col space-y-1.5">
-                <Label htmlFor="framework">Framework</Label>
-                <Select>
-                  <SelectTrigger id="framework">
-                    <SelectValue placeholder="Select" />
-                  </SelectTrigger>
-                  <SelectContent position="popper">
-                    <SelectItem value="next">Next.js</SelectItem>
-                    <SelectItem value="sveltekit">SvelteKit</SelectItem>
-                    <SelectItem value="astro">Astro</SelectItem>
-                    <SelectItem value="nuxt">Nuxt.js</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </form>
-        </CardContent>
-        <CardFooter className="flex justify-between">
-          <Button variant="outline">Cancel</Button>
-          <Button>Deploy</Button>
-        </CardFooter>
-      </Card>
-      <Card className="w-[350px] mt-4">
-        <CardHeader>
-          <CardTitle>Create project</CardTitle>
-          <CardDescription>
-            Deploy your new project in one-click.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form>
-            <div className="grid w-full items-center gap-4">
-              <div className="flex flex-col space-y-1.5">
-                <Label htmlFor="name">Name</Label>
-                <Input id="name" placeholder="Name of your project" />
-              </div>
-              <div className="flex flex-col space-y-1.5">
-                <Label htmlFor="framework">Framework</Label>
-                <Select>
-                  <SelectTrigger id="framework">
-                    <SelectValue placeholder="Select" />
-                  </SelectTrigger>
-                  <SelectContent position="popper">
-                    <SelectItem value="next">Next.js</SelectItem>
-                    <SelectItem value="sveltekit">SvelteKit</SelectItem>
-                    <SelectItem value="astro">Astro</SelectItem>
-                    <SelectItem value="nuxt">Nuxt.js</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </form>
-        </CardContent>
-        <CardFooter className="flex justify-between">
-          <Button variant="outline">Cancel</Button>
-          <Button>Deploy</Button>
-        </CardFooter>
-      </Card>
-    </div>
+          {/* Pendapatan Proyeksi */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Proyeksi Pendapatan</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <LineChart data={revenueProjectionData} width={800} height={300}>
+                <Line type="monotone" dataKey="revenue" stroke="#82ca9d" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip />
+              </LineChart>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </>
   );
 }
+
+// {/* <TabsContent value="analysis">
+// <Card>
+//   <CardHeader>
+//     <CardTitle>Analysis</CardTitle>
+//   </CardHeader>
+//   <CardContent>
+//     {/* Konten untuk Analysis */}
+//     <p>Konten Analysis</p>
+//   </CardContent>
+// </Card>
+// </TabsContent>
+// <TabsContent value="orders">
+// <Card>
+//   <CardHeader>
+//     <CardTitle>Daftar Pesanan</CardTitle>
+//   </CardHeader>
+//   <CardContent>
+//     <ul className="space-y-4">
+//       <li className="flex items-center justify-between">
+//         <span>Pesanan #12345</span>
+//         <span className="text-green-600">Selesai</span>
+//       </li>
+//       <li className="flex items-center justify-between">
+//         <span>Pesanan #12346</span>
+//         <span className="text-yellow-600">Proses</span>
+//       </li>
+//     </ul>
+//   </CardContent>
+// </Card>
+// </TabsContent>
+// <TabsContent value="products">
+// <Card>
+//   <CardHeader>
+//     <CardTitle>Manajemen Produk</CardTitle>
+//   </CardHeader>
+//   <CardContent>
+//     <button className="px-4 py-2 text-white bg-primary rounded-md">
+//       Tambah Produk
+//     </button>
+//   </CardContent>
+// </Card>
+// </TabsContent>
+// <TabsContent value="users">
+// <Card>
+//   <CardHeader>
+//     <CardTitle>Pengguna Baru</CardTitle>
+//   </CardHeader>
+//   <CardContent>
+//     <ul className="space-y-4">
+//       <li>Olivia Martin</li>
+//       <li>Jackson Lee</li>
+//     </ul>
+//   </CardContent>
+// </Card>
+// </TabsContent> */}

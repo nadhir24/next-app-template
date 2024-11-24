@@ -32,4 +32,10 @@
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
+  .debug-container {
+    overflow: visible !important;
+    height: auto !important;
+    visibility: visible !important;
+    z-index: 9999 !important;
+  }
 }

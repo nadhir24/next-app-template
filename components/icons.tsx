@@ -50,6 +50,33 @@ export const GoogleMapsIcon: React.FC<IconSvgProps> = ({
     />
   </svg>
 );
+export const background: React.FC<IconSvgProps> = ({
+  size = 36,
+  width,
+  height,
+  ...props
+}) => (
+  <svg
+    fill="none"
+    height={size || height}
+    viewBox="0 0 32 32"
+    width={size || width}
+    {...props}
+  >
+    {/* Red pin */}
+    <path
+      d="M16 5C10.482 5 6 9.481 6 15c0 2.855 1.199 5.437 3.115 7.291L16 27l6.885-4.709C24.801 20.437 26 17.855 26 15c0-5.519-4.482-10-10-10zM16 18.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"
+      fill="#FF0000"
+    />
+    {/* G letter */}
+    <path
+      fillRule="evenodd"
+      clipRule="evenodd"
+      d="M17.6482 10.1305L15.8785 7.02583L7.02979 22.5499H10.5278L17.6482 10.1305ZM19.8798 14.0457L18.11 17.1983L19.394 19.4511H16.8453L15.1056 22.5499H24.7272L19.8798 14.0457Z"
+      fill="#4285F4"
+    />
+  </svg>
+);
 
 export const DeleteDocumentIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -79,6 +106,7 @@ export const DeleteDocumentIcon = (props: React.SVGProps<SVGSVGElement>) => (
     />
   </svg>
 );
+
 export const CopyDocumentIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
     aria-hidden="true"

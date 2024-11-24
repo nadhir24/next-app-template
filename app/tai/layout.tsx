@@ -1,5 +1,5 @@
 import React from "react";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 
 const navigationData = [
@@ -19,13 +19,12 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex ">
+    <div className="flex h-screen">
       {/* Sidebar */}
       <SidebarProvider>
         <AppSidebar navigationData={navigationData} className="w-64" />
-        <SidebarTrigger className="-ml-1" />
         {/* Main Content */}
-        <main className="flex-1  p-6 overflow-y-hidden">{children}</main>
+        <main className="flex-1 ">{children}</main>
       </SidebarProvider>
     </div>
   );
