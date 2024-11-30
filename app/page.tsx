@@ -4,7 +4,7 @@
 import { title, subtitle } from "@/components/primitives";
 import Image from "next/image";
 import NextUIButton from "@/components/button";
-import { useState } from "react";
+import React, { useRef, useState } from "react";
 import wkwkwk from "@/public/wkwkwk.jpg";
 import wkwkwkwk from "@/public/wkwkwkwk.jpg";
 import Kartu from "@/components/card";
@@ -18,13 +18,17 @@ import { motion } from "framer-motion";
 import { Card, CardBody } from "@nextui-org/card";
 import CountUp from "react-countup";
 import { Accordion, AccordionItem } from "@nextui-org/accordion";
+// Import Swiper React components
 import { Swiper, SwiperSlide } from "swiper/react";
-import "swiper/css";
-import "swiper/css/navigation";
-import "swiper/css/pagination";
-import "swiper/css/scrollbar";
-import { Navigation, Pagination, Scrollbar, A11y } from "swiper/modules";
+import { Autoplay, Pagination, Navigation } from "swiper/modules";
 
+// Import Swiper styles
+import "swiper/css";
+import "swiper/css/pagination";
+import "swiper/css/navigation";
+
+import "../styles/globals.css";
+import SwiperComponent from "@/components/swiper-autoprogress";
 export default function Home() {
   const [loading, setLoading] = useState(false);
 
@@ -33,6 +37,18 @@ export default function Home() {
     setTimeout(() => {
       setLoading(false);
     }, 1000);
+  };
+  const progressCircle = useRef<SVGSVGElement | null>(null);
+  const progressContent = useRef<HTMLSpanElement | null>(null);
+
+  // Handle autoplay time left
+  const onAutoplayTimeLeft = (s: any, time: number, progress: number) => {
+    if (progressCircle.current) {
+      progressCircle.current.style.setProperty("--progress", `${1 - progress}`);
+    }
+    if (progressContent.current) {
+      progressContent.current.textContent = `${Math.ceil(time / 1000)}s`;
+    }
   };
 
   const faqs = [
@@ -285,28 +301,8 @@ export default function Home() {
           titleSize="sm"
         />
       </div>
-      <div className="pt-6">
-        <Swiper
-          // install Swiper modules
-          modules={[Navigation, Pagination, Scrollbar, A11y]}
-          spaceBetween={50}
-          slidesPerView={3}
-          navigation
-          pagination={{ clickable: true }}
-          scrollbar={{ draggable: true }}
-          onSwiper={(swiper) => console.log(swiper)}
-          onSlideChange={() => console.log("slide change")}
-        >
-          <SwiperSlide>Slide 1</SwiperSlide>
-          <SwiperSlide>Slide 2</SwiperSlide>
-          <SwiperSlide>Slide 3</SwiperSlide>
-          <SwiperSlide>Slide 4</SwiperSlide>
-          <SwiperSlide>Slide 5</SwiperSlide>
-          <SwiperSlide>Slide 6</SwiperSlide>
-          <SwiperSlide>Slide 7</SwiperSlide>
-          <SwiperSlide>Slide 8</SwiperSlide>
-          ...
-        </Swiper>
+      <div className="pt-96">
+        <SwiperComponent />
       </div>
     </>
   );
