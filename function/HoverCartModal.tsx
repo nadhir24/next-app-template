@@ -39,7 +39,7 @@ export default function HoverCartModal() {
         const response = await axios.get("http://localhost:5000/cart");
         setCartItems(response.data);
       } catch (error) {
-        console.error("Error fetching cart items:", error);
+        console.error(  "Error fetching cart items:", error);
       }
     } else {
       const guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");

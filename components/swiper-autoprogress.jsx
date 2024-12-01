@@ -1,9 +1,13 @@
 "use client";
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 // Import Swiper React components
 import { Swiper, SwiperSlide } from "swiper/react";
 import grup2 from "@/public/grup2.png";
 // Import Swiper styles
+import NextUIButton from "@/components/button";
+import Link from "next/link";
+import { Icon } from "@iconify/react";
+
 import "swiper/css";
 import "swiper/css/pagination";
 import "swiper/css/navigation";
@@ -15,6 +19,14 @@ import { Autoplay, Pagination, Navigation } from "swiper/modules";
 import Image from "next/image";
 
 export default function SwiperComponent() {
+  const [loading, setLoading] = useState(false);
+
+  const handleClick = () => {
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+    }, 1000);
+  };
   const progressCircle = useRef(null);
   const progressContent = useRef(null);
   const onAutoplayTimeLeft = (s, time, progress) => {
@@ -27,7 +39,7 @@ export default function SwiperComponent() {
         spaceBetween={30}
         centeredSlides={true}
         autoplay={{
-          delay: 5000,
+          delay: 10000,
           disableOnInteraction: false,
         }}
         pagination={{
@@ -40,7 +52,26 @@ export default function SwiperComponent() {
       >
         <SwiperSlide>
           <Image src={grup2} width="100%" height="100%" />
+          <div className="mt-2">
+            <Link href="/katalog" passHref>
+              <NextUIButton
+                size="lg"
+                variant="shadow"
+                label="Pesan Sekarang"
+                onClick={handleClick}
+                isLoading={loading}
+                endContent={
+                  <Icon
+                    icon="icon-park-outline:buy"
+                    width="1.2rem"
+                    height="1.2rem"
+                  />
+                }
+              />
+            </Link>
+          </div>
         </SwiperSlide>
+
         <SwiperSlide>
           <Image src={grup2} width="100%" height="100%" />
         </SwiperSlide>

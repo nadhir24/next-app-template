@@ -30,14 +30,7 @@ import "swiper/css/navigation";
 import "../styles/globals.css";
 import SwiperComponent from "@/components/swiper-autoprogress";
 export default function Home() {
-  const [loading, setLoading] = useState(false);
 
-  const handleClick = () => {
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-    }, 1000);
-  };
   const progressCircle = useRef<SVGSVGElement | null>(null);
   const progressContent = useRef<HTMLSpanElement | null>(null);
 
@@ -81,8 +74,11 @@ export default function Home() {
   ];
   return (
     <>
+      <div>
+        <SwiperComponent />
+      </div>
       <div className="grid-cols-2 bg-yellow-200 rounded-xl lg:grid-cols-2 lg:px-12 py-8">
-        <motion.div
+        {/* <motion.div
           initial={{ opacity: 0, y: -50 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
@@ -102,26 +98,9 @@ export default function Home() {
           Terpercaya sejak 2018
           <br />
           menerima pesanan skala besar
-        </motion.span>
+        </motion.span> */}
 
-        <div className="mt-2">
-          <Link href="/katalog" passHref>
-            <NextUIButton
-              size="lg"
-              variant="shadow"
-              label="Pesan Sekarang"
-              onClick={handleClick}
-              isLoading={loading}
-              endContent={
-                <Icon
-                  icon="icon-park-outline:buy"
-                  width="1.2rem"
-                  height="1.2rem"
-                />
-              }
-            />
-          </Link>
-        </div>
+     
       </div>
       <div className="my-16">
         <h2 className="text-2xl font-bold text-center mb-8">
@@ -301,9 +280,7 @@ export default function Home() {
           titleSize="sm"
         />
       </div>
-      <div className="pt-96">
-        <SwiperComponent />
-      </div>
+      <div className="pt-96"></div>
     </>
   );
 }
