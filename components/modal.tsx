@@ -1,5 +1,7 @@
 "use client";
+
 import React, { useState } from "react";
+import axios from "axios"; // Import Axios
 import {
   Modal,
   ModalContent,
@@ -9,12 +11,17 @@ import {
   useDisclosure,
 } from "@nextui-org/modal";
 import { MailIcon } from "./MailIcon";
-import { LockIcon } from "./Lockicon";
+import { LockIcon } from "./LockIcon";
 import { Link } from "@nextui-org/link";
 import { Input } from "@nextui-org/input";
 import { Checkbox } from "@nextui-org/checkbox";
 import { Button } from "@nextui-org/button";
-
+import {Avatar} from "@nextui-org/avatar";
+interface User {
+  photoProfile: string | null;
+  fullName: string;
+  email: string;
+}
 export default function Modall() {
   const {
     isOpen: loginIsOpen,
@@ -27,16 +34,47 @@ export default function Modall() {
     onClose: closeRegister,
   } = useDisclosure();
 
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [user, setUser] = useState<User | null>(null);
+
+  // Login handler menggunakan Axios
+  const handleLogin = async () => {
+    try {
+      const response = await axios.post(`http://localhost:5000/auth/login`, {
+        email,
+        password,
+      });
+      const { data } = response;
+      setUser(data.loginData); // Simpan data user
+      closeLogin();
+    } catch (error) {
+      console.error(error);
+      alert("Login failed");
+    }
+  };
+
   const handleOpenRegister = () => {
-    closeLogin(); // Tutup modal login
-    openRegister(); // Buka modal pendaftaran
+    closeLogin();
+    openRegister();
   };
 
   return (
     <>
-      <Button onClick={openLogin} color="default">
-        Login
-      </Button>
+     {user ? (
+        <div className="flex items-center gap-3">
+          <Avatar
+            src={user.photoProfile || "https://i.pravatar.cc/150?u=default"}
+            size="lg"
+          />
+          <span>{user.fullName}</span>
+        </div>
+      ) : (
+        <Button onClick={openLogin} color="default">
+          Login
+        </Button>
+      )}
+
       <Modal isOpen={loginIsOpen} onClose={closeLogin} placement="top-center">
         <ModalContent>
           {() => (
@@ -45,28 +83,30 @@ export default function Modall() {
               <ModalBody>
                 <Input
                   autoFocus
-                  endContent={
-                    <MailIcon className="text-2xl text-default-400 pointer-events-none flex-shrink-0" />
-                  }
                   label="Email"
                   placeholder="Enter your email"
                   variant="bordered"
-                />
-                <Input
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   endContent={
-                    <LockIcon className="text-2xl text-default-400 pointer-events-none flex-shrink-0" />
+                    <MailIcon className="text-2xl text-default-400 pointer-events-none flex-shrink-0" />
                   }
+                />
+
+                <Input
                   label="Password"
                   placeholder="Enter your password"
                   type="password"
                   variant="bordered"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  endContent={
+                    <LockIcon className="text-2xl text-default-400 pointer-events-none flex-shrink-0" />
+                  }
                 />
+
                 <div className="flex py-2 px-1 justify-between">
-                  <Checkbox
-                    classNames={{
-                      label: "text-small",
-                    }}
-                  >
+                  <Checkbox classNames={{ label: "text-small" }}>
                     Remember me
                   </Checkbox>
                   <Link color="primary" onClick={handleOpenRegister} size="sm">
@@ -78,7 +118,7 @@ export default function Modall() {
                 <Button color="danger" variant="flat" onClick={closeLogin}>
                   Close
                 </Button>
-                <Button color="primary" onClick={closeLogin}>
+                <Button color="primary" onClick={handleLogin}>
                   Sign in
                 </Button>
               </ModalFooter>
@@ -87,7 +127,6 @@ export default function Modall() {
         </ModalContent>
       </Modal>
 
-      {/* Modal pendaftaran */}
       <Modal
         isOpen={registerIsOpen}
         onClose={closeRegister}

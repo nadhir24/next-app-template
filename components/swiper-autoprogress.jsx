@@ -50,9 +50,9 @@ export default function SwiperComponent() {
         onAutoplayTimeLeft={onAutoplayTimeLeft}
         className="mySwiper"
       >
-        <SwiperSlide>
+        <SwiperSlide className="relative h-full">
           <Image src={grup2} width="100%" height="100%" />
-          <div className="mt-2">
+          <div className="absolute inset-0 flex items-center justify-center">
             <Link href="/katalog" passHref>
               <NextUIButton
                 size="lg"

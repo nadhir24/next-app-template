@@ -77,31 +77,7 @@ export default function Home() {
       <div>
         <SwiperComponent />
       </div>
-      <div className="grid-cols-2 bg-yellow-200 rounded-xl lg:grid-cols-2 lg:px-12 py-8">
-        {/* <motion.div
-          initial={{ opacity: 0, y: -50 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className={title({ color: "red", size: "lg", fullWidth: true })}
-        >
-          selamat datang di Rano Cake
-        </motion.div>
-
-        <motion.span
-          initial={{ opacity: 0, x: -100 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-          className="box-decoration-clone bg-gradient-to-r from-indigo-600 to-pink-500 text-white px-2"
-        >
-          selangkah lebih dekat
-          <br />
-          Terpercaya sejak 2018
-          <br />
-          menerima pesanan skala besar
-        </motion.span> */}
-
-     
-      </div>
+      
       <div className="my-16">
         <h2 className="text-2xl font-bold text-center mb-8">
           Rano Cake dalam Angka
@@ -280,7 +256,6 @@ export default function Home() {
           titleSize="sm"
         />
       </div>
-      <div className="pt-96"></div>
     </>
   );
 }
