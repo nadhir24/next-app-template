@@ -1,7 +1,7 @@
 "use client";
-
-import React, { useState } from "react";
-import axios from "axios"; // Import Axios
+import { useRouter } from "next/navigation";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
 import {
   Modal,
   ModalContent,
@@ -16,18 +16,29 @@ import { Link } from "@nextui-org/link";
 import { Input } from "@nextui-org/input";
 import { Checkbox } from "@nextui-org/checkbox";
 import { Button } from "@nextui-org/button";
-import {Avatar} from "@nextui-org/avatar";
+import { Avatar } from "@nextui-org/avatar";
+import {
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+} from "@nextui-org/dropdown";
+
 interface User {
   photoProfile: string | null;
   fullName: string;
   email: string;
 }
+
 export default function Modall() {
+  const router = useRouter();
+
   const {
     isOpen: loginIsOpen,
     onOpen: openLogin,
     onClose: closeLogin,
   } = useDisclosure();
+
   const {
     isOpen: registerIsOpen,
     onOpen: openRegister,
@@ -37,8 +48,17 @@ export default function Modall() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [user, setUser] = useState<User | null>(null);
+  const [fullName, setFullName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
 
-  // Login handler menggunakan Axios
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+  }, []);
+
+  // Login handler using Axios
   const handleLogin = async () => {
     try {
       const response = await axios.post(`http://localhost:5000/auth/login`, {
@@ -46,7 +66,8 @@ export default function Modall() {
         password,
       });
       const { data } = response;
-      setUser(data.loginData); // Simpan data user
+      setUser(data.loginData); // Store user data in state
+      localStorage.setItem("user", JSON.stringify(data.loginData)); // Save to local storage
       closeLogin();
     } catch (error) {
       console.error(error);
@@ -54,27 +75,64 @@ export default function Modall() {
     }
   };
 
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem("user");
+    router.push("/"); // Redirect to home page
+  };
+
   const handleOpenRegister = () => {
     closeLogin();
     openRegister();
   };
 
+  const handleSubmit = async () => {
+    const createUserDto = {
+      fullName,
+      email,
+      phoneNumber,
+      password,
+    };
+
+    try {
+      await axios.post(`http://localhost:5000/auth/signup`, createUserDto);
+      closeRegister();
+    } catch (error) {
+      console.error("Error during sign up:", error);
+    }
+  };
+
   return (
     <>
-     {user ? (
-        <div className="flex items-center gap-3">
-          <Avatar
-            src={user.photoProfile || "https://i.pravatar.cc/150?u=default"}
-            size="lg"
-          />
-          <span>{user.fullName}</span>
-        </div>
+      {user ? (
+        <Dropdown placement="bottom-end">
+          <DropdownTrigger>
+            <div className="flex items-center gap-3 cursor-pointer">
+              <Avatar
+                src={user.photoProfile || "https://i.pravatar.cc/150?u=default"}
+                size="lg"
+                isBordered
+              />
+              <span>{user.fullName}</span>
+            </div>
+          </DropdownTrigger>
+          <DropdownMenu aria-label="User Actions" variant="flat">
+            <DropdownItem key="profile">
+              <p className="font-bold">Profile</p>
+            </DropdownItem>
+            <DropdownItem key="settings">My Settings</DropdownItem>
+            <DropdownItem key="logout" color="danger" onClick={handleLogout}>
+              Log Out
+            </DropdownItem>
+          </DropdownMenu>
+        </Dropdown>
       ) : (
         <Button onClick={openLogin} color="default">
           Login
         </Button>
       )}
 
+      {/* Login Modal */}
       <Modal isOpen={loginIsOpen} onClose={closeLogin} placement="top-center">
         <ModalContent>
           {() => (
@@ -127,29 +185,48 @@ export default function Modall() {
         </ModalContent>
       </Modal>
 
-      <Modal
-        isOpen={registerIsOpen}
-        onClose={closeRegister}
-        placement="top-center"
-      >
+      {/* Register Modal */}
+      <Modal isOpen={registerIsOpen} onClose={closeRegister} placement="top-center">
         <ModalContent>
           {() => (
             <>
-              <ModalHeader className="flex flex-col gap-1">
-                Register
-              </ModalHeader>
+              <ModalHeader className="flex flex-col gap-1">Register</ModalHeader>
               <ModalBody>
+                <Input
+                  label="Full Name"
+                  placeholder="Enter your full name"
+                  variant="bordered"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                />
+                <Input
+                  label="Email"
+                  placeholder="Enter your email"
+                  variant="bordered"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
                 <Input
                   label="Phone Number"
                   placeholder="+62 Enter your phone number"
                   variant="bordered"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                />
+                <Input
+                  label="Password"
+                  placeholder="Enter your password"
+                  variant="bordered"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                 />
               </ModalBody>
               <ModalFooter>
                 <Button color="danger" variant="flat" onClick={closeRegister}>
                   Close
                 </Button>
-                <Button color="primary" onClick={closeRegister}>
+                <Button color="primary" onClick={handleSubmit}>
                   Sign up
                 </Button>
               </ModalFooter>

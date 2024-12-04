@@ -29,8 +29,8 @@ import "swiper/css/navigation";
 
 import "../styles/globals.css";
 import SwiperComponent from "@/components/swiper-autoprogress";
+import AvatarDropdown from "@/components/avatar";
 export default function Home() {
-
   const progressCircle = useRef<SVGSVGElement | null>(null);
   const progressContent = useRef<HTMLSpanElement | null>(null);
 
@@ -77,7 +77,7 @@ export default function Home() {
       <div>
         <SwiperComponent />
       </div>
-      
+
       <div className="my-16">
         <h2 className="text-2xl font-bold text-center mb-8">
           Rano Cake dalam Angka
@@ -256,6 +256,7 @@ export default function Home() {
           titleSize="sm"
         />
       </div>
+      <AvatarDropdown />
     </>
   );
 }
