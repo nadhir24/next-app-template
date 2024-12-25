@@ -30,8 +30,21 @@ interface User {
   email: string;
 }
 
+interface CartItem {
+  id: number;
+  name: string;
+  qty: number;
+  price: number;
+}
+
 export default function Modall() {
   const router = useRouter();
+
+  // Update the handleCart function to have a proper type for cart
+  const handleCart = (cart: CartItem[]) => {
+    // Function to handle cart
+    console.log(cart);
+  };
 
   const {
     isOpen: loginIsOpen,
@@ -47,9 +60,13 @@ export default function Modall() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null); // Token type updated to string | null
+  const [cart, setCart] = useState<CartItem[]>([]); // cart type updated to CartItem[]
   const [fullName, setFullName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [rememberMe, setRememberMe] = useState<boolean>(false);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -58,6 +75,15 @@ export default function Modall() {
     }
   }, []);
 
+  const getCart = (): CartItem[] => {
+    const storedCart = localStorage.getItem("cart");
+    return storedCart ? JSON.parse(storedCart) : [];
+  };
+
+  const saveCart = (cart: CartItem[]) => {
+    localStorage.setItem("cart", JSON.stringify(cart));
+  };
+
   // Login handler using Axios
   const handleLogin = async () => {
     try {
@@ -65,9 +91,29 @@ export default function Modall() {
         email,
         password,
       });
-      const { data } = response;
-      setUser(data.loginData); // Store user data in state
-      localStorage.setItem("user", JSON.stringify(data.loginData)); // Save to local storage
+      const { token, loginData } = response.data;
+
+      if (rememberMe) {
+        localStorage.setItem("token", token);
+      } else {
+        sessionStorage.setItem("token", token);
+      }
+
+      setUser(loginData);
+      localStorage.setItem("user", JSON.stringify(loginData));
+
+      // Ambil cart dari localStorage dan sinkronkan dengan server
+      const localCart = getCart();
+      if (localCart.length > 0) {
+        await axios.post(
+          `http://localhost:5000/cart/sync`,
+          { cart: localCart },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+      }
+
       closeLogin();
     } catch (error) {
       console.error(error);
@@ -76,9 +122,15 @@ export default function Modall() {
   };
 
   const handleLogout = () => {
+    // Hapus data user dan token dari localStorage dan sessionStorage
     setUser(null);
     localStorage.removeItem("user");
-    router.push("/"); // Redirect to home page
+    localStorage.removeItem("token"); // Pastikan ini ada
+    sessionStorage.removeItem("token"); // Tambahkan jika token mungkin tersimpan di sessionStorage
+    localStorage.removeItem("cart"); // Hapus cart lokal jika perlu
+
+    // Redirect ke halaman home
+    router.push("/");
   };
 
   const handleOpenRegister = () => {
@@ -86,19 +138,22 @@ export default function Modall() {
     openRegister();
   };
 
-  const handleSubmit = async () => {
+  const handleSignup = async () => {
     const createUserDto = {
       fullName,
       email,
       phoneNumber,
       password,
+      confirmPassword,
     };
 
     try {
       await axios.post(`http://localhost:5000/auth/signup`, createUserDto);
       closeRegister();
+      openLogin();
     } catch (error) {
       console.error("Error during sign up:", error);
+      alert("registrasi gagal silahkan coba lagi ya");
     }
   };
 
@@ -164,9 +219,14 @@ export default function Modall() {
                 />
 
                 <div className="flex py-2 px-1 justify-between">
-                  <Checkbox classNames={{ label: "text-small" }}>
+                  <Checkbox
+                    isSelected={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    classNames={{ label: "text-small" }}
+                  >
                     Remember me
                   </Checkbox>
+
                   <Link color="primary" onClick={handleOpenRegister} size="sm">
                     Don't have an account? Sign up
                   </Link>
@@ -206,13 +266,21 @@ export default function Modall() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
-                <Input
-                  label="Phone Number"
-                  placeholder="+62 Enter your phone number"
-                  variant="bordered"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                />
+                <div className="flex items-center">
+                  <span className="px-2 py-2 bg-gray-200 rounded-l-md border border-gray-300 text-gray-700">
+                    +62
+                  </span>
+
+                  <Input
+                    placeholder="8xxxxxxxxxx"
+                    variant="bordered"
+                    value={phoneNumber}
+                    onChange={(e) => {
+                      const inputValue = e.target.value.replace(/[^0-9]/g, "");
+                      setPhoneNumber(inputValue);
+                    }}
+                  />
+                </div>
                 <Input
                   label="Password"
                   placeholder="Enter your password"
@@ -221,12 +289,20 @@ export default function Modall() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
+                <Input
+                  label="Confirm Password"
+                  placeholder="Re-enter your password"
+                  variant="bordered"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
               </ModalBody>
               <ModalFooter>
                 <Button color="danger" variant="flat" onClick={closeRegister}>
                   Close
                 </Button>
-                <Button color="primary" onClick={handleSubmit}>
+                <Button color="primary" onClick={handleSignup}>
                   Sign up
                 </Button>
               </ModalFooter>
