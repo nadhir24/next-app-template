@@ -10,14 +10,14 @@ import wkwkwkwk from "@/public/wkwkwkwk.jpg";
 import Kartu from "@/components/card";
 import Link from "next/link";
 import { Icon } from "@iconify/react";
-import { Button } from "@nextui-org/button";
+import { Button } from "@heroui/button";
 import { Toaster, toast } from "sonner";
 import jaja1 from "@/public/jaja1.png";
 import Choco from "@/public/choco.jpg";
 import { motion } from "framer-motion";
-import { Card, CardBody } from "@nextui-org/card";
+import { Card, CardBody } from "@heroui/card";
 import CountUp from "react-countup";
-import { Accordion, AccordionItem } from "@nextui-org/accordion";
+import { Accordion, AccordionItem } from "@heroui/accordion";
 // Import Swiper React components
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Pagination, Navigation } from "swiper/modules";

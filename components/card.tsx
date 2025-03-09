@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { motion, useScroll, useTransform } from "framer-motion"; // Import necessary hooks
-import { Card as NextUICard, CardHeader, CardBody } from "@nextui-org/card";
+import { Card as NextUICard, CardHeader, CardBody } from "@heroui/card";
 import type { StaticImageData } from "next/image";
-import { Image } from "@nextui-org/image";
-import { Divider } from "@nextui-org/divider";
+import { Image } from "@heroui/image";
+import { Divider } from "@heroui/divider";
 import { title, subtitle } from "@/components/primitives";
 
 interface KartuProps {

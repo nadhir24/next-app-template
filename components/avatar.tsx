@@ -5,9 +5,9 @@ import {
   DropdownMenu,
   DropdownItem,
   
-} from "@nextui-org/dropdown";
-import {Avatar,} from "@nextui-org/avatar"
-import { User } from "@nextui-org/user";
+} from "@heroui/dropdown";
+import {Avatar,} from "@heroui/avatar"
+import { User } from "@heroui/user";
 
 const AvatarDropdown: React.FC = () => {
   return (

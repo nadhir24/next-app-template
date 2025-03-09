@@ -1,24 +1,10 @@
-import {
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-} from "@nextui-org/modal";
-
-import { useState, useEffect } from "react";
-import axios from "axios";
-import { Button } from "@nextui-org/button";
-import Image from "next/image";
-
-interface CartItem {
-  id: number;
-  name: string;
-  image: string;
-  sizes: Size[];
-  qty: number;
-  price: string;
-}
+"use client";
+import { useState, useEffect, useCallback } from "react";
+import { toast } from "react-toastify";
+import { Modal, ModalBody, ModalContent, ModalHeader } from "@heroui/modal";
+import { Button } from "@heroui/button";
+import { Image } from "@heroui/image";
+import { Link } from "@heroui/link";
 
 interface Size {
   id: number;
@@ -26,94 +12,139 @@ interface Size {
   price: string;
 }
 
-// No need to pass props if state is managed internally in this example
-export default function HoverCartModal() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+interface CartItem {
+  id: number;
+  userId: number | null;
+  guestId: string | null;
+  quantity: number;
+  createdAt: string;
+  catalog?: { id: number; name: string; image: string } | null;
+  size?: Size | null;
+}
 
-  // Function to fetch cart items
-  const fetchCartItems = async () => {
-    const isLoggedIn = false; // Replace with actual login check
-    if (isLoggedIn) {
+interface HoverCartModalProps {
+  cartItems: CartItem[];
+  setCartItems: React.Dispatch<React.SetStateAction<CartItem[]>>;
+  isLoggedIn: boolean;
+  userId?: number;
+}
+
+const HoverCartModal: React.FC<HoverCartModalProps> = ({
+  cartItems,
+  setCartItems,
+  isLoggedIn,
+  userId,
+}) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [guestId, setGuestId] = useState<string | null>(null);
+
+  // Inisialisasi guest session
+  const initializeGuestSession = useCallback(async () => {
+    const storedGuestId = localStorage.getItem("guestId");
+    if (!storedGuestId) {
       try {
-        const response = await axios.get("http://localhost:5000/cart");
-        setCartItems(response.data);
+        const response = await fetch(
+          "http://localhost:5000/cart/guest-session"
+        );
+        const { guestId } = await response.json();
+        localStorage.setItem("guestId", guestId);
+        setGuestId(guestId);
       } catch (error) {
-        console.error(  "Error fetching cart items:", error);
+        toast.error("Gagal inisialisasi session");
       }
     } else {
-      const guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
-      setCartItems(guestCart);
+      setGuestId(storedGuestId);
     }
-  };
-
-  // UseEffect to fetch cart items when component mounts
-  useEffect(() => {
-    fetchCartItems();
   }, []);
+
+  // Mengambil data cart berdasarkan guestId
+  const fetchCartData = useCallback(async () => {
+    if (!guestId) return;
+    try {
+      const response = await fetch(
+        `http://localhost:5000/cart/findMany?guestId=${guestId}`
+      );
+      if (!response.ok) throw new Error("Gagal mengambil data");
+      const items = await response.json();
+      setCartItems(items);
+    } catch (error) {
+      toast.error("Gagal mengambil data cart");
+    }
+  }, [guestId]);
+
+  useEffect(() => {
+    initializeGuestSession();
+  }, [initializeGuestSession]);
+
+  useEffect(() => {
+    if (guestId) fetchCartData();
+  }, [guestId, fetchCartData]);
 
   return (
     <>
-      <Button onPress={() => setIsModalOpen(true)}>Open Cart</Button>
+      <Button onPress={() => setIsModalOpen(true)}>
+        Keranjang ({cartItems.length})
+      </Button>
+
       <Modal
-        size={"5xl"}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        aria-labelledby="cart-modal"
-        aria-describedby="cart-modal-description"
-        className="fixed right-0 top-0 w-full md:w-1/2 lg:w-1/3 h-full bg-white shadow-lg" // Adjust width here
+        className="fixed right-0 top-0 h-full w-full md:w-1/2 lg:w-1/3 bg-white shadow-lg"
       >
         <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader className="flex flex-col gap-1">
-                Your Cart
-              </ModalHeader>
-              <ModalBody>
-                {cartItems.length === 0 ? (
-                  <p>Your cart is empty.</p>
-                ) : (
-                  cartItems.map((item) => (
-                    <div key={item.id} className="flex items-center mb-4">
-                      <Image
-                        src={`http://localhost:5000/catalog/images/${item.image
-                          .split("/")
-                          .pop()}`}
-                        alt={item.name || "Product Image"}
-                        width={150}
-                        height={150}
-                        className="rounded-xl"
-                      />
-                      <div className="flex-grow">
-                        <h3>{item.name}</h3>
-                        {item.sizes && item.sizes.length > 0 ? (
-                          <>
-                            <p>
-                              Size: {item.sizes[0].size} - Price:{" "}
-                              {item.sizes[0].price}
-                            </p>
-                            <p>Quantity: {item.qty}</p>
-                          </>
-                        ) : (
-                          <p>No sizes available</p>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </ModalBody>
-              <ModalFooter>
-                <Button color="danger" variant="light" onPress={onClose}>
-                  Close
+          <ModalHeader className="border-b p-4">
+            <h2 className="text-xl font-bold">Keranjang Belanja</h2>
+            <div className="flex justify-end">
+              <Link href="/cart">
+                <Button
+                  color="primary"
+                  size="md"
+                  disabled={cartItems.length === 0}
+                >
+                  selengkapnyaa
                 </Button>
-                <Button color="primary" onPress={onClose}>
-                  Checkout
-                </Button>
-              </ModalFooter>
-            </>
-          )}
+              </Link>
+            </div>
+          </ModalHeader>
+
+          <ModalBody className="p-4 overflow-y-auto max-h-[70vh]">
+            {cartItems.length > 0 ? (
+              cartItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-4 border-b py-3"
+                >
+                  {item.catalog?.image && (
+                    <Image
+                      src={item.catalog.image}
+                      alt={item.catalog.name}
+                      className="w-16 h-16 object-cover rounded"
+                    />
+                  )}
+
+                  <div className="flex flex-col flex-1 capitalize">
+                    <h3 className="text-md font-semibold">
+                      {item.catalog?.name}
+                    </h3>
+
+                    <p className="text-sm text-gray-500">
+                      Ukuran: {item.size?.size}
+                    </p>
+
+                    <p className="text-sm font-medium text-gray-900">
+                      {item.size?.price}
+                    </p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-center text-gray-500">Keranjang kosong</p>
+            )}
+          </ModalBody>
         </ModalContent>
       </Modal>
     </>
   );
-}
+};
+
+export default HoverCartModal;

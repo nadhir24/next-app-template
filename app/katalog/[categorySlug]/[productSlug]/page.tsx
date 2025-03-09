@@ -2,11 +2,11 @@
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { RadioGroup, Radio } from "@nextui-org/radio";
+import { RadioGroup, Radio } from "@heroui/radio";
 import { toast, Toaster } from "sonner";
-import { Modal, ModalBody, ModalFooter } from "@nextui-org/modal";
-import { Button } from "@nextui-org/button";
-import { Image } from "@nextui-org/image";
+import { Modal, ModalBody, ModalFooter } from "@heroui/modal";
+import { Button } from "@heroui/button";
+import { Image } from "@heroui/image";
 import router from "next/router";
 
 interface Size {
@@ -38,7 +38,6 @@ interface GuestCartItem {
 const ProductDetailPage = () => {
   const [product, setProduct] = useState<Catalog | null>(null);
   const [selectedSize, setSelectedSize] = useState<Size | null>(null);
-  const [imageError, setImageError] = useState<boolean>(false);
   const [isCartModalOpen, setIsCartModalOpen] = useState(false);
   const [guestCart, setGuestCart] = useState<GuestCartItem[]>([]);
   const params = useParams();
@@ -55,11 +54,9 @@ const ProductDetailPage = () => {
           `http://localhost:5000/catalog/${categorySlug}/${productSlug}`
         );
         setProduct(response.data);
-
         if (response.data.sizes.length > 0) {
           setSelectedSize(response.data.sizes[0]);
         }
-
         const guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
         setGuestCart(guestCart);
       } catch (error) {
@@ -73,6 +70,8 @@ const ProductDetailPage = () => {
     }
   }, [categorySlug, productSlug]);
 
+
+  
   const handleSizeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const sizeId = event.target.value;
     const selected = product?.sizes.find(
@@ -83,65 +82,82 @@ const ProductDetailPage = () => {
 
   const handleAddToCart = () => {
     if (!selectedSize) {
-      toast.error("Please select a size before adding to cart.");
+      toast.error("Silakan pilih ukuran terlebih dahulu");
       return;
     }
 
-    const isLoggedIn = false; // Replace with actual login check
-
-    if (isLoggedIn) {
-      handleAddToLoggedInCart();
-    } else {
-      handleAddToGuestCart();
-      setIsCartModalOpen(true);
-    }
+    const isLoggedIn = localStorage.getItem("user") !== null; // Cek login sebenarnya
+    isLoggedIn ? handleAddToLoggedInCart() : handleAddToGuestCart();
   };
 
   const handleAddToLoggedInCart = async () => {
     try {
+      // Tambahkan null check dan non-null assertion
+      if (!selectedSize) {
+        toast.error("Silakan pilih ukuran terlebih dahulu");
+        return;
+      }
+
       await axios.post("http://localhost:5000/cart/add", {
-        userId: 1, // Adjust based on your auth logic
+        userId: 1, // Ganti dengan user ID dari sistem auth Anda
         catalogId: product?.id || 0,
-        sizeId: selectedSize.id,
+        sizeId: selectedSize.id, // Sekarang aman karena sudah dilakukan null check
         quantity: 1,
       });
-      toast.success("Item added to cart!");
+      toast.success("Item berhasil ditambahkan ke keranjang!");
     } catch (error) {
       console.error("Error adding item to cart:", error);
-      toast.error("Failed to add item to cart.");
+      toast.error("Gagal menambahkan item ke keranjang");
     }
   };
-
   const handleAddToGuestCart = () => {
-    const existingItem = guestCart.find(
-      (item) =>
-        item.catalogId === (product?.id || 0) && item.sizeId === selectedSize.id
-    );
+    if (!product || !selectedSize) return;
+    const productImage = product.image || "/default-product-image.jpg";
 
-    if (existingItem) {
-      existingItem.quantity += 1;
-    } else {
-      guestCart.push({
-        catalogId: product?.id || 0,
-        name: product?.name || "",
-        image: product?.image || null,
-        sizeId: selectedSize.id,
-        size: selectedSize.size,
-        price: selectedSize.price,
-        quantity: 1,
-      });
-    }
+    const newItem: GuestCartItem = {
+      catalogId: product.id,
+      name: product.name,
+      image: productImage, // Gunakan fallback jika null
+      sizeId: selectedSize.id,
+      size: selectedSize.size,
+      price: selectedSize.price,
+      quantity: 1,
+    };
 
-    localStorage.setItem("guestCart", JSON.stringify(guestCart));
-    setGuestCart([...guestCart]);
+    setGuestCart((prevCart) => {
+      // Cari item yang sama di cart sebelumnya
+      const existingIndex = prevCart.findIndex(
+        (item) =>
+          item.catalogId === newItem.catalogId && item.sizeId === newItem.sizeId
+      );
+
+      let newCart = [...prevCart];
+
+      if (existingIndex > -1) {
+        // Jika item sudah ada, tambahkan quantity
+        newCart[existingIndex] = {
+          ...newCart[existingIndex],
+          quantity: newCart[existingIndex].quantity + 1,
+        };
+      } else {
+        // Jika item belum ada, tambahkan item baru
+        newCart = [...newCart, newItem];
+      }
+
+      // Simpan ke localStorage
+      localStorage.setItem("guestCart", JSON.stringify(newCart));
+      return newCart;
+    });
+
+    setIsCartModalOpen(true);
+    toast.success("Item berhasil ditambahkan ke keranjang!");
   };
-
   const handleCloseCartModal = () => {
     setIsCartModalOpen(false);
   };
 
   return (
-    <div className="flex flex-col lg:flex-row lg:space-x-8 p-4">
+    <div className="flex flex-col lg:flex-row lg:space-x-8 p- 4">
       {/* Image Section */}
       <div className="lg:w-1/2 w-full">
         <nav className="flex mb-4">
@@ -177,7 +193,6 @@ const ProductDetailPage = () => {
               className="rounded-xl"
             />
           )}
-          {imageError && <p>Error loading image.</p>}
         </div>
       </div>
 
@@ -188,15 +203,20 @@ const ProductDetailPage = () => {
 
         {product?.sizes && product.sizes.length > 0 && (
           <div className="mt-4">
-            <h2 className="text-lg font-semibold">Select Size:</h2>
+            <h2 className="text-lg font-semibold">Pilih Ukuran:</h2>
             <RadioGroup
               className="mt-2"
-              value={selectedSize?.id.toString()}
+              value={selectedSize?.id.toString() || ""}
               onChange={handleSizeChange}
             >
               {product.sizes.map((size) => (
-                <Radio key={size.id} value={size.id.toString()}>
-                  {size.size} - {size.price}
+                <Radio
+                  key={size.id}
+                  value={size.id.toString()}
+                  className="mb-2 p-2 border rounded-md"
+                >
+                  <span className="font-medium">{size.size}</span>
+                  <span className="ml-2 text-primary">Rp{size.price}</span>
                 </Radio>
               ))}
             </RadioGroup>
@@ -212,14 +232,15 @@ const ProductDetailPage = () => {
       <Modal
         closeButton
         aria-labelledby="modal-title"
-        open={isCartModalOpen}
+        isOpen={isCartModalOpen}
         onClose={handleCloseCartModal}
-        width="400px"
+        className="max-w-[400px] w-full" // Ganti prop width dengan className
       >
         <ModalBody>
-          <h3 className="text-xl font-bold mb-2">Item added to cart!</h3>
+          <h3 className="text-xl font-bold mb-2">Item berhasil ditambahkan!</h3>
           <p>
-            You've added {selectedSize?.size} of {product?.name} to your cart.
+            Kamu telah menambahkan {selectedSize?.size} {product?.name} ke
+            keranjang
           </p>
         </ModalBody>
         <ModalFooter>

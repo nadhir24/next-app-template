@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Link } from "@nextui-org/link";
+import { Link } from "@heroui/link";
 import { LucidePackage, LucidePlus } from "lucide-react";
 import Image from "next/image";
 

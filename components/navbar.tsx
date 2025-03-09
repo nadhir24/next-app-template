@@ -7,19 +7,19 @@ import {
   NavbarBrand,
   NavbarItem,
   NavbarMenuItem,
-} from "@nextui-org/navbar";
+} from "@heroui/navbar";
 import Modall from "./modal";
 import { siteConfig } from "@/config/site";
 import { ThemeSwitch } from "./theme-switch";
 import Link from "next/link";
 import { RanoIcon } from "./icons";
-import HoverCart from "@/function/HoverCartModal"; // Import HoverCart here
+import HoverCartModal from "@/function/HoverCartModal"; // Pastikan jalur ini benar
 import { useState } from "react";
 import { CartItem } from "@/function/CartItem";
-import HoverCartModal from "@/function/HoverCartModal";
-
+``
 export default function Navy() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [isLoggedIn, setIsLoggedIn] = useState(false); // Default sebagai tamu
 
   return (
     <Navbar maxWidth="xl" className="sticky top-0 z-50">
@@ -47,8 +47,11 @@ export default function Navy() {
       <NavbarContent className="flex basis-1/5 sm:basis-full px-4 lg:px-8" justify="end">
         <NavbarItem className="sm:flex gap-2">
           {/* Pass cartItems and setCartItems props to HoverCart */}
-          <HoverCartModal />
-
+          <HoverCartModal 
+            cartItems={cartItems} 
+            setCartItems={setCartItems} 
+            isLoggedIn={isLoggedIn} 
+          />
           <ThemeSwitch />
         </NavbarItem>
         <NavbarItem>

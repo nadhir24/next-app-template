@@ -1,10 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Card, CardBody, CardFooter } from "@nextui-org/card";
-import { Button as NextUIButton } from "@nextui-org/button";
-import { Input } from "@nextui-org/input";
-import { Spacer } from "@nextui-org/spacer";
-import { Slider } from "@nextui-org/slider";
+import { Card, CardBody, CardFooter } from "@heroui/card";
+import { Button as NextUIButton } from "@heroui/button";
+import { Input } from "@heroui/input";
+import { Slider } from "@heroui/slider";
 import axios from "axios";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -111,13 +110,12 @@ export default function FilterableCatalog() {
               value={priceRange}
               onChange={handlePriceRangeChange}
               className="w-full"
-              formatValue={(value) => `IDR ${value.toLocaleString()}`}
             />
           </div>
           <div className="flex items-center mb-4">
             <input
               type="checkbox"
-              checked={filterByQuantity}
+              checked ={filterByQuantity}
               onChange={handleQuantityFilter}
               className="mr-2"
             />
@@ -142,7 +140,9 @@ export default function FilterableCatalog() {
               <div className="mt-4">
                 <h4 className="font-bold text-lg">{catalog.name}</h4>
                 <p className="text-black-600">{catalog.description}</p>
-                <p>Starting from IDR {parseFloat(catalog.sizes[0]?.price || "0").toLocaleString()}</p>
+                <p>
+                  Starting from IDR {catalog.sizes.length > 0 ? parseFloat(catalog.sizes[0].price.replace(/[^0-9.-]+/g, "")).toLocaleString('id-ID') : '0'}
+                </p>
                 {parseInt(catalog.qty) === 0 && (
                   <p className="text-red-500 font-bold">Out of stock</p>
                 )}

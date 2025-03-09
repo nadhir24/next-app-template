@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { Button as NextUIButton } from "@nextui-org/button";
+import { Button as NextUIButton } from "@heroui/button";
 import { motion } from "framer-motion"; // Import framer-motion
 
 interface TombolProps {

@@ -15,7 +15,7 @@ import {
 import { title } from "@/components/primitives";
 import { useRouter } from "next/router";
 import Navy from "@/components/navbar";
-import { Divider } from "@nextui-org/divider";
+import { Divider } from "@heroui/divider";
 import Image from "next/image";
 export const metadata: Metadata = {
   title: {
