@@ -1,7 +1,13 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "react-toastify";
-import { Modal, ModalBody, ModalContent, ModalHeader } from "@heroui/modal";
+import {
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+} from "@heroui/modal";
 import { Button } from "@heroui/button";
 import { Image } from "@heroui/image";
 import { Link } from "@heroui/link";
@@ -37,6 +43,17 @@ const HoverCartModal: React.FC<HoverCartModalProps> = ({
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [guestId, setGuestId] = useState<string | null>(null);
+  const [localCartItems, setLocalCartItems] = useState<CartItem[]>([]);
+
+  // Inisialisasi data dari localStorage
+  useEffect(() => {
+    const storedCart = localStorage.getItem("cart");
+    if (storedCart) {
+      const parsedCart = JSON.parse(storedCart);
+      setLocalCartItems(parsedCart);
+      setCartItems(parsedCart); // Update parent state juga
+    }
+  }, []);
 
   // Inisialisasi guest session
   const initializeGuestSession = useCallback(async () => {
@@ -57,33 +74,52 @@ const HoverCartModal: React.FC<HoverCartModalProps> = ({
     }
   }, []);
 
-  // Mengambil data cart berdasarkan guestId
+  // Mengambil data cart dari backend
   const fetchCartData = useCallback(async () => {
-    if (!guestId) return;
     try {
-      const response = await fetch(
-        `http://localhost:5000/cart/findMany?guestId=${guestId}`
-      );
+      let url = "";
+      if (isLoggedIn && userId) {
+        url =  `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?userId=${userId}`;
+      } else if (guestId) {
+        url =  `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?guestId=${guestId}`;
+      } else {
+        return;
+      }
+
+      const response = await fetch(url);
       if (!response.ok) throw new Error("Gagal mengambil data");
       const items = await response.json();
       setCartItems(items);
+      // Update localStorage dengan data terbaru dari backend
+      localStorage.setItem("cart", JSON.stringify(items));
     } catch (error) {
+      console.error("Error fetching cart:", error);
       toast.error("Gagal mengambil data cart");
     }
-  }, [guestId]);
+  }, [guestId, isLoggedIn, userId, setCartItems]);
 
   useEffect(() => {
-    initializeGuestSession();
-  }, [initializeGuestSession]);
+    if (!isLoggedIn) {
+      initializeGuestSession();
+    }
+  }, [isLoggedIn, initializeGuestSession]);
 
   useEffect(() => {
-    if (guestId) fetchCartData();
-  }, [guestId, fetchCartData]);
+    fetchCartData();
+  }, [fetchCartData, isLoggedIn, userId, guestId]);
+
+  // Log untuk debugging
+  useEffect(() => {
+    console.log("Cart Items:", cartItems);
+    console.log("Is Logged In:", isLoggedIn);
+    console.log("User ID:", userId);
+    console.log("Guest ID:", guestId);
+  }, [cartItems, isLoggedIn, userId, guestId]);
 
   return (
     <>
       <Button onPress={() => setIsModalOpen(true)}>
-        Keranjang ({cartItems.length})
+        Keranjang ({localCartItems.length || cartItems.length})
       </Button>
 
       <Modal
@@ -94,20 +130,21 @@ const HoverCartModal: React.FC<HoverCartModalProps> = ({
         <ModalContent>
           <ModalHeader className="border-b p-4">
             <h2 className="text-xl font-bold">Keranjang Belanja</h2>
-            <div className="flex justify-end">
+            <div className="flex justify-end mt-4 ml-9">
               <Link href="/cart">
                 <Button
                   color="primary"
                   size="md"
                   disabled={cartItems.length === 0}
+                  className="ml-auto"
                 >
-                  selengkapnyaa
+                  Selengkapnya
                 </Button>
               </Link>
             </div>
           </ModalHeader>
 
-          <ModalBody className="p-4 overflow-y-auto max-h-[70vh]">
+          <ModalBody className="p-4 overflow-y-auto max-h-[calc(100vh-200px)] scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
             {cartItems.length > 0 ? (
               cartItems.map((item) => (
                 <div
@@ -132,7 +169,16 @@ const HoverCartModal: React.FC<HoverCartModalProps> = ({
                     </p>
 
                     <p className="text-sm font-medium text-gray-900">
-                      {item.size?.price}
+                      Rp{" "}
+                      {new Intl.NumberFormat("id-ID").format(
+                        parseFloat(
+                          item.size?.price?.replace(/[^0-9.-]+/g, "") || "0"
+                        )
+                      )}
+                    </p>
+
+                    <p className="text-sm text-gray-500">
+                      Jumlah: {item.quantity}
                     </p>
                   </div>
                 </div>
@@ -141,6 +187,22 @@ const HoverCartModal: React.FC<HoverCartModalProps> = ({
               <p className="text-center text-gray-500">Keranjang kosong</p>
             )}
           </ModalBody>
+          <ModalFooter className="flex justify-between items-center p-4 border-t">
+            <div className="text-lg font-semibold">
+              Total: Rp{" "}
+              {new Intl.NumberFormat("id-ID").format(
+                cartItems.reduce((total, item) => {
+                  return (
+                    total +
+                    parseFloat(
+                      item.size?.price?.replace(/[^0-9.-]+/g, "") || "0"
+                    ) *
+                      item.quantity
+                  );
+                }, 0)
+              )}
+            </div>
+          </ModalFooter>
         </ModalContent>
       </Modal>
     </>

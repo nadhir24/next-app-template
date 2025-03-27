@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@heroui/button";
 
 interface FileInputProps {
   id: string;
@@ -52,7 +52,7 @@ export const FileInput: React.FC<FileInputProps> = ({
         onChange={handleFileChange}
         className="hidden" // Sembunyikan input asli
       />
-      <Button type="button" onClick={handleButtonClick} variant="outline">
+      <Button type="button" onPress={handleButtonClick} variant="solid">
         Choose File
       </Button>
     </div>

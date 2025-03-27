@@ -1,257 +1,363 @@
 "use client";
-import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import axios from "axios";
-import { RadioGroup, Radio } from "@heroui/radio";
-import { toast, Toaster } from "sonner";
-import { Modal, ModalBody, ModalFooter } from "@heroui/modal";
-import { Button } from "@heroui/button";
+import React, { useEffect, useState, useCallback } from "react";
+import { Button, ButtonGroup } from "@heroui/button";
+import { Card, CardBody, CardHeader } from "@heroui/card";
+import { Link } from "@heroui/link";
+import { Bounce, ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import { Image } from "@heroui/image";
-import router from "next/router";
+import { Divider } from "@heroui/divider";
+import { Trash2 } from "lucide-react";
+import { Modal, useDisclosure } from "@heroui/modal";
 
-interface Size {
+interface CartItem {
   id: number;
-  size: string;
-  price: string;
-}
-
-interface Catalog {
-  id: number;
-  name: string;
-  image: string | null;
-  sizes: Size[];
-  qty: string;
-  description: string;
-  blurDataURL?: string; // Optional field
-}
-
-interface GuestCartItem {
-  catalogId: number;
-  name: string;
-  image: string | null;
-  sizeId: number;
-  size: string;
-  price: string;
+  userId: number | null;
+  guestId: string | null;
   quantity: number;
+  createdAt: string;
+  user?: { id: number; email: string } | null;
+  catalog?: { id: number; name: string; image: string } | null;
+  size?: { id: number; size: string; price: string } | null;
 }
 
-const ProductDetailPage = () => {
-  const [product, setProduct] = useState<Catalog | null>(null);
-  const [selectedSize, setSelectedSize] = useState<Size | null>(null);
-  const [isCartModalOpen, setIsCartModalOpen] = useState(false);
-  const [guestCart, setGuestCart] = useState<GuestCartItem[]>([]);
-  const params = useParams();
+const CartPage: React.FC = () => {
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [total, setTotal] = useState<string>("Rp0");
+  const [guestId, setGuestId] = useState<string | null>(null);
+  const [user, setUser] = useState<any>(null);
+  const [processingItems, setProcessingItems] = useState<number[]>([]);
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [itemToDelete, setItemToDelete] = useState<number | null>(null);
 
-  const categorySlug = params.categorySlug as string;
-  const productSlug = Array.isArray(params.productSlug)
-    ? params.productSlug.join("/")
-    : params.productSlug;
-
+  // Inisialisasi user dan session
   useEffect(() => {
-    const fetchProductDetail = async () => {
-      try {
-        const response = await axios.get<Catalog>(
-          `http://localhost:5000/catalog/${categorySlug}/${productSlug}`
-        );
-        setProduct(response.data);
-        if (response.data.sizes.length > 0) {
-          setSelectedSize(response.data.sizes[0]);
-        }
-        const guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
-        setGuestCart(guestCart);
-      } catch (error) {
-        console.error("Error fetching product details:", error);
-        toast.error("Failed to load product details.");
+    if (typeof window !== "undefined") {
+      const userData = localStorage.getItem("user");
+      if (userData) {
+        const parsedUser = JSON.parse(userData);
+        setUser(parsedUser);
+      } else {
+        initializeGuestSession();
       }
-    };
-
-    if (categorySlug && productSlug) {
-      fetchProductDetail();
     }
-  }, [categorySlug, productSlug]);
+  }, []);
 
-
-  
-  const handleSizeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const sizeId = event.target.value;
-    const selected = product?.sizes.find(
-      (size) => size.id.toString() === sizeId
-    );
-    setSelectedSize(selected || null);
-  };
-
-  const handleAddToCart = () => {
-    if (!selectedSize) {
-      toast.error("Silakan pilih ukuran terlebih dahulu");
-      return;
-    }
-
-    const isLoggedIn = localStorage.getItem("user") !== null; // Cek login sebenarnya
-    isLoggedIn ? handleAddToLoggedInCart() : handleAddToGuestCart();
-  };
-
-  const handleAddToLoggedInCart = async () => {
+  // Fetch data cart dan total
+  const fetchCartData = useCallback(async () => {
+    setLoading(true);
     try {
-      // Tambahkan null check dan non-null assertion
-      if (!selectedSize) {
-        toast.error("Silakan pilih ukuran terlebih dahulu");
+      let url;
+      if (user?.id) {
+        url = `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?userId=${user.id}`;
+      } else if (guestId) {
+        url = `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?guestId=${guestId}`;
+      } else {
         return;
       }
 
-      await axios.post("http://localhost:5000/cart/add", {
-        userId: 1, // Ganti dengan user ID dari sistem auth Anda
-        catalogId: product?.id || 0,
-        sizeId: selectedSize.id, // Sekarang aman karena sudah dilakukan null check
-        quantity: 1,
-      });
-      toast.success("Item berhasil ditambahkan ke keranjang!");
-    } catch (error) {
-      console.error("Error adding item to cart:", error);
-      toast.error("Gagal menambahkan item ke keranjang");
-    }
-  };
-  const handleAddToGuestCart = () => {
-    if (!product || !selectedSize) return;
-    const productImage = product.image || "/default-product-image.jpg";
+      console.log("Fetching cart with URL:", url);
 
-    const newItem: GuestCartItem = {
-      catalogId: product.id,
-      name: product.name,
-      image: productImage, // Gunakan fallback jika null
-      sizeId: selectedSize.id,
-      size: selectedSize.size,
-      price: selectedSize.price,
-      quantity: 1,
-    };
+      const [itemsRes, totalRes] = await Promise.all([
+        fetch(url),
+        fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/cart/total?${
+            user?.id ? `userId=${user.id}` : `guestId=${guestId}`
+          }`
+        ),
+      ]);
 
-    setGuestCart((prevCart) => {
-      // Cari item yang sama di cart sebelumnya
-      const existingIndex = prevCart.findIndex(
-        (item) =>
-          item.catalogId === newItem.catalogId && item.sizeId === newItem.sizeId
-      );
-
-      let newCart = [...prevCart];
-
-      if (existingIndex > -1) {
-        // Jika item sudah ada, tambahkan quantity
-        newCart[existingIndex] = {
-          ...newCart[existingIndex],
-          quantity: newCart[existingIndex].quantity + 1,
-        };
-      } else {
-        // Jika item belum ada, tambahkan item baru
-        newCart = [...newCart, newItem];
+      if (!itemsRes.ok || !totalRes.ok) {
+        throw new Error("Gagal mengambil data");
       }
 
-      // Simpan ke localStorage
-      localStorage.setItem("guestCart", JSON.stringify(newCart));
-      return newCart;
-    });
+      const [items, total] = await Promise.all([itemsRes.json(), totalRes.text()]);
+      console.log("Cart data received:", { items, total });
+      setCartItems(items);
+      setTotal(total);
+    } catch (error) {
+      console.error("Error in fetchCartData:", error);
+      toast.error("Gagal mengambil data cart");
+    } finally {
+      setLoading(false);
+    }
+  }, [user, guestId]);
 
-    setIsCartModalOpen(true);
-    toast.success("Item berhasil ditambahkan ke keranjang!");
+  // Re-fetch when user or guestId changes
+  useEffect(() => {
+    fetchCartData();
+  }, [user, guestId, fetchCartData]);
+
+  // Update quantity item
+  const updateCartItem = async (id: number, newQuantity: number) => {
+    const originalItems = [...cartItems];
+    const originalTotal = total;
+
+    try {
+      setProcessingItems((prev) => [...prev, id]);
+
+      // Update state lokal dulu untuk UX yang lebih responsif
+      setCartItems((prevItems) =>
+        prevItems.map((item) =>
+          item.id === id ? { ...item, quantity: newQuantity } : item
+        )
+      );
+
+      // Hitung total baru secara lokal
+      const newTotal = calculateNewTotal(cartItems, id, newQuantity);
+      setTotal(newTotal);
+
+      // Kirim ke server
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/cart/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          quantity: newQuantity,
+          userId: user?.id,
+          guestId: guestId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Gagal update quantity");
+      }
+
+      // Ambil total yang benar dari server (tanpa mengubah UI)
+      const totalRes = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/cart/total?${
+          user?.id ? `userId=${user.id}` : `guestId=${guestId}`
+        }`
+      );
+
+      if (totalRes.ok) {
+        const serverTotal = await totalRes.text();
+        setTotal(serverTotal);
+      }
+    } catch (error) {
+      console.error("Error in updateCartItem:", error);
+      setCartItems(originalItems);
+      setTotal(originalTotal);
+      toast.error("Gagal update quantity");
+    } finally {
+      setProcessingItems((prev) => prev.filter((itemId) => itemId !== id));
+    }
   };
-  const handleCloseCartModal = () => {
-    setIsCartModalOpen(false);
+
+  // Helper function untuk menghitung total baru secara lokal
+  const calculateNewTotal = (
+    items: CartItem[],
+    updatedId: number,
+    newQuantity: number
+  ): string => {
+    const total = items.reduce((sum, item) => {
+      const price = parseFloat(item.size?.price?.replace(/[^0-9.-]+/g, "") || "0");
+      const quantity = item.id === updatedId ? newQuantity : item.quantity;
+      return sum + price * quantity;
+    }, 0);
+    return `Rp${total.toLocaleString("id-ID")}`;
   };
+
+  // Hapus item dari cart tanpa fetch ulang
+  const deleteCartItem = async (id: number) => {
+    try {
+      setProcessingItems((prev) => [...prev, id]);
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/cart/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Gagal menghapus item");
+      }
+
+      setCartItems((prevItems) => prevItems.filter((item) => item.id !== id));
+
+      const totalRes = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/cart/total?${
+          user?.id ? `userId=${user.id}` : `guestId=${guestId}`
+        }`
+      );
+
+      if (!totalRes.ok) {
+        throw new Error("Gagal mengambil total");
+      }
+
+      const total = await totalRes.text();
+      setTotal(total);
+    } catch (error) {
+      toast.error("Gagal menghapus item");
+    } finally {
+      setProcessingItems((prev) => prev.filter((itemId) => itemId !== id));
+    }
+  };
+
+  const confirmDeletion = (id: number) => {
+    setItemToDelete(id);
+    onOpen();
+  };
+
+  const handleDelete = async () => {
+    if (itemToDelete) {
+      await deleteCartItem(itemToDelete);
+    }
+    onClose();
+  };
+
+  // Inisialisasi guest session
+  const initializeGuestSession = useCallback(async () => {
+    if (typeof window !== "undefined") {
+      const storedGuestId = localStorage.getItem("guestId");
+      if (!storedGuestId) {
+        try {
+          const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/cart/guest-session`
+          );
+          const { guestId } = await response.json();
+          localStorage.setItem("guestId", guestId);
+          setGuestId(guestId);
+        } catch (error) {
+          toast.error("Gagal inisialisasi session");
+          console.error("Session error:", error);
+        }
+      } else {
+        setGuestId(storedGuestId);
+      }
+    }
+  }, []);
 
   return (
-    <div className="flex flex-col lg:flex-row lg:space-x-8 p- 4">
-      {/* Image Section */}
-      <div className="lg:w-1/2 w-full">
-        <nav className="flex mb-4">
-          <ol className="flex space-x-2 text-gray-600">
-            <li>
-              <a href="/" className="hover:text-blue-600">
-                Home
-              </a>
-            </li>
-            <li>/</li>
-            <li>
-              <a
-                href={`/category/${categorySlug}`}
-                className="hover:text-blue-600"
-              >
-                {categorySlug}
-              </a>
-            </li>
-            <li>/</li>
-            <li className="font-semibold text-gray-800">{product?.name}</li>
-          </ol>
-        </nav>
-
-        <div className="relative w-full aspect-square lg:aspect-auto">
-          {product?.image && (
-            <Image
-              src={`http://localhost:5000/catalog/images/${product.image
-                .split("/")
-                .pop()}`}
-              alt={product.name || "Product Image"}
-              width={500}
-              height={500}
-              className="rounded-xl"
-            />
-          )}
+    <div className="container mx-auto p-4">
+      <ToastContainer position="top-center" />
+      <h2 className="text-2xl font-bold mb-4">Keranjang Belanja</h2>
+      {loading ? (
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="animate-pulse bg-gray-200 h-24 rounded" />
+          ))}
         </div>
-      </div>
-
-      {/* Product Info Section */}
-      <div className="lg:w-1/2 w-full mt-4 lg:mt-0">
-        <h1 className="text-2xl font-bold">{product?.name}</h1>
-        <p className="text-gray-600 mt-2">{product?.description}</p>
-
-        {product?.sizes && product.sizes.length > 0 && (
-          <div className="mt-4">
-            <h2 className="text-lg font-semibold">Pilih Ukuran:</h2>
-            <RadioGroup
-              className="mt-2"
-              value={selectedSize?.id.toString() || ""}
-              onChange={handleSizeChange}
-            >
-              {product.sizes.map((size) => (
-                <Radio
-                  key={size.id}
-                  value={size.id.toString()}
-                  className="mb-2 p-2 border rounded-md"
-                >
-                  <span className="font-medium">{size.size}</span>
-                  <span className="ml-2 text-primary">Rp{size.price}</span>
-                </Radio>
+      ) : cartItems.length === 0 ? (
+        <p>Keranjang Anda kosong.</p>
+      ) : (
+        <div className="flex flex-col md:flex-row gap-6">
+          {/* Daftar Item Cart */}
+          <div className="w-full md:w-2/3">
+            <div className="grid gap-4">
+              {cartItems.map((item) => (
+                <Card key={item.id} className="shadow-sm">
+                  <CardBody>
+                    <div className="flex flex-col md:flex-row gap-4 items-center">
+                      {/* Gambar Produk */}
+                      {item.catalog?.image && (
+                        <Image
+                          src={`${process.env.NEXT_PUBLIC_API_URL}/catalog/images/${item.catalog.image.split("/").pop()}`}
+                          alt={item.catalog.name}
+                          width={190}
+                          height={190}
+                          className="object-cover rounded-lg"
+                        />
+                      )}
+                      {/* Detail Produk */}
+                      <div className="flex-1 text-center md:text-left">
+                        <h3 className="text-lg capitalize font-semibold">
+                          {item.catalog?.name}
+                        </h3>
+                        <p className="text-medium text-gray-600">
+                          Ukuran: {item.size?.size}
+                        </p>
+                        <p className="text-medium text-gray-600">
+                          Harga: {item.size?.price}
+                        </p>
+                      </div>
+                      {/* Tombol Quantity */}
+                      <div className="flex flex-row gap-2 items-center">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={
+                            processingItems.includes(item.id) || item.quantity <= 1
+                          }
+                          onPress={() => {
+                            const newQuantity = item.quantity - 1;
+                            updateCartItem(item.id, newQuantity);
+                          }}
+                        >
+                          -
+                        </Button>
+                        <span className="px-2">{item.quantity}</span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={processingItems.includes(item.id)}
+                          onPress={() => {
+                            const newQuantity = item.quantity + 1;
+                            updateCartItem(item.id, newQuantity);
+                          }}
+                        >
+                          +
+                        </Button>
+                      </div>
+                      {/* Tombol Hapus */}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={processingItems.includes(item.id)}
+                        onPress={() => confirmDeletion(item.id)}
+                      >
+                        <Trash2 />
+                      </Button>
+                    </div>
+                  </CardBody>
+                </Card>
               ))}
-            </RadioGroup>
+            </div>
           </div>
-        )}
-
-        <Button onClick={handleAddToCart} className="mt-4" color="primary">
-          Add to Cart
-        </Button>
-      </div>
-
-      {/* Modal for Cart Confirmation */}
-      <Modal
-        closeButton
-        aria-labelledby="modal-title"
-        isOpen={isCartModalOpen}
-        onClose={handleCloseCartModal}
-        className="max-w-[400px] w-full" // Ganti prop width dengan className
-      >
-        <ModalBody>
-          <h3 className="text-xl font-bold mb-2">Item berhasil ditambahkan!</h3>
-          <p>
-            Kamu telah menambahkan {selectedSize?.size} {product?.name} ke
-            keranjang
-          </p>
-        </ModalBody>
-        <ModalFooter>
-          <Button onClick={handleCloseCartModal}>Close</Button>
-          <Button onClick={() => router.push("/cart")}>View Cart</Button>
-        </ModalFooter>
+          {/* Total dan Checkout */}
+          <div className="w-full md:w-1/3">
+            <Card className="sticky top-4">
+              <CardHeader>
+                <h3 className="text-xl font-bold">Ringkasan Belanja</h3>
+              </CardHeader>
+              <CardBody>
+                <div className="flex flex-col gap-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg">Total:</span>
+                    <span className="text-xl font-bold">{total}</span>
+                  </div>
+                  <Divider />
+                  <div className="flex justify-end">
+                    <Link href="/checkout">
+                      <Button
+                        color="primary"
+                        size="md"
+                        disabled={cartItems.length === 0}
+                      >
+                        Checkout Sekarang
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
+          </div>
+        </div>
+      )}
+      <Modal isOpen={isOpen} onClose={onClose}>
+        <div className="p-6">
+          <h3 className="text-lg font-semibold mb-4">Konfirmasi</h3>
+          <p className="mb-4">Yakin ingin menghapus item ini?</p>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onPress={onClose}>
+              Cancel
+            </Button>
+            <Button color="primary" onPress={handleDelete}>
+              Yes
+            </Button>
+          </div>
+        </div>
       </Modal>
-
-      <Toaster />
     </div>
   );
 };
 
-export default ProductDetailPage;
+export default CartPage;

@@ -8,6 +8,7 @@ import "react-toastify/dist/ReactToastify.css";
 import { Image } from "@heroui/image";
 import { Divider } from "@heroui/divider";
 import { Trash2 } from "lucide-react";
+import { Modal, ModalContent, ModalBody, useDisclosure } from "@heroui/modal";
 
 interface CartItem {
   id: number;
@@ -25,8 +26,183 @@ const CartPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [total, setTotal] = useState<string>("Rp0");
   const [guestId, setGuestId] = useState<string | null>(null);
-  const [userId, setUserId] = useState<number | null>(1); // Contoh userId, bisa diambil dari auth context
+  const [user, setUser] = useState<any>(null);
   const [processingItems, setProcessingItems] = useState<number[]>([]);
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [itemToDelete, setItemToDelete] = useState<number | null>(null);
+
+  // Inisialisasi user dan session
+  useEffect(() => {
+    const userData = localStorage.getItem("user");
+    if (userData) {
+      const parsedUser = JSON.parse(userData);
+      setUser(parsedUser);
+    } else {
+      initializeGuestSession();
+    }
+  }, []);
+
+  // Fetch data cart dan total
+  const fetchCartData = useCallback(async () => {
+    setLoading(true);
+    try {
+      let url;
+      if (user?.id) {
+        url = `http://localhost:5000/cart/findMany?userId=${user.id}`;
+      } else if (guestId) {
+        url = `http://localhost:5000/cart/findMany?guestId=${guestId}`;
+      } else {
+        return;
+      }
+
+      const [itemsRes, totalRes] = await Promise.all([
+        fetch(url),
+        fetch(
+          `http://localhost:5000/cart/total?${
+            user?.id ? `userId=${user.id}` : `guestId=${guestId}`
+          }`
+        ),
+      ]);
+
+      if (!itemsRes.ok || !totalRes.ok) {
+        throw new Error("Gagal mengambil data");
+      }
+
+      const [items, total] = await Promise.all([
+        itemsRes.json(),
+        totalRes.text(),
+      ]);
+      setCartItems(items);
+      setTotal(total);
+    } catch (error) {
+      console.error("Error in fetchCartData:", error);
+      toast.error("Gagal mengambil data cart");
+    } finally {
+      setLoading(false);
+    }
+  }, [user, guestId]);
+
+  // Re-fetch when user or guestId changes
+  useEffect(() => {
+    fetchCartData();
+  }, [user, guestId, fetchCartData]);
+
+  // Update quantity item
+  const updateCartItem = async (id: number, newQuantity: number) => {
+    const originalItems = [...cartItems];
+    const originalTotal = total;
+    try {
+      setProcessingItems((prev) => [...prev, id]);
+
+      // Update state lokal dulu untuk UX yang lebih responsif
+      setCartItems((prevItems) =>
+        prevItems.map((item) =>
+          item.id === id ? { ...item, quantity: newQuantity } : item
+        )
+      );
+
+      // Hitung total baru secara lokal
+      const newTotal = calculateNewTotal(cartItems, id, newQuantity);
+      setTotal(newTotal);
+
+      // Kirim ke server
+      const response = await fetch(`http://localhost:5000/cart/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          quantity: newQuantity,
+          userId: user?.id,
+          guestId: guestId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Gagal update quantity");
+      }
+
+      // Ambil total yang benar dari server (tanpa mengubah UI)
+      const totalRes = await fetch(
+        `http://localhost:5000/cart/total?${
+          user?.id ? `userId=${user.id}` : `guestId=${guestId}`
+        }`
+      );
+
+      if (totalRes.ok) {
+        const serverTotal = await totalRes.text();
+        setTotal(serverTotal);
+      }
+    } catch (error) {
+      console.error("Error in updateCartItem:", error);
+      setCartItems(originalItems);
+      setTotal(originalTotal);
+      toast.error("Gagal update quantity");
+    } finally {
+      setProcessingItems((prev) => prev.filter((itemId) => itemId !== id));
+    }
+  };
+
+  // Helper function untuk menghitung total baru secara lokal
+  const calculateNewTotal = (
+    items: CartItem[],
+    updatedId: number,
+    newQuantity: number
+  ): string => {
+    const total = items.reduce((sum, item) => {
+      const price = parseFloat(
+        item.size?.price?.replace(/[^0-9.-]+/g, "") || "0"
+      );
+      const quantity = item.id === updatedId ? newQuantity : item.quantity;
+      return sum + price * quantity;
+    }, 0);
+
+    return `Rp${total.toLocaleString("id-ID")}`;
+  };
+
+  // Hapus item dari cart tanpa fetch ulang
+  const deleteCartItem = async (id: number) => {
+    try {
+      setProcessingItems((prev) => [...prev, id]);
+
+      const response = await fetch(`http://localhost:5000/cart/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Gagal menghapus item");
+      }
+
+      setCartItems((prevItems) => prevItems.filter((item) => item.id !== id));
+
+      const totalRes = await fetch(
+        `http://localhost:5000/cart/total?${
+          user?.id ? `userId=${user.id}` : `guestId=${guestId}`
+        }`
+      );
+      if (!totalRes.ok) {
+        throw new Error("Gagal mengambil total");
+      }
+      const total = await totalRes.text();
+      setTotal(total);
+    } catch (error) {
+      toast.error("Gagal menghapus item");
+    } finally {
+      setProcessingItems((prev) => prev.filter((itemId) => itemId !== id));
+    }
+  };
+
+  // Fungsi untuk membuka modal dan mengatur item yang akan dihapus
+  const confirmDeletion = (id: number) => {
+    setItemToDelete(id); // Set ID item yang akan dihapus
+    onOpen(); // Buka modal
+  };
+
+  // Fungsi untuk menghapus item setelah konfirmasi
+  const handleDelete = async () => {
+    if (itemToDelete) {
+      await deleteCartItem(itemToDelete); // Panggil fungsi penghapusan
+    }
+    onClose(); // Tutup modal setelah selesai
+  };
 
   // Inisialisasi guest session
   const initializeGuestSession = useCallback(async () => {
@@ -48,172 +224,10 @@ const CartPage: React.FC = () => {
     }
   }, []);
 
-  // Fetch data cart dan total
-  const fetchCartData = useCallback(async () => {
-    if (!guestId) return;
-
-    setLoading(true);
-    try {
-      const [itemsRes, totalRes] = await Promise.all([
-        fetch(`http://localhost:5000/cart/findMany?guestId=${guestId}`),
-        fetch(
-          `http://localhost:5000/cart/total?userId=${userId}&guestId=${guestId}`
-        ),
-      ]);
-
-      if (!itemsRes.ok || !totalRes.ok) {
-        throw new Error("Gagal mengambil data");
-      }
-
-      const [items, total] = await Promise.all([
-        itemsRes.json(),
-        totalRes.text(),
-      ]);
-
-      setCartItems(items);
-      setTotal(total);
-    } catch (error) {
-      toast.error("Gagal mengambil data cart");
-    } finally {
-      setLoading(false);
-    }
-  }, [guestId, userId]);
-
-  // Update quantity item
-  const updateCartItem = async (id: number, newQuantity: number) => {
-    const originalItems = [...cartItems];
-    try {
-      setProcessingItems((prev) => [...prev, id]);
-
-      // Optimistic update
-      setCartItems((prev) =>
-        prev.map((item) =>
-          item.id === id ? { ...item, quantity: newQuantity } : item
-        )
-      );
-
-      const response = await fetch(`http://localhost:5000/cart/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quantity: newQuantity }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Barang habis");
-      }
-
-      // Fetch total saja setelah update
-      const totalRes = await fetch(
-        `http://localhost:5000/cart/total?userId=${userId}&guestId=${guestId}`
-      );
-      if (!totalRes.ok) {
-        throw new Error("Gagal mengambil total");
-      }
-      const total = await totalRes.text();
-      setTotal(total);
-    } catch (error) {
-      // Rollback jika terjadi error
-      setCartItems(originalItems);
-      toast.error("Barang belum restock");
-    } finally {
-      setProcessingItems((prev) => prev.filter((itemId) => itemId !== id));
-    }
-  };
-
-  // Fungsi konfirmasi hapus menggunakan toast modal
-  const confirmDeletion = (): Promise<boolean> => {
-    return new Promise((resolve) => {
-      toast.warn(
-        <div>
-          <p className="font-medium">Yakin ingin menghapus item ini?</p>
-          <div className="flex justify-center gap-2 mt-4">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                resolve(false);
-                toast.dismiss();
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              color="primary"
-              onClick={() => {
-                resolve(true);
-                toast.dismiss();
-              }}
-            >
-              Yes
-            </Button>
-          </div>
-        </div>,
-        {
-          position: "top-center",
-          autoClose: 5000,
-          hideProgressBar: false,
-          closeOnClick: false,
-          pauseOnHover: true,
-          draggable: true,
-          progress: undefined,
-          theme: "light",
-          transition: Bounce,
-        }
-      );
-    });
-  };
-
-  // Hapus item dari cart dengan konfirmasi modal menggunakan toast
-  const deleteCartItem = async (id: number) => {
-    const confirmed = await confirmDeletion();
-    if (!confirmed) return;
-
-    try {
-      setProcessingItems((prev) => [...prev, id]);
-
-      const response = await fetch(`http://localhost:5000/cart/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error("Gagal menghapus item");
-      }
-
-      // Hapus item dari state tanpa fetch ulang semua data
-      setCartItems((prev) => prev.filter((item) => item.id !== id));
-
-      // Fetch total setelah hapus item
-      const totalRes = await fetch(
-        `http://localhost:5000/cart/total?userId=${userId}&guestId=${guestId}`
-      );
-      if (!totalRes.ok) {
-        throw new Error("Gagal mengambil total");
-      }
-      const total = await totalRes.text();
-      setTotal(total);
-    } catch (error) {
-      toast.error("Gagal menghapus item");
-    } finally {
-      setProcessingItems((prev) => prev.filter((itemId) => itemId !== id));
-    }
-  };
-
-  // Inisialisasi session dan fetch data saat komponen dimuat
-  useEffect(() => {
-    initializeGuestSession();
-  }, [initializeGuestSession]);
-
-  useEffect(() => {
-    if (guestId) fetchCartData();
-  }, [guestId, fetchCartData]);
-
   return (
     <div className="container mx-auto p-4">
       <ToastContainer position="top-center" />
       <h2 className="text-2xl font-bold mb-4">Keranjang Belanja</h2>
-
       {loading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
@@ -230,7 +244,6 @@ const CartPage: React.FC = () => {
               {cartItems.map((item) => (
                 <Card key={item.id} className="shadow-sm">
                   <CardBody>
-                    {/* Layout responsif: flex-col di mobile dan flex-row di md ke atas */}
                     <div className="flex flex-col md:flex-row gap-4 items-center">
                       {/* Gambar Produk */}
                       {item.catalog?.image && (
@@ -263,9 +276,10 @@ const CartPage: React.FC = () => {
                             processingItems.includes(item.id) ||
                             item.quantity <= 1
                           }
-                          onClick={() =>
-                            updateCartItem(item.id, item.quantity - 1)
-                          }
+                          onPress={() => {
+                            const newQuantity = item.quantity - 1;
+                            updateCartItem(item.id, newQuantity);
+                          }}
                         >
                           -
                         </Button>
@@ -274,9 +288,10 @@ const CartPage: React.FC = () => {
                           size="sm"
                           variant="ghost"
                           disabled={processingItems.includes(item.id)}
-                          onClick={() =>
-                            updateCartItem(item.id, item.quantity + 1)
-                          }
+                          onPress={() => {
+                            const newQuantity = item.quantity + 1;
+                            updateCartItem(item.id, newQuantity);
+                          }}
                         >
                           +
                         </Button>
@@ -286,7 +301,7 @@ const CartPage: React.FC = () => {
                         size="sm"
                         variant="ghost"
                         disabled={processingItems.includes(item.id)}
-                        onClick={() => deleteCartItem(item.id)}
+                        onPress={() => confirmDeletion(item.id)}
                       >
                         <Trash2 />
                       </Button>
@@ -296,7 +311,6 @@ const CartPage: React.FC = () => {
               ))}
             </div>
           </div>
-
           {/* Total dan Checkout */}
           <div className="w-full md:w-1/3">
             <Card className="sticky top-4">
@@ -327,6 +341,27 @@ const CartPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      <Modal isOpen={isOpen} onClose={onClose}>
+        <ModalContent>
+          <ModalBody>
+            <div className="pt-1">
+              <h3 className="text-lg font-bold mb-4">Konfirmasi</h3>
+              <p className="mb-4 font-medium">
+                Yakin ingin menghapus item ini?
+              </p>
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" onPress={onClose}>
+                  Batal
+                </Button>
+                <Button color="primary" onPress={handleDelete}>
+                  Hapus
+                </Button>
+              </div>
+            </div>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </div>
   );
 };

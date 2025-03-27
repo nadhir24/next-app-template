@@ -21,12 +21,7 @@ import Image from "next/image";
 export default function SwiperComponent() {
   const [loading, setLoading] = useState(false);
 
-  const handleClick = () => {
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-    }, 1000);
-  };
+ 
   const progressCircle = useRef(null);
   const progressContent = useRef(null);
   const onAutoplayTimeLeft = (s, time, progress) => {
@@ -52,24 +47,7 @@ export default function SwiperComponent() {
       >
         <SwiperSlide className="relative h-full">
           <Image src={grup2} width="100%" height="100%" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Link href="/katalog" passHref>
-              <NextUIButton
-                size="lg"
-                variant="shadow"
-                label="Pesan Sekarang"
-                onClick={handleClick}
-                isLoading={loading}
-                endContent={
-                  <Icon
-                    icon="icon-park-outline:buy"
-                    width="1.2rem"
-                    height="1.2rem"
-                  />
-                }
-              />
-            </Link>
-          </div>
+          <div className="absolute inset-0 flex items-center justify-center rounded-xl"></div>
         </SwiperSlide>
 
         <SwiperSlide>

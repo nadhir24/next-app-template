@@ -14,12 +14,29 @@ import { ThemeSwitch } from "./theme-switch";
 import Link from "next/link";
 import { RanoIcon } from "./icons";
 import HoverCartModal from "@/function/HoverCartModal"; // Pastikan jalur ini benar
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CartItem } from "@/function/CartItem";
-``
+
 export default function Navy() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // Default sebagai tamu
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    // Cek status login dan user data
+    const userData = localStorage.getItem("user");
+    if (userData) {
+      const parsedUser = JSON.parse(userData);
+      setUser(parsedUser);
+      setIsLoggedIn(true);
+    }
+
+    // Ambil data cart dari localStorage
+    const storedCart = localStorage.getItem("cart");
+    if (storedCart) {
+      setCartItems(JSON.parse(storedCart));
+    }
+  }, []);
 
   return (
     <Navbar maxWidth="xl" className="sticky top-0 z-50">
@@ -44,13 +61,16 @@ export default function Navy() {
           </ul>
         </div>
       </NavbarContent>
-      <NavbarContent className="flex basis-1/5 sm:basis-full px-4 lg:px-8" justify="end">
+      <NavbarContent
+        className="flex basis-1/5 sm:basis-full px-4 lg:px-8"
+        justify="end"
+      >
         <NavbarItem className="sm:flex gap-2">
-          {/* Pass cartItems and setCartItems props to HoverCart */}
-          <HoverCartModal 
-            cartItems={cartItems} 
-            setCartItems={setCartItems} 
-            isLoggedIn={isLoggedIn} 
+          <HoverCartModal
+            cartItems={cartItems}
+            setCartItems={setCartItems}
+            isLoggedIn={isLoggedIn}
+            userId={user?.id}
           />
           <ThemeSwitch />
         </NavbarItem>

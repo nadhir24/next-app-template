@@ -1,5 +1,3 @@
-
-
 import { FC, ReactNode } from "react";
 import { Listbox, ListboxItem, ListboxSection } from "@heroui/listbox";
 import { ListboxWrapper } from "./ListboxWrapper.jsx";
@@ -7,12 +5,11 @@ import { AddNoteIcon } from "./icons";
 import { CopyDocumentIcon } from "./icons";
 import { EditDocumentIcon } from "./icons";
 import { DeleteDocumentIcon } from "./icons";
-import cn from "classnames";
+import { cn } from "@/lib/utils";
 // Define the props for ListboxWrapper
 interface ListboxWrapperProps {
   children: ReactNode;
 }
-
 
 export default function Listboxx() {
   const iconClasses =

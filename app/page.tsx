@@ -3,36 +3,57 @@
 
 import { title, subtitle } from "@/components/primitives";
 import Image from "next/image";
-import NextUIButton from "@/components/button";
-import React, { useRef, useState } from "react";
-import wkwkwk from "@/public/wkwkwk.jpg";
+import React, { useRef, useState, useEffect } from "react";
 import wkwkwkwk from "@/public/wkwkwkwk.jpg";
-import Kartu from "@/components/card";
 import Link from "next/link";
-import { Icon } from "@iconify/react";
+import CountUp from "react-countup";
 import { Button } from "@heroui/button";
-import { Toaster, toast } from "sonner";
+import {
+  ArrowUp,
+  Star,
+  Cake,
+  Users,
+  Calendar,
+  ShoppingCart,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import jaja1 from "@/public/jaja1.png";
 import Choco from "@/public/choco.jpg";
-import { motion } from "framer-motion";
-import { Card, CardBody } from "@heroui/card";
-import CountUp from "react-countup";
-import { Accordion, AccordionItem } from "@heroui/accordion";
-// Import Swiper React components
-import { Swiper, SwiperSlide } from "swiper/react";
-import { Autoplay, Pagination, Navigation } from "swiper/modules";
-
-// Import Swiper styles
+import { Card, CardBody } from "@nextui-org/card";
+import { Accordion, AccordionItem } from "@nextui-org/accordion";
 import "swiper/css";
 import "swiper/css/pagination";
 import "swiper/css/navigation";
-
 import "../styles/globals.css";
 import SwiperComponent from "@/components/swiper-autoprogress";
-import AvatarDropdown from "@/components/avatar";
+import { Badge } from "@nextui-org/badge";
+import { Skeleton } from "@nextui-org/skeleton";
+import { Icon } from "@iconify/react";
+import Tombol from "@/components/button";
+
 export default function Home() {
   const progressCircle = useRef<SVGSVGElement | null>(null);
   const progressContent = useRef<HTMLSpanElement | null>(null);
+  const [showBackToTop, setShowBackToTop] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowBackToTop(window.scrollY > 300);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    // Simulasi loading
+    setTimeout(() => setIsLoading(false), 1000);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   // Handle autoplay time left
   const onAutoplayTimeLeft = (s: any, time: number, progress: number) => {
@@ -72,109 +93,262 @@ export default function Home() {
     { value: 2000, label: "Pelanggan Puas" },
     { value: 6, label: "Tahun Pengalaman" },
   ];
+
+  const products = [
+    {
+      image: Choco,
+      title: "Kue Ulang Tahun",
+      subTitle: "Spesial",
+      description:
+        "Kue ulang tahun custom dengan desain menarik dan rasa yang lezat",
+      badge: "Best Seller",
+      badgeColor: "success" as const,
+    },
+    {
+      image: Choco,
+      title: "Kue Kering",
+      subTitle: "Homemade",
+      description: "Kue kering renyah dan lezat, perfect untuk oleh-oleh",
+      badge: "New",
+      badgeColor: "warning" as const,
+    },
+    {
+      image: wkwkwkwk,
+      title: "Nasi & Asinan",
+      subTitle: "Fresh",
+      description: "Menu nasi dan asinan segar untuk acara Anda",
+      badge: "Popular",
+      badgeColor: "primary" as const,
+    },
+  ];
+  const handleClick = () => {
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+  };
+
   return (
     <>
-      <div>
-        <SwiperComponent />
+      <div className="justify-center items-center">
+        <div className="text-center shadow-2xl p-8 rounded-xl">
+          {isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-16 w-3/4 mx-auto rounded-lg" />
+              <Skeleton className="h-8 w-2/4 mx-auto rounded-lg" />
+              <Skeleton className="h-12 w-48 mx-auto rounded-lg" />
+            </div>
+          ) : (
+            <>
+              <motion.h1
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="text-6xl font-bold mb-4"
+              >
+                Rano Cake
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="text-2xl mb-8"
+              >
+                Kue Lezat untuk Setiap Momen Spesial
+              </motion.p>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.4 }}
+                className="flex justify-center"
+              >
+                <Link href="/katalog">
+                  <Tombol
+                    size="lg"
+                    color="default"
+                    variant="ghost"
+                    radius="lg"
+                    startContent={<ShoppingCart size={20} />}
+                    label={isLoading ? "Loading..." : "Pesan Sekarang"}
+                    isLoading={isLoading}
+                    onPress={handleClick}
+                  />
+                </Link>
+              </motion.div>
+            </>
+          )}
+        </div>
       </div>
-
-      <div className="my-16">
-        <h2 className="text-2xl font-bold text-center mb-8">
+      <SwiperComponent />
+      <div className="my-16 bg-gradient-to-b from-pink-50 via-purple-50 to-white py-12 rounded-xl">
+        <h2 className="text-3xl font-bold text-center mb-12 text-purple-900 font-serif">
           Rano Cake dalam Angka
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto px-4">
-          {stats.map((stat, index) => (
-            <Card
-              key={index}
-              shadow="lg"
-              className="p-6 text-center bg-gradient-to-br from-blue-50 to-blue-100"
-            >
-              <CardBody>
-                <CountUp
-                  end={stat.value}
-                  duration={5}
-                  className="text-4xl font-extrabold text-blue-500"
-                />
-                <p className="mt-2 text-lg font-medium">{stat.label}</p>
-              </CardBody>
-            </Card>
-          ))}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto px-4 rounded-xl">
+          {isLoading
+            ? Array(3)
+                .fill(0)
+                .map((_, index) => (
+                  <Card key={index} className="p-8 text-center">
+                    <CardBody>
+                      <div className="space-y-4">
+                        <Skeleton className="h-12 w-12 rounded-full mx-auto" />
+                        <Skeleton className="h-8 w-32 rounded-lg mx-auto" />
+                        <Skeleton className="h-6 w-24 rounded-lg mx-auto" />
+                      </div>
+                    </CardBody>
+                  </Card>
+                ))
+            : stats.map((stat, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: index * 0.2 }}
+                >
+                  <Card
+                    shadow="lg"
+                    className="p-8 text-center bg-white/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-purple-100 rounded-xl"
+                  >
+                    <CardBody>
+                      <div className="flex justify-center mb-4">
+                        {index === 0 && (
+                          <Cake className="w-12 h-12 text-purple-500" />
+                        )}
+                        {index === 1 && (
+                          <Users className="w-12 h-12 text-purple-500" />
+                        )}
+                        {index === 2 && (
+                          <Calendar className="w-12 h-12 text-purple-500" />
+                        )}
+                      </div>
+                      {isLoading ? (
+                        <Skeleton className="w-32 h-12 mx-auto" />
+                      ) : (
+                        <CountUp
+                          end={stat.value}
+                          duration={5}
+                          className="text-5xl font-extrabold text-purple-600"
+                        />
+                      )}
+                      <p className="mt-4 text-xl font-medium text-gray-700">
+                        {stat.label}
+                      </p>
+                    </CardBody>
+                  </Card>
+                </motion.div>
+              ))}
         </div>
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, x: -100 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.5, delay: 0.3 }}
-      >
-        <h1 className={`${title({ color: "blue" })} pt-8`}>
-          Koleksi Rano Cake
-        </h1>
-      </motion.div>
+      <div className="bg-gradient-to-r from-purple-100 via-pink-50 to-purple-100 py-16 rounded-xl shadow-lg">
+        <motion.div
+          initial={{ opacity: 0, x: -100 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          className="text-center"
+        >
+          <h1 className={`${title({ color: "pink" })} pt-8 font-serif`}>
+            Koleksi Rano Cake
+          </h1>
+          <p className={`${subtitle()} mt-2 text-gray-600`}>
+            Temukan berbagai pilihan kue lezat untuk setiap momen spesial Anda
+          </p>
+        </motion.div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 mx-8 gap-4 pb-8 my-2">
-        <Link href="/katalog" passHref>
-          <Kartu
-            logoSrc={Choco}
-            title={" "}
-            subTitle={""}
-            description={"kue ulang tahun"}
-            logoClassName="justify-center"
-            height={350}
-            width={350}
-            imageRadius="lg"
-            fullWidth={true}
-            textAlign="center"
-            titleColor="violet"
-            titleSize="lg"
-          />
-        </Link>
-
-        <Link href="/katalog" passHref>
-          <Kartu
-            logoSrc={Choco}
-            title={" "}
-            subTitle={""}
-            description={"kue kering"}
-            logoClassName="justify-center"
-            height={350}
-            width={350}
-            imageRadius="lg"
-            fullWidth={true}
-            textAlign="center"
-            titleColor="violet"
-            titleSize="lg"
-          />
-        </Link>
-
-        <Link href="/katalog" passHref>
-          <Kartu
-            logoSrc={wkwkwkwk}
-            title={" "}
-            subTitle={""}
-            description={"nasi dan asinan"}
-            logoClassName="justify-center"
-            height={350}
-            width={350}
-            imageRadius="lg"
-            fullWidth={true}
-            textAlign="center"
-            titleColor="violet"
-            titleSize="lg"
-          />
-        </Link>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 mx-8 gap-8 pb-8 my-8 rounded-xl">
+          {isLoading
+            ? Array(3)
+                .fill(0)
+                .map((_, index) => (
+                  <Card key={index} className="w-full">
+                    <CardBody className="p-0">
+                      <Skeleton className="rounded-lg w-full h-[350px]" />
+                      <div className="p-6 space-y-4">
+                        <Skeleton className="h-6 w-3/4 rounded-lg" />
+                        <Skeleton className="h-4 w-1/2 rounded-lg" />
+                        <Skeleton className="h-20 w-full rounded-lg" />
+                        <Skeleton className="h-10 w-full rounded-lg" />
+                      </div>
+                    </CardBody>
+                  </Card>
+                ))
+            : products.map((product, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: index * 0.2 }}
+                >
+                  <Card
+                    shadow="lg"
+                    className="group relative overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-purple-100 bg-white/90 backdrop-blur-sm rounded-xl"
+                  >
+                    <CardBody className="p-0">
+                      <div className="relative">
+                        <Image
+                          src={product.image}
+                          alt={product.title}
+                          width={350}
+                          height={350}
+                          className="w-full h-[350px] object-cover transition-transform duration-300 group-hover:scale-105"
+                        />
+                        <Badge
+                          color={product.badgeColor}
+                          className="absolute top-4 right-4"
+                        >
+                          {product.badge}
+                        </Badge>
+                      </div>
+                      <div className="p-6">
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">
+                          {product.title}
+                        </h3>
+                        <p className="text-sm text-gray-600 mb-2">
+                          {product.subTitle}
+                        </p>
+                        <p className="text-gray-700 mb-4">
+                          {product.description}
+                        </p>
+                        <Button
+                          color="primary"
+                          variant="shadow"
+                          className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                        >
+                          Tambah ke Keranjang
+                        </Button>
+                      </div>
+                    </CardBody>
+                  </Card>
+                </motion.div>
+              ))}
+        </div>
       </div>
-      <div className="my-16 max-w-7xl mx-auto px-4">
-        <h2 className="text-2xl font-bold text-center mb-8">
+
+      <div className="my-16 max-w-7xl mx-auto px-4 bg-gradient-to-b from-purple-50 to-pink-50 py-12 rounded-xl shadow-lg">
+        <h2 className="text-3xl font-bold text-center mb-12 text-purple-900 font-serif">
           Informasi Seputar Rano Cake
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Accordion Section */}
-          <div>
-            <h3 className="text-xl font-semibold mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5 }}
+            className="w-full"
+          >
+            <h3 className="text-2xl font-semibold mb-6 text-purple-800">
               Pertanyaan Seputar Rano Cake
             </h3>
-            <Accordion className="pt-4">
+            <Accordion
+              className="pt-4"
+              variant="bordered"
+              itemClasses={{
+                title: "text-lg font-medium text-purple-900",
+                content: "text-gray-700",
+                trigger: "px-4 py-3 hover:bg-purple-50",
+                indicator: "text-purple-600",
+              }}
+            >
               {faqs.map((faq, index) => (
                 <AccordionItem
                   key={index}
@@ -185,12 +359,18 @@ export default function Home() {
                 </AccordionItem>
               ))}
             </Accordion>
-          </div>
+          </motion.div>
 
-          {/* Map Section */}
-          <div>
-            <h3 className="text-xl font-semibold mb-4">Alamat Kami</h3>
-            <div className="w-full h-full">
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5 }}
+            className="w-full"
+          >
+            <h3 className="text-2xl font-semibold mb-6 text-purple-800">
+              Alamat Kami
+            </h3>
+            <div className="w-full h-full duration-300">
               <iframe
                 src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3966.540089412422!2d106.7894077!3d-6.1922350999999995!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e69f7a9a67506cd%3A0xc1c3905fcbba6d0c!2sRano%20Cake!5e0!3m2!1sid!2sid!4v1732416949761!5m2!1sid!2sid"
                 width="100%"
@@ -199,64 +379,114 @@ export default function Home() {
                 allowFullScreen
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
-                className="rounded-lg shadow-md"
+                className="rounded-lg"
               ></iframe>
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
 
-      <div className="w-full h-64 relative flex items-center justify-center">
-        <Image
-          src={jaja1}
-          alt="jaja1"
-          className="w-full h-full object-cover rounded-lg"
-        />
+      <div className="w-full h-80 relative flex items-center justify-center rounded-xl overflow-hidden">
+        <Image src={jaja1} alt="jaja1" className="w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/50 to-pink-500/50" />
         <div className="absolute inset-0 flex items-center justify-center">
           <motion.h1
-            className={title({ color: "green" })}
-            initial={{ opacity: 0, y: -50 }} // Initial state: invisible and above
-            animate={{ opacity: 1, y: 0 }} // Animate to visible and normal position
-            transition={{ duration: 0.5 }} // Duration of the animation
+            className={title({ color: "pink" })}
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
           >
             Apa Kata Mereka?
           </motion.h1>
         </div>
       </div>
 
-      <div className="relative -mt-28 z-10 grid grid-cols-1 md:grid-cols-3 gap-8 pt-10">
-        <Kartu
-          logoSrc="https://avatars.githubusercontent.com/u/86160567?s=200&v=4"
-          title="Nauval"
-          subTitle="Pelanggan Setia Rano Cake"
-          description="Saya merupakan pelanggan yang cukup sering memesan kue disini karena permintaan para tamu yang bilang kue nya lezat saya ingin merekomendasikan Rano cake pada semua orang karena memang enak dan bergizi"
-          textAlign="justify"
-          titleColor="black"
-          titleSize="sm"
-          fullWidth={true}
-        />
-        <Kartu
-          logoSrc="https://avatars.githubusercontent.com/u/86160567?s=200&v=4"
-          title="Tina Salsabila"
-          subTitle="Pelanggan Setia Rano Cake"
-          description="Kue-kue dari Rano Cake selalu lezat dan finishingnya menawan. Pelayanan yang ramah dan responsif membuat saya selalu kembali untuk memesan kue di sini! oh iya pacakging nya juga bagus sekali"
-          textAlign="justify"
-          titleColor="black"
-          titleSize="sm"
-          fullWidth={true}
-        />
-        <Kartu
-          logoSrc="https://avatars.githubusercontent.com/u/86160567?s=200&v=4"
-          title={"budi"}
-          subTitle="Pelanggan Setia Rano Cake"
-          description="Rano Cake benar-benar memahami kebutuhan pelanggannya. Setiap pesanan saya selalu tepat waktu dan sesuai dengan harapan. Terima kasih Rano Cake!"
-          textAlign="justify"
-          titleColor="black"
-          fullWidth={true}
-          titleSize="sm"
-        />
+      <div className="relative -mt-28 z-10 grid grid-cols-1 md:grid-cols-3 gap-8 pt-10 px-4">
+        {[
+          {
+            name: "Nauval",
+            role: "Pelanggan Setia Rano Cake",
+            image: "https://avatars.githubusercontent.com/u/86160567?s=200&v=4",
+            rating: 5,
+            text: "Saya merupakan pelanggan yang cukup sering memesan kue disini karena permintaan para tamu yang bilang kue nya lezat saya ingin merekomendasikan Rano cake pada semua orang karena memang enak dan bergizi",
+          },
+          {
+            name: "Tina Salsabila",
+            role: "Pelanggan Setia Rano Cake",
+            image: "https://avatars.githubusercontent.com/u/86160567?s=200&v=4",
+            rating: 5,
+            text: "Kue-kue dari Rano Cake selalu lezat dan finishingnya menawan. Pelayanan yang ramah dan responsif membuat saya selalu kembali untuk memesan kue di sini! oh iya pacakging nya juga bagus sekali",
+          },
+          {
+            name: "Budi",
+            role: "Pelanggan Setia Rano Cake",
+            image: "https://avatars.githubusercontent.com/u/86160567?s=200&v=4",
+            rating: 5,
+            text: "Rano Cake benar-benar memahami kebutuhan pelanggannya. Setiap pesanan saya selalu tepat waktu dan sesuai dengan harapan. Terima kasih Rano Cake!",
+          },
+        ].map((testimonial, index) => (
+          <motion.div
+            key={index}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: index * 0.2 }}
+          >
+            <Card
+              shadow="lg"
+              className="p-6 bg-white/90 backdrop-blur-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-purple-100 rounded-xl"
+            >
+              <CardBody>
+                <div className="flex items-center gap-4 mb-4">
+                  <Image
+                    src={testimonial.image}
+                    alt={testimonial.name}
+                    width={50}
+                    height={50}
+                    className="rounded-full"
+                  />
+                  <div>
+                    <h3 className="font-semibold text-lg text-purple-900">
+                      {testimonial.name}
+                    </h3>
+                    <p className="text-sm text-gray-600">{testimonial.role}</p>
+                  </div>
+                </div>
+                <div className="flex justify-center gap-1 mb-4">
+                  {[...Array(testimonial.rating)].map((_, i) => (
+                    <Star
+                      key={i}
+                      className="w-5 h-5 fill-yellow-400 text-yellow-400"
+                    />
+                  ))}
+                </div>
+                <p className="text-gray-700 text-sm">{testimonial.text}</p>
+              </CardBody>
+            </Card>
+          </motion.div>
+        ))}
       </div>
-      <AvatarDropdown />
+
+      {/* Back to Top Button */}
+      <AnimatePresence>
+        {showBackToTop && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.5 }}
+            className="fixed bottom-8 right-8 z-50"
+          >
+            <Button
+              isIconOnly
+              color="primary"
+              variant="shadow"
+              className="rounded-full w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+              onPress={scrollToTop}
+            >
+              <ArrowUp className="w-6 h-6" />
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

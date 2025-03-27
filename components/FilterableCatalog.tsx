@@ -30,17 +30,24 @@ export default function FilterableCatalog() {
   const [priceRange, setPriceRange] = useState<number[]>([0, 10000000]);
   const [catalogs, setCatalogs] = useState<Catalog[]>([]);
   const [filteredCatalogs, setFilteredCatalogs] = useState<Catalog[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   // Fetch catalog data from the API
   useEffect(() => {
     const fetchCatalogs = async () => {
       try {
+        setIsLoading(true);
+        setError(null);
         const response = await axios.get("http://localhost:5000/catalog/");
         setCatalogs(response.data);
-        setFilteredCatalogs(response.data); // Show all catalogs initially
+        setFilteredCatalogs(response.data);
       } catch (error) {
         console.error("Error fetching catalog data:", error);
+        setError("Gagal memuat katalog. Silakan coba lagi nanti.");
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -89,76 +96,117 @@ export default function FilterableCatalog() {
   };
 
   return (
-    <div className="container mx-auto p-4 flex gap-4">
-      {/* Filter Sidebar */}
-      <div className="w-full md:w-1/4">
-        <Card className="shadow-lg p-4 mb-8">
-          <h3 className="text-xl font-semibold mb-4">Filter Options</h3>
-          <Input
-            placeholder="Search by name..."
-            value={filter}
-            onChange={handleFilterChange}
-            className="mb-4"
-          />
-          <div className="mb-4">
-            <h4 className="text-lg font-medium mb-2">Price Range</h4>
-            <Slider
-              label="Select price range"
-              step={50000}
-              maxValue={10000000}
-              minValue={0}
-              value={priceRange}
-              onChange={handlePriceRangeChange}
-              className="w-full"
-            />
-          </div>
-          <div className="flex items-center mb-4">
-            <input
-              type="checkbox"
-              checked ={filterByQuantity}
-              onChange={handleQuantityFilter}
-              className="mr-2"
-            />
-            <label>Show only available products</label>
-          </div>
-        </Card>
-      </div>
-
-      {/* Catalog Items */}
-      <div className="w-full md:w-3/4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredCatalogs.map((catalog, index) => (
-          <Card key={index} className="shadow-lg">
-            <CardBody>
-              <Image
-                src={`http://localhost:5000/catalog/images/${catalog.image?.split("/").pop()}`}
-                alt={catalog.name}
-                width={256}
-                height={270}
-                quality={75}
-                className="rounded-xl"
+    <div className="container mx-auto p-4">
+      <div className="flex flex-col md:flex-row gap-4 relative">
+        {/* Filter Sidebar - Selalu di kiri dan fixed */}
+        <div className="w-full md:w-64 flex-shrink-0">
+          <div className="sticky top-4">
+            <Card className="shadow-lg p-4">
+              <h3 className="text-xl font-semibold mb-4">Filter Options</h3>
+              <Input
+                placeholder="Search by name..."
+                value={filter}
+                onChange={handleFilterChange}
+                className="mb-4 w-full"
               />
-              <div className="mt-4">
-                <h4 className="font-bold text-lg">{catalog.name}</h4>
-                <p className="text-black-600">{catalog.description}</p>
-                <p>
-                  Starting from IDR {catalog.sizes.length > 0 ? parseFloat(catalog.sizes[0].price.replace(/[^0-9.-]+/g, "")).toLocaleString('id-ID') : '0'}
-                </p>
-                {parseInt(catalog.qty) === 0 && (
-                  <p className="text-red-500 font-bold">Out of stock</p>
-                )}
+              <div className="mb-4">
+                <h4 className="text-lg font-medium mb-2">Price Range</h4>
+                <div className="px-2">
+                  <Slider
+                    label="Select price range"
+                    step={50000}
+                    maxValue={10000000}
+                    minValue={0}
+                    value={priceRange}
+                    onChange={handlePriceRangeChange}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between mt-2 text-sm text-gray-600">
+                    <span>Rp {priceRange[0].toLocaleString("id-ID")}</span>
+                    <span>Rp {priceRange[1].toLocaleString("id-ID")}</span>
+                  </div>
+                </div>
               </div>
-            </CardBody>
-            <CardFooter>
-              <NextUIButton
-                className="w-full"
-                onPress={() => viewProductDetails(catalog.categorySlug, catalog.productSlug)}
-                disabled={parseInt(catalog.qty) === 0}
-              >
-                View Details
-              </NextUIButton>
-            </CardFooter>
-          </Card>
-        ))}
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={filterByQuantity}
+                  onChange={handleQuantityFilter}
+                  className="mr-2 w-4 h-4"
+                />
+                <label className="text-sm">Show only available products</label>
+              </div>
+            </Card>
+          </div>
+        </div>
+
+        {/* Main Content Area - Konten selalu di kanan filter */}
+        <div className="flex-1 min-h-screen">
+          {isLoading ? (
+            <div className="w-full h-[calc(100vh-8rem)] flex items-center justify-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+            </div>
+          ) : error ? (
+            <div className="w-full p-4 text-center text-red-500">{error}</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredCatalogs.map((catalog, index) => (
+                <Card key={index} className="shadow-lg">
+                  <CardBody>
+                    <div className="relative w-full aspect-square">
+                      <Image
+                        src={`http://localhost:5000/catalog/images/${catalog.image
+                          ?.split("/")
+                          .pop()}`}
+                        alt={catalog.name}
+                        fill
+                        className="rounded-xl object-cover"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      />
+                    </div>
+                    <div className="mt-4">
+                      <h4 className="font-bold text-lg">{catalog.name}</h4>
+                      <p className="text-gray-600 line-clamp-2">
+                        {catalog.description}
+                      </p>
+                      <p className="mt-2 font-medium">
+                        Starting from Rp{" "}
+                        {catalog.sizes.length > 0
+                          ? parseFloat(
+                              catalog.sizes[0].price.replace(/[^0-9.-]+/g, "")
+                            ).toLocaleString("id-ID")
+                          : "0"}
+                      </p>
+                      {parseInt(catalog.qty) === 0 && (
+                        <p className="text-red-500 font-bold mt-1">
+                          Out of stock
+                        </p>
+                      )}
+                    </div>
+                  </CardBody>
+                  <CardFooter>
+                    <NextUIButton
+                      className="w-full"
+                      onPress={() =>
+                        viewProductDetails(
+                          catalog.categorySlug,
+                          catalog.productSlug
+                        )
+                      }
+                      disabled={parseInt(catalog.qty) === 0}
+                      isLoading={isLoading}
+                      spinner={
+                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                      }
+                    >
+                      {isLoading ? "Loading..." : "View Details"}
+                    </NextUIButton>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
