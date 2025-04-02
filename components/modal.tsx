@@ -25,7 +25,6 @@ import {
   DropdownItem,
 } from "@heroui/dropdown";
 import { Spinner } from "@nextui-org/spinner";
-import { useCartStore } from "@/store/cart"; // Pastikan path sesuai dengan struktur project Anda
 
 interface User {
   photoProfile: string | null;
@@ -43,7 +42,6 @@ interface CartItem {
 export default function Modall() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const { clearCart } = useCartStore(); // Menggunakan zustand store
 
   // Update the handleCart function to have a proper type for cart
   const handleCart = (cart: CartItem[]) => {
@@ -76,13 +74,26 @@ export default function Modall() {
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (error) {
+        console.error("Error parsing user data from localStorage:", error);
+        localStorage.removeItem("user"); // Remove invalid data
+      }
     }
   }, []);
 
   const getCart = (): CartItem[] => {
     const storedCart = localStorage.getItem("cart");
-    return storedCart ? JSON.parse(storedCart) : [];
+    if (!storedCart) return [];
+
+    try {
+      return JSON.parse(storedCart);
+    } catch (error) {
+      console.error("Error parsing cart data from localStorage:", error);
+      localStorage.removeItem("cart"); // Remove invalid data
+      return [];
+    }
   };
 
   const saveCart = (cart: CartItem[]) => {
@@ -146,10 +157,6 @@ export default function Modall() {
       // Hapus semua data cart
       localStorage.removeItem("cart");
       sessionStorage.removeItem("cart");
-
-      // Reset state cart menggunakan zustand
-      clearCart();
-      setCart([]);
 
       // Hapus guest ID jika ada
       localStorage.removeItem("guestId");
@@ -223,13 +230,7 @@ export default function Modall() {
                   isBordered
                 />
               )}
-              {isLoading ? (
-                <div className="w-24 h-6 flex items-center">
-                  <Spinner size="sm" />
-                </div>
-              ) : (
-                <span>{user.fullName}</span>
-              )}
+              <span>{isLoading ? "" : user.fullName}</span>
             </div>
           </DropdownTrigger>
           <DropdownMenu aria-label="User Actions" variant="flat">
@@ -324,7 +325,7 @@ export default function Modall() {
                   isLoading={isLoading}
                   isDisabled={isLoading}
                 >
-                  {isLoading ? <Spinner size="sm" /> : "Sign in"}
+                  Sign in
                 </Button>
               </ModalFooter>
             </>

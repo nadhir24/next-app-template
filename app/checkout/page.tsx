@@ -1,6 +1,13 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { TruckIcon, CreditCard, ShieldCheck, Package } from "lucide-react";
+import Tombol from "@/components/button";
 
 interface ShippingAddress {
   firstName: string;
@@ -30,6 +37,14 @@ interface CheckoutData {
   total: number;
 }
 
+interface ShippingMethod {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  estimatedDays: string;
+}
+
 export default function CheckoutPage() {
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
     firstName: "",
@@ -53,12 +68,24 @@ export default function CheckoutPage() {
     total: 0,
   });
   const [userId, setUserId] = useState<string | null>(null);
+  const [selectedShippingMethod, setSelectedShippingMethod] =
+    useState<string>("gojek");
+
+  const shippingMethods: ShippingMethod[] = [
+    {
+      id: "gojek",
+      name: "Gojek",
+      description: "Same day (max 30km)",
+      price: 25000,
+      estimatedDays: "Same day",
+    },
+  ];
 
   // Fungsi untuk mengambil data user jika sudah login
   const fetchUserData = async (userId: string) => {
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/users/${userId}`
+        `${process.env.NEXT_PUBLIC_API_URL}/users/${userId}`
       );
       if (!response.ok) throw new Error("Failed to fetch user data");
 
@@ -80,21 +107,57 @@ export default function CheckoutPage() {
   };
 
   // Fungsi untuk mengambil data checkout
-  const fetchCheckoutData = async (userId: string | null) => {
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/checkout${
-          userId ? `?userId=${userId}` : ""
-        }`
-      );
-      if (!response.ok) throw new Error("Failed to fetch checkout data");
+  const fetchCheckoutData = useCallback(
+    async (userIdParam?: string) => {
+      try {
+        const isLoggedIn = !!userIdParam || !!userId;
+        const guestIdFromStorage = localStorage.getItem("guestId");
 
-      const data = await response.json();
-      setCheckoutData(data);
-    } catch (error) {
-      console.error("Error fetching checkout data:", error);
-    }
-  };
+        let url = "";
+        if (isLoggedIn) {
+          url = `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?userId=${
+            userIdParam || userId
+          }`;
+        } else if (guestIdFromStorage) {
+          url = `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?guestId=${guestIdFromStorage}`;
+        } else {
+          return;
+        }
+
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Gagal mengambil data");
+        const items = await response.json();
+
+        // Transformasi data untuk format CheckoutData
+        const transformedItems = items.map((item: any) => ({
+          id: item.id.toString(),
+          name: item.catalog?.name || "",
+          price: parseFloat(item.size?.price?.replace(/[^0-9.-]+/g, "") || "0"),
+          quantity: item.quantity,
+          size: item.size?.size || "",
+          image: item.catalog?.image || "",
+        }));
+
+        const subtotal = transformedItems.reduce((total: number, item: any) => {
+          return total + item.price * item.quantity;
+        }, 0);
+
+        setCheckoutData({
+          items: transformedItems,
+          subtotal: subtotal,
+          shipping: 0,
+          total: subtotal,
+        });
+
+        // Update localStorage dengan data terbaru
+        localStorage.setItem("cart", JSON.stringify(items));
+      } catch (error) {
+        console.error("Error fetching cart:", error);
+        toast.error("Gagal mengambil data cart");
+      }
+    },
+    [userId, setCheckoutData]
+  );
 
   // Effect untuk mengecek user login dan mengambil data
   useEffect(() => {
@@ -103,8 +166,8 @@ export default function CheckoutPage() {
       setUserId(userIdFromStorage);
       fetchUserData(userIdFromStorage);
     }
-    fetchCheckoutData(userIdFromStorage);
-  }, []);
+    fetchCheckoutData(userIdFromStorage || undefined);
+  }, [fetchCheckoutData]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -117,8 +180,13 @@ export default function CheckoutPage() {
   const createTransaction = async () => {
     setLoading(true);
     try {
+      // Get the selected shipping method
+      const selectedMethod = shippingMethods.find(
+        (method) => method.id === selectedShippingMethod
+      );
+
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/payment/snap/create-transaction`,
+        `${process.env.NEXT_PUBLIC_API_URL}/payment/snap/create-transaction`,
         {
           method: "POST",
           headers: {
@@ -128,7 +196,8 @@ export default function CheckoutPage() {
             userId,
             shippingAddress,
             items: checkoutData.items,
-            total: checkoutData.total,
+            shipping: selectedMethod?.price || 0,
+            total: checkoutData.subtotal + (selectedMethod?.price || 0),
           }),
         }
       );
@@ -141,252 +210,312 @@ export default function CheckoutPage() {
       }
     } catch (error) {
       console.error("Error creating transaction:", error);
+      toast.error("Gagal membuat transaksi");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <div className="min-h-screen bg-gray-50 py-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Checkout</h1>
+          <p className="mt-2 text-gray-600">Selesaikan pembelian Anda dengan aman</p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Form Bagian */}
-          <div className="space-y-8">
+          <div className="lg:col-span-2 space-y-6">
             {/* Contact Section */}
-            <div>
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-medium">Contact</h2>
-                <button className="text-sm text-gray-600">Log in</button>
-              </div>
-              <input
-                type="email"
-                name="email"
-                value={shippingAddress.email}
-                onChange={handleInputChange}
-                placeholder="Email"
-                className="w-full p-3 border border-gray-300 rounded-md"
-              />
-              <div className="mt-3 flex items-center">
-                <input
-                  type="checkbox"
-                  id="emailOffers"
-                  checked={emailOffers}
-                  onChange={(e) => setEmailOffers(e.target.checked)}
-                  className="h-4 w-4 text-blue-600"
-                />
-                <label
-                  htmlFor="emailOffers"
-                  className="ml-2 text-sm text-gray-600"
-                >
-                  Email me with news and offers
-                </label>
-              </div>
-            </div>
-
-            {/* Delivery Section */}
-            <div>
-              <h2 className="text-lg font-medium mb-4">Delivery</h2>
-              <select className="w-full p-3 border border-gray-300 rounded-md mb-4">
-                <option value="indonesia">Indonesia</option>
-              </select>
-              <div className="grid grid-cols-2 gap-4">
-                <input
-                  type="text"
-                  name="firstName"
-                  value={shippingAddress.firstName}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <CreditCard className="h-5 w-5" /> Informasi Kontak
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Input
+                  type="email"
+                  name="email"
+                  value={shippingAddress.email}
                   onChange={handleInputChange}
-                  placeholder="First name"
-                  className="p-3 border border-gray-300 rounded-md"
+                  placeholder="Email"
+                  className="w-full"
                 />
-                <input
-                  type="text"
-                  name="lastName"
-                  value={shippingAddress.lastName}
-                  onChange={handleInputChange}
-                  placeholder="Last name"
-                  className="p-3 border border-gray-300 rounded-md"
-                />
-              </div>
-              <input
-                type="text"
-                name="address"
-                value={shippingAddress.address}
-                onChange={handleInputChange}
-                placeholder="Address"
-                className="w-full p-3 border border-gray-300 rounded-md mt-4"
-              />
-              <input
-                type="text"
-                name="district"
-                value={shippingAddress.district}
-                onChange={handleInputChange}
-                placeholder="District / Kecamatan"
-                className="w-full p-3 border border-gray-300 rounded-md mt-4"
-              />
-              <input
-                type="text"
-                name="city"
-                value={shippingAddress.city}
-                onChange={handleInputChange}
-                placeholder="City"
-                className="w-full p-3 border border-gray-300 rounded-md mt-4"
-              />
-              <div className="grid grid-cols-2 gap-4 mt-4">
-                <select
-                  name="province"
-                  value={shippingAddress.province}
-                  onChange={(e) =>
-                    handleInputChange({
-                      target: { name: "province", value: e.target.value },
-                    } as any)
-                  }
-                  className="p-3 border border-gray-300 rounded-md"
-                >
-                  <option value="">Province</option>
-                  <option value="jakarta">DKI Jakarta</option>
-                  <option value="jawa-barat">Jawa Barat</option>
-                </select>
-                <input
-                  type="text"
-                  name="postalCode"
-                  value={shippingAddress.postalCode}
-                  onChange={handleInputChange}
-                  placeholder="Postal code"
-                  className="p-3 border border-gray-300 rounded-md"
-                />
-              </div>
-              <input
-                type="tel"
-                name="phone"
-                value={shippingAddress.phone}
-                onChange={handleInputChange}
-                placeholder="Phone"
-                className="w-full p-3 border border-gray-300 rounded-md mt-4"
-              />
-              <div className="mt-4 flex items-center">
-                <input
-                  type="checkbox"
-                  id="saveInfo"
-                  checked={saveInfo}
-                  onChange={(e) => setSaveInfo(e.target.checked)}
-                  className="h-4 w-4 text-blue-600"
-                />
-                <label
-                  htmlFor="saveInfo"
-                  className="ml-2 text-sm text-gray-600"
-                >
-                  Save this information for next time
-                </label>
-              </div>
-            </div>
-
-            {/* Payment Section */}
-            <div>
-              <h2 className="text-lg font-medium mb-4">Payment</h2>
-              <div className="border border-gray-300 rounded-md p-4">
-                <div className="flex items-center justify-between p-3 border border-gray-300 rounded-md mb-4">
-                  <div className="flex items-center">
-                    <div className="w-6 h-6 mr-2">
-                      <Image
-                        src="/xendit-logo.png"
-                        alt="Xendit"
-                        width={24}
-                        height={24}
-                      />
-                    </div>
-                    <span>Payments By Xendit</span>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Image src="/visa.png" alt="Visa" width={32} height={20} />
-                    <Image
-                      src="/mastercard.png"
-                      alt="Mastercard"
-                      width={32}
-                      height={20}
-                    />
-                    <Image src="/jcb.png" alt="JCB" width={32} height={20} />
-                    <Image
-                      src="/amex.png"
-                      alt="American Express"
-                      width={32}
-                      height={20}
-                    />
-                  </div>
-                </div>
-                <div className="text-center text-sm text-gray-600 mt-4">
-                  <p>After clicking "Pay now", you will be redirected to</p>
-                  <p>Payments By Xendit to complete your purchase</p>
-                  <p>securely.</p>
-                </div>
-              </div>
-              <div className="mt-4 border-t border-gray-200 pt-4">
                 <div className="flex items-center">
                   <input
-                    type="radio"
-                    id="bankTransfer"
-                    name="paymentMethod"
-                    className="h-4 w-4 text-blue-600"
+                    type="checkbox"
+                    id="emailOffers"
+                    checked={emailOffers}
+                    onChange={(e) => setEmailOffers(e.target.checked)}
+                    className="h-4 w-4 text-blue-600 rounded"
                   />
                   <label
-                    htmlFor="bankTransfer"
+                    htmlFor="emailOffers"
                     className="ml-2 text-sm text-gray-600"
                   >
-                    Manual Transfer - Bank BCA 375 577 8111 a.n. PT TENUE
-                    DEATTIRE INDONESIA
+                    Kirimkan saya berita dan penawaran melalui email
                   </label>
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
+
+            {/* Delivery Section */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <TruckIcon className="h-5 w-5" /> Informasi Pengiriman
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    type="text"
+                    name="firstName"
+                    value={shippingAddress.firstName}
+                    onChange={handleInputChange}
+                    placeholder="Nama Depan"
+                  />
+                  <Input
+                    type="text"
+                    name="lastName"
+                    value={shippingAddress.lastName}
+                    onChange={handleInputChange}
+                    placeholder="Nama Belakang"
+                  />
+                </div>
+                <Input
+                  type="text"
+                  name="address"
+                  value={shippingAddress.address}
+                  onChange={handleInputChange}
+                  placeholder="Alamat"
+                />
+                <Input
+                  type="text"
+                  name="district"
+                  value={shippingAddress.district}
+                  onChange={handleInputChange}
+                  placeholder="Kecamatan"
+                />
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    type="text"
+                    name="city"
+                    value={shippingAddress.city}
+                    onChange={handleInputChange}
+                    placeholder="Kota"
+                  />
+                  <Input
+                    type="text"
+                    name="province"
+                    value={shippingAddress.province}
+                    onChange={handleInputChange}
+                    placeholder="Provinsi"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    type="text"
+                    name="postalCode"
+                    value={shippingAddress.postalCode}
+                    onChange={handleInputChange}
+                    placeholder="Kode Pos"
+                  />
+                  <Input
+                    type="tel"
+                    name="phone"
+                    value={shippingAddress.phone}
+                    onChange={handleInputChange}
+                    placeholder="Nomor Telepon"
+                  />
+                </div>
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="saveInfo"
+                    checked={saveInfo}
+                    onChange={(e) => setSaveInfo(e.target.checked)}
+                    className="h-4 w-4 text-blue-600 rounded"
+                  />
+                  <label
+                    htmlFor="saveInfo"
+                    className="ml-2 text-sm text-gray-600"
+                  >
+                    Simpan informasi ini untuk pembelian berikutnya
+                  </label>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Shipping Method Section */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Package className="h-5 w-5" /> Metode Pengiriman
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {shippingMethods.map((method) => (
+                  <div
+                    key={method.id}
+                    className={`border rounded-lg p-4 flex justify-between items-center cursor-pointer transition-colors ${selectedShippingMethod === method.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
+                    onClick={() => setSelectedShippingMethod(method.id)}
+                  >
+                    <div className="flex items-center">
+                      <input
+                        type="radio"
+                        id={method.id}
+                        name="shippingMethod"
+                        value={method.id}
+                        checked={selectedShippingMethod === method.id}
+                        onChange={(e) =>
+                          setSelectedShippingMethod(e.target.value)
+                        }
+                        className="h-4 w-4 text-blue-600 mr-3"
+                      />
+                      <label htmlFor={method.id} className="cursor-pointer">
+                        <div className="font-medium">{method.name}</div>
+                        <div className="text-sm text-gray-500">
+                          {method.description}
+                        </div>
+                      </label>
+                    </div>
+                    <div className="text-right font-medium">
+                      Rp {method.price.toLocaleString()}
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            {/* Payment Section */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <ShieldCheck className="h-5 w-5" /> Pembayaran
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg mb-4 bg-white">
+                    <div className="flex items-center">
+                      <span className="font-medium">Payments By Midtrans</span>
+                    </div>
+                    <div className="flex space-x-2 opacity-70">
+                      <span className="text-xs bg-gray-100 px-2 py-1 rounded">VISA</span>
+                      <span className="text-xs bg-gray-100 px-2 py-1 rounded">MASTERCARD</span>
+                      <span className="text-xs bg-gray-100 px-2 py-1 rounded">JCB</span>
+                    </div>
+                  </div>
+                  <div className="text-center text-sm text-gray-600 mt-4">
+                    <p>Setelah mengklik "Bayar Sekarang", Anda akan diarahkan ke</p>
+                    <p>Payments By Midtrans untuk menyelesaikan pembelian Anda dengan aman.</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Cart Summary */}
-          <div className="bg-gray-50 p-6 rounded-lg">
-            {checkoutData.items.map((item) => (
-              <div key={item.id} className="flex items-center mb-6">
-                <div className="relative w-16 h-16 bg-gray-200 rounded-md mr-4">
-                  <Image
-                    src={item.image}
-                    alt={item.name}
-                    fill
-                    className="object-cover rounded-md"
-                  />
-                  <span className="absolute -top-2 -right-2 bg-gray-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs">
-                    {item.quantity}
-                  </span>
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-sm">{item.name}</h3>
-                  <p className="text-sm text-gray-500">{item.size}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm">Rp {item.price.toLocaleString()}</p>
-                </div>
-              </div>
-            ))}
+          <div className="lg:col-span-1">
+            <div className="sticky top-6">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Ringkasan Pesanan</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Cart Items */}
+                  <div className="max-h-[300px] overflow-y-auto pr-2 space-y-4">
+                    {checkoutData.items.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center pb-4 border-b border-gray-100"
+                      >
+                        <div className="relative w-16 h-16 bg-gray-100 rounded-md mr-4 overflow-hidden">
+                          <Image
+                            src={item.image || "/blurry.svg"}
+                            alt={item.name}
+                            fill
+                            className="object-cover"
+                          />
+                          <div className="absolute -top-2 -right-2 bg-gray-700 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs">
+                            {item.quantity}
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="text-sm font-medium line-clamp-1">{item.name}</h3>
+                          <p className="text-xs text-gray-500">Ukuran: {item.size}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-medium">
+                            Rp {item.price.toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
 
-            <div className="border-t border-gray-200 pt-4">
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span>Subtotal</span>
-                  <span>Rp {checkoutData.subtotal.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Shipping</span>
-                  {checkoutData.shipping ? (
-                    <span>Rp {checkoutData.shipping.toLocaleString()}</span>
-                  ) : (
-                    <span className="text-gray-600">
-                      Enter shipping address
-                    </span>
-                  )}
-                </div>
-                <div className="flex justify-between border-t border-gray-200 pt-2">
-                  <span className="font-medium">Total</span>
-                  <span className="font-medium">
-                    IDR Rp {checkoutData.total.toLocaleString()}
-                  </span>
-                </div>
-              </div>
+                  {/* Discount Code */}
+                  <div className="flex space-x-2">
+                    <Input
+                      type="text"
+                      placeholder="Kode Diskon"
+                      value={discountCode}
+                      onChange={(e) => setDiscountCode(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Tombol variant="shadow" size="sm" className="whitespace-nowrap">
+                      Terapkan
+                    </Tombol>
+                  </div>
+
+                  {/* Order Summary */}
+                  <div className="space-y-2 pt-4 border-t border-gray-100">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Subtotal</span>
+                      <span>Rp {checkoutData.subtotal.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Pengiriman</span>
+                      {selectedShippingMethod ? (
+                        <span>
+                          Rp{" "}
+                          {shippingMethods
+                            .find((m) => m.id === selectedShippingMethod)
+                            ?.price.toLocaleString() || 0}
+                        </span>
+                      ) : (
+                        <span className="text-gray-500">
+                          Pilih metode pengiriman
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex justify-between pt-2 border-t border-gray-100 text-base font-medium">
+                      <span>Total</span>
+                      <span>
+                        Rp{" "}
+                        {(
+                          checkoutData.subtotal +
+                          (shippingMethods.find(
+                            (m) => m.id === selectedShippingMethod
+                          )?.price || 0)
+                        ).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Tombol
+                    onPress={createTransaction}
+                    className="w-full bg-black hover:bg-gray-800 text-white"
+                    size="lg"
+                  >
+                    {loading ? "Memproses..." : "Bayar Sekarang"}
+                  </Tombol>
+                </CardFooter>
+              </Card>
             </div>
           </div>
         </div>
