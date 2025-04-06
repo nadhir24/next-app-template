@@ -5,7 +5,7 @@ import { title, subtitle } from "@/components/primitives";
 import Image from "next/image";
 import React, { useRef, useState, useEffect } from "react";
 import wkwkwkwk from "@/public/wkwkwkwk.jpg";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import CountUp from "react-countup";
 import { Button } from "@heroui/button";
 import {
@@ -30,13 +30,12 @@ import { Badge } from "@nextui-org/badge";
 import { Skeleton } from "@nextui-org/skeleton";
 import { Icon } from "@iconify/react";
 import Tombol from "@/components/button";
-
 export default function Home() {
   const progressCircle = useRef<SVGSVGElement | null>(null);
   const progressContent = useRef<HTMLSpanElement | null>(null);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-
+  const [isButtonLoading, setIsButtonLoading] = useState(false); // State untuk tombol
   useEffect(() => {
     const handleScroll = () => {
       setShowBackToTop(window.scrollY > 300);
@@ -121,18 +120,21 @@ export default function Home() {
       badgeColor: "primary" as const,
     },
   ];
+  const router = useRouter();
   const handleClick = () => {
-    setIsLoading(true);
+    setIsButtonLoading(true);
     setTimeout(() => {
-      setIsLoading(false);
+      router.push("/katalog");
+      setIsButtonLoading(false);
     }, 1000);
   };
 
   return (
     <>
-      <div className="justify-center items-center">
+  <div className="justify-center items-center">
         <div className="text-center shadow-2xl p-8 rounded-xl">
           {isLoading ? (
+            // Skeleton untuk hero section
             <div className="space-y-4">
               <Skeleton className="h-16 w-3/4 mx-auto rounded-lg" />
               <Skeleton className="h-8 w-2/4 mx-auto rounded-lg" />
@@ -162,18 +164,17 @@ export default function Home() {
                 transition={{ duration: 0.5, delay: 0.4 }}
                 className="flex justify-center"
               >
-                <Link href="/katalog">
-                  <Tombol
-                    size="lg"
-                    color="default"
-                    variant="ghost"
-                    radius="lg"
-                    startContent={<ShoppingCart size={20} />}
-                    label={isLoading ? "Loading..." : "Pesan Sekarang"}
-                    isLoading={isLoading}
-                    onPress={handleClick}
-                  />
-                </Link>
+                {/* Tombol dengan loading state terpisah */}
+                <Tombol
+                  size="lg"
+                  color="default"
+                  variant="ghost"
+                  radius="lg"
+                  startContent={<ShoppingCart size={20} />}
+                  label={isButtonLoading ? "Loading..." : "Pesan Sekarang"}
+                  isLoading={isButtonLoading}
+                  onPress={handleClick}
+                />
               </motion.div>
             </>
           )}

@@ -24,6 +24,7 @@
     "react-dom": "^18",
     "react-hot-toast": "^2.4.1",
     "react-toastify": "^11.0.5",
+    "react-tooltip": "^5.28.0",
     "sonner": "^2.0.2",
     "swiper": "^11.2.6",
     "tailwindcss-animate": "^1.0.7"

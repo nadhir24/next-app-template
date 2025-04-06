@@ -40,6 +40,7 @@ const ProductDetailPage = () => {
   const [selectedSize, setSelectedSize] = useState<Size | null>(null);
   const [isCartModalOpen, setIsCartModalOpen] = useState(false);
   const [guestCart, setGuestCart] = useState<GuestCartItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const params = useParams();
 
   const categorySlug = params.categorySlug as string;
@@ -50,8 +51,9 @@ const ProductDetailPage = () => {
   useEffect(() => {
     const fetchProductDetail = async () => {
       try {
+        setIsLoading(true);
         const response = await axios.get<Catalog>(
-          `http://localhost:5000/catalog/${categorySlug}/${productSlug}`
+          `${process.env.NEXT_PUBLIC_API_URL}/catalog/${categorySlug}/${productSlug}`
         );
         setProduct(response.data);
         if (response.data.sizes.length > 0) {
@@ -62,6 +64,8 @@ const ProductDetailPage = () => {
       } catch (error) {
         console.error("Error fetching product details:", error);
         toast.error("Failed to load product details.");
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -112,7 +116,7 @@ const ProductDetailPage = () => {
       // Jika item sudah ada, tambahkan quantity, jika belum ada set quantity ke 1
       const quantity = existingItem ? existingItem.quantity + 1 : 1;
 
-      await axios.post("http://localhost:5000/cart/add", {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/cart/add`, {
         userId: userId,
         catalogId: product?.id || 0,
         sizeId: selectedSize.id, // Sekarang aman karena sudah dilakukan null check
@@ -134,11 +138,11 @@ const ProductDetailPage = () => {
     try {
       let url = "";
       if (userId) {
-        url = `http://localhost:5000/cart/findMany?userId=${userId}`;
+        url = `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?userId=${userId}`;
       } else {
         const guestId = localStorage.getItem("guestId");
         if (guestId) {
-          url = `http://localhost:5000/cart/findMany?guestId=${guestId}`;
+          url = `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?guestId=${guestId}`;
         } else {
           return;
         }
@@ -194,7 +198,7 @@ const ProductDetailPage = () => {
 
     // Fetch cart data untuk memperbarui tampilan keranjang
     await fetchCartData();
-    
+
     setIsCartModalOpen(true);
     toast.success("Item berhasil ditambahkan ke keranjang!");
   };
@@ -203,7 +207,7 @@ const ProductDetailPage = () => {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row lg:space-x-8 p- 4">
+    <div className="flex flex-col lg:flex-row lg:space-x-8 p-4">
       {/* Image Section */}
       <div className="lg:w-1/2 w-full">
         <nav className="flex mb-4">
@@ -228,50 +232,74 @@ const ProductDetailPage = () => {
         </nav>
 
         <div className="relative w-full aspect-square lg:aspect-auto">
-          {product?.image && (
-            <Image
-              src={`http://localhost:5000/catalog/images/${product.image
-                .split("/")
-                .pop()}`}
-              alt={product.name || "Product Image"}
-              width={500}
-              height={500}
-              className="rounded-xl"
-            />
+          {isLoading ? (
+            <div className="w-full h-full rounded-xl bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 animate-[shimmer_1.5s_infinite] bg-[length:400%_100%]" />
+          ) : (
+            product?.image && (
+              <Image
+                src={`${
+                  process.env.NEXT_PUBLIC_API_URL
+                }/catalog/images/${product.image.split("/").pop()}`}
+                alt={product.name || "Product Image"}
+                width={500}
+                height={500}
+                className="rounded-xl"
+              />
+            )
           )}
         </div>
       </div>
 
       {/* Product Info Section */}
       <div className="lg:w-1/2 w-full mt-4 lg:mt-0">
-        <h1 className="text-2xl font-bold">{product?.name}</h1>
-        <p className="text-gray-600 mt-2">{product?.description}</p>
-
-        {product?.sizes && product.sizes.length > 0 && (
-          <div className="mt-4">
-            <h2 className="text-lg font-semibold">Pilih Ukuran:</h2>
-            <RadioGroup
-              className="mt-2"
-              value={selectedSize?.id.toString() || ""}
-              onChange={handleSizeChange}
-            >
-              {product.sizes.map((size) => (
-                <Radio
-                  key={size.id}
-                  value={size.id.toString()}
-                  className="mb-2 p-2 border rounded-md"
-                >
-                  <span className="font-medium">{size.size}</span>
-                  <span className="ml-2 text-primary">{size.price}</span>
-                </Radio>
-              ))}
-            </RadioGroup>
+        {isLoading ? (
+          <div className="space-y-4">
+            <div className="h-8 bg-gray-200 rounded-md w-3/4 animate-pulse" />
+            <div className="h-20 bg-gray-200 rounded-md animate-pulse" />
+            <div className="space-y-2">
+              <div className="h-6 bg-gray-200 rounded-md w-1/4 animate-pulse" />
+              <div className="space-y-2">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="h-12 bg-gray-200 rounded-md animate-pulse"
+                  />
+                ))}
+              </div>
+            </div>
           </div>
-        )}
+        ) : (
+          <>
+            <h1 className="text-2xl font-bold">{product?.name}</h1>
+            <p className="text-gray-600 mt-2">{product?.description}</p>
 
-        <Button onClick={handleAddToCart} className="mt-4" color="primary">
-          Add to Cart
-        </Button>
+            {product?.sizes && product.sizes.length > 0 && (
+              <div className="mt-4">
+                <h2 className="text-lg font-semibold">Pilih Ukuran:</h2>
+                <RadioGroup
+                  className="mt-2"
+                  value={selectedSize?.id.toString() || ""}
+                  onChange={handleSizeChange}
+                >
+                  {product.sizes.map((size) => (
+                    <Radio
+                      key={size.id}
+                      value={size.id.toString()}
+                      className="mb-2 p-2 border rounded-md"
+                    >
+                      <span className="font-medium">{size.size}</span>
+                      <span className="ml-2 text-primary">{size.price}</span>
+                    </Radio>
+                  ))}
+                </RadioGroup>
+              </div>
+            )}
+
+            <Button onClick={handleAddToCart} className="mt-4" color="primary">
+              Add to Cart
+            </Button>
+          </>
+        )}
       </div>
 
       {/* Modal for Cart Confirmation */}

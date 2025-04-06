@@ -1,9 +1,9 @@
 "use client";
 import React, { useEffect, useState, useCallback } from "react";
-import { Button, ButtonGroup } from "@heroui/button";
+import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Link } from "@heroui/link";
-import { Bounce, ToastContainer, toast } from "react-toastify";
+import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { Image } from "@heroui/image";
 import { Divider } from "@heroui/divider";
@@ -18,47 +18,48 @@ interface CartItem {
   createdAt: string;
   user?: { id: number; email: string } | null;
   catalog?: { id: number; name: string; image: string } | null;
-  size?: { id: number; size: string; price: string } | null;
+  size?: { id: number; size: string; price: string; qty?: number } | null;
 }
 
 const CartPage: React.FC = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
   const [total, setTotal] = useState<string>("Rp0");
   const [guestId, setGuestId] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
   const [processingItems, setProcessingItems] = useState<number[]>([]);
+
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [itemToDelete, setItemToDelete] = useState<number | null>(null);
 
-  // Inisialisasi user dan session
   useEffect(() => {
     const userData = localStorage.getItem("user");
     if (userData) {
-      const parsedUser = JSON.parse(userData);
-      setUser(parsedUser);
+      setUser(JSON.parse(userData));
     } else {
       initializeGuestSession();
     }
   }, []);
 
-  // Fetch data cart dan total
   const fetchCartData = useCallback(async () => {
     setLoading(true);
     try {
       let url;
       if (user?.id) {
-        url = `http://localhost:5000/cart/findMany?userId=${user.id}`;
+        url = `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?userId=${user.id}`;
+        console.log("Fetching cart with userId:", user.id);
       } else if (guestId) {
-        url = `http://localhost:5000/cart/findMany?guestId=${guestId}`;
+        url = `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?guestId=${guestId}`;
+        console.log("Fetching cart with guestId:", guestId);
       } else {
+        console.log("No user or guest ID available for cart fetch");
         return;
       }
 
       const [itemsRes, totalRes] = await Promise.all([
         fetch(url),
         fetch(
-          `http://localhost:5000/cart/total?${
+          `${process.env.NEXT_PUBLIC_API_URL}/cart/total?${
             user?.id ? `userId=${user.id}` : `guestId=${guestId}`
           }`
         ),
@@ -72,6 +73,8 @@ const CartPage: React.FC = () => {
         itemsRes.json(),
         totalRes.text(),
       ]);
+      console.log("Cart items fetched:", items);
+      console.log("Cart total fetched:", total);
       setCartItems(items);
       setTotal(total);
     } catch (error) {
@@ -82,91 +85,121 @@ const CartPage: React.FC = () => {
     }
   }, [user, guestId]);
 
-  // Re-fetch when user or guestId changes
   useEffect(() => {
     fetchCartData();
   }, [user, guestId, fetchCartData]);
 
-  // Update quantity item
   const updateCartItem = async (id: number, newQuantity: number) => {
+    console.log(`Updating cart item ${id} to quantity ${newQuantity}`);
+    // Simpan state awal untuk rollback jika terjadi error
     const originalItems = [...cartItems];
     const originalTotal = total;
+    console.log("Original items:", originalItems);
+
     try {
+      // Tandai item sedang diproses
       setProcessingItems((prev) => [...prev, id]);
+      const itemToUpdate = cartItems.find((item) => item.id === id);
 
-      // Update state lokal dulu untuk UX yang lebih responsif
-      setCartItems((prevItems) =>
-        prevItems.map((item) =>
-          item.id === id ? { ...item, quantity: newQuantity } : item
-        )
-      );
-
-      // Hitung total baru secara lokal
-      const newTotal = calculateNewTotal(cartItems, id, newQuantity);
-      setTotal(newTotal);
-
-      // Kirim ke server
-      const response = await fetch(`http://localhost:5000/cart/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          quantity: newQuantity,
-          userId: user?.id,
-          guestId: guestId,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Gagal update quantity");
+      // Validasi client-side
+      if (
+        itemToUpdate &&
+        itemToUpdate.size?.qty !== undefined &&
+        newQuantity > itemToUpdate.size.qty
+      ) {
+        toast.error(`Stok tidak mencukupi. Tersedia: ${itemToUpdate.size.qty}`);
+        return;
       }
 
-      // Ambil total yang benar dari server (tanpa mengubah UI)
+      // PENTING: Tunda update UI sampai konfirmasi dari server
+      // Jangan lakukan update optimistic
+
+      // Kirim request ke server
+      console.log("Sending update request with payload:", {
+        quantity: newQuantity,
+        userId: user?.id,
+        guestId: guestId,
+      });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/cart/${id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            quantity: newQuantity,
+            userId: user?.id,
+            guestId: guestId,
+          }),
+        }
+      );
+
+      // Tangani response dengan benar
+      let result;
+      try {
+        // Parse response JSON hanya sekali
+        result = await response.json();
+        console.log("Update response:", result);
+      } catch (e) {
+        console.error("Failed to parse response:", e);
+        throw new Error("Invalid response from server");
+      }
+
+      // Cek apakah request berhasil
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || "Gagal update quantity");
+      }
+
+      // Hanya update UI setelah konfirmasi server
+      if (result.data) {
+        console.log("Updating UI with result data:", result.data);
+        setCartItems((prevItems) =>
+          prevItems.map((item) =>
+            item.id === id ? { ...item, ...result.data } : item
+          )
+        );
+      } else {
+        console.log("No result data, refreshing cart data");
+        // Jika tidak ada data yang dikembalikan, refresh cart data
+        await fetchCartData();
+      }
+
+      // Update total
       const totalRes = await fetch(
-        `http://localhost:5000/cart/total?${
+        `${process.env.NEXT_PUBLIC_API_URL}/cart/total?${
           user?.id ? `userId=${user.id}` : `guestId=${guestId}`
         }`
       );
-
       if (totalRes.ok) {
         const serverTotal = await totalRes.text();
         setTotal(serverTotal);
       }
     } catch (error) {
       console.error("Error in updateCartItem:", error);
+
+      // Kembalikan ke state awal jika terjadi error
       setCartItems(originalItems);
       setTotal(originalTotal);
-      toast.error("Gagal update quantity");
+
+      // Tampilkan error
+      toast.error(
+        error instanceof Error ? error.message : "Gagal update quantity"
+      );
     } finally {
       setProcessingItems((prev) => prev.filter((itemId) => itemId !== id));
     }
   };
 
-  // Helper function untuk menghitung total baru secara lokal
-  const calculateNewTotal = (
-    items: CartItem[],
-    updatedId: number,
-    newQuantity: number
-  ): string => {
-    const total = items.reduce((sum, item) => {
-      const price = parseFloat(
-        item.size?.price?.replace(/[^0-9.-]+/g, "") || "0"
-      );
-      const quantity = item.id === updatedId ? newQuantity : item.quantity;
-      return sum + price * quantity;
-    }, 0);
-
-    return `Rp${total.toLocaleString("id-ID")}`;
-  };
-
-  // Hapus item dari cart tanpa fetch ulang
   const deleteCartItem = async (id: number) => {
+    console.log(`Deleting cart item ${id}`);
     try {
       setProcessingItems((prev) => [...prev, id]);
 
-      const response = await fetch(`http://localhost:5000/cart/${id}`, {
-        method: "DELETE",
-      });
-
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/cart/${id}`,
+        {
+          method: "DELETE",
+        }
+      );
       if (!response.ok) {
         throw new Error("Gagal menghapus item");
       }
@@ -174,7 +207,7 @@ const CartPage: React.FC = () => {
       setCartItems((prevItems) => prevItems.filter((item) => item.id !== id));
 
       const totalRes = await fetch(
-        `http://localhost:5000/cart/total?${
+        `${process.env.NEXT_PUBLIC_API_URL}/cart/total?${
           user?.id ? `userId=${user.id}` : `guestId=${guestId}`
         }`
       );
@@ -190,27 +223,24 @@ const CartPage: React.FC = () => {
     }
   };
 
-  // Fungsi untuk membuka modal dan mengatur item yang akan dihapus
   const confirmDeletion = (id: number) => {
-    setItemToDelete(id); // Set ID item yang akan dihapus
-    onOpen(); // Buka modal
+    setItemToDelete(id);
+    onOpen();
   };
 
-  // Fungsi untuk menghapus item setelah konfirmasi
   const handleDelete = async () => {
     if (itemToDelete) {
-      await deleteCartItem(itemToDelete); // Panggil fungsi penghapusan
+      await deleteCartItem(itemToDelete);
     }
-    onClose(); // Tutup modal setelah selesai
+    onClose();
   };
 
-  // Inisialisasi guest session
   const initializeGuestSession = useCallback(async () => {
     const storedGuestId = localStorage.getItem("guestId");
     if (!storedGuestId) {
       try {
         const response = await fetch(
-          "http://localhost:5000/cart/guest-session"
+          `${process.env.NEXT_PUBLIC_API_URL}/cart/guest-session`
         );
         const { guestId } = await response.json();
         localStorage.setItem("guestId", guestId);
@@ -226,19 +256,26 @@ const CartPage: React.FC = () => {
 
   return (
     <div className="container mx-auto p-4">
+      {/* Toast Container untuk notifikasi */}
       <ToastContainer position="top-center" />
+
+      {/* Judul Halaman */}
       <h2 className="text-2xl font-bold mb-4">Keranjang Belanja</h2>
+
+      {/* Loading State */}
       {loading ? (
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="animate-pulse bg-gray-200 h-24 rounded" />
-          ))}
+        <div className="flex items-center justify-center h-64">
+          <p className="text-lg text-gray-600 animate-pulse">
+            Memuat keranjang...
+          </p>
         </div>
       ) : cartItems.length === 0 ? (
-        <p>Keranjang Anda kosong.</p>
+        <div className="flex items-center justify-center h-64">
+          <p className="text-lg">Keranjang Anda kosong.</p>
+        </div>
       ) : (
         <div className="flex flex-col md:flex-row gap-6">
-          {/* Daftar Item Cart */}
+          {/* Bagian Kiri: Daftar Item */}
           <div className="w-full md:w-2/3">
             <div className="grid gap-4">
               {cartItems.map((item) => (
@@ -255,6 +292,7 @@ const CartPage: React.FC = () => {
                           className="object-cover rounded-lg"
                         />
                       )}
+
                       {/* Detail Produk */}
                       <div className="flex-1 text-center md:text-left">
                         <h3 className="text-lg capitalize font-semibold">
@@ -266,9 +304,16 @@ const CartPage: React.FC = () => {
                         <p className="text-medium text-gray-600">
                           Harga: {item.size?.price}
                         </p>
+                        {item.size?.qty !== undefined && (
+                          <p className="text-sm text-gray-500">
+                            Tersedia: {item.size.qty}
+                          </p>
+                        )}
                       </div>
-                      {/* Tombol Quantity */}
+
+                      {/* Tombol Pengaturan Jumlah */}
                       <div className="flex flex-row gap-2 items-center">
+                        {/* Tombol Kurangi (-) */}
                         <Button
                           size="sm"
                           variant="ghost"
@@ -283,12 +328,36 @@ const CartPage: React.FC = () => {
                         >
                           -
                         </Button>
+
+                        {/* Jumlah Saat Ini */}
                         <span className="px-2">{item.quantity}</span>
+
+                        {/* Tombol Tambah (+) */}
                         <Button
                           size="sm"
                           variant="ghost"
-                          disabled={processingItems.includes(item.id)}
+                          disabled={
+                            processingItems.includes(item.id) ||
+                            (item.size?.qty !== undefined &&
+                              item.quantity >= item.size.qty)
+                          }
                           onPress={() => {
+                            // Validasi tambahan untuk mencegah spam klik
+                            if (processingItems.includes(item.id)) {
+                              return; // Jangan proses jika sedang memproses item ini
+                            }
+
+                            // Validasi client-side
+                            if (
+                              item.size?.qty !== undefined &&
+                              item.quantity >= item.size.qty
+                            ) {
+                              toast.error(
+                                `Stok tidak mencukupi. Tersedia: ${item.size.qty}`
+                              );
+                              return;
+                            }
+
                             const newQuantity = item.quantity + 1;
                             updateCartItem(item.id, newQuantity);
                           }}
@@ -296,6 +365,7 @@ const CartPage: React.FC = () => {
                           +
                         </Button>
                       </div>
+
                       {/* Tombol Hapus */}
                       <Button
                         size="sm"
@@ -311,7 +381,8 @@ const CartPage: React.FC = () => {
               ))}
             </div>
           </div>
-          {/* Total dan Checkout */}
+
+          {/* Bagian Kanan: Ringkasan Belanja */}
           <div className="w-full md:w-1/3">
             <Card className="sticky top-4">
               <CardHeader>
@@ -319,11 +390,16 @@ const CartPage: React.FC = () => {
               </CardHeader>
               <CardBody>
                 <div className="flex flex-col gap-4">
+                  {/* Total Harga */}
                   <div className="flex justify-between items-center">
                     <span className="text-lg">Total:</span>
                     <span className="text-xl font-bold">{total}</span>
                   </div>
+
+                  {/* Divider */}
                   <Divider />
+
+                  {/* Tombol Checkout */}
                   <div className="flex justify-end">
                     <Link href="/checkout">
                       <Button
@@ -342,6 +418,7 @@ const CartPage: React.FC = () => {
         </div>
       )}
 
+      {/* Modal Konfirmasi Hapus */}
       <Modal isOpen={isOpen} onClose={onClose}>
         <ModalContent>
           <ModalBody>

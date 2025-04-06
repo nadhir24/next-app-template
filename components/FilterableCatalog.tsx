@@ -4,6 +4,7 @@ import { Card, CardBody, CardFooter } from "@heroui/card";
 import { Button as NextUIButton } from "@heroui/button";
 import { Input } from "@heroui/input";
 import { Slider } from "@heroui/slider";
+import { Skeleton } from "@heroui/skeleton";
 import axios from "axios";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -31,6 +32,9 @@ export default function FilterableCatalog() {
   const [catalogs, setCatalogs] = useState<Catalog[]>([]);
   const [filteredCatalogs, setFilteredCatalogs] = useState<Catalog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadingItems, setLoadingItems] = useState<{ [key: number]: boolean }>(
+    {}
+  );
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
@@ -40,7 +44,9 @@ export default function FilterableCatalog() {
       try {
         setIsLoading(true);
         setError(null);
-        const response = await axios.get("http://localhost:5000/catalog/");
+        const response = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/catalog/`
+        );
         setCatalogs(response.data);
         setFilteredCatalogs(response.data);
       } catch (error) {
@@ -91,7 +97,12 @@ export default function FilterableCatalog() {
   };
 
   // Navigate to product detail page
-  const viewProductDetails = (categorySlug: string, productSlug: string) => {
+  const viewProductDetails = (
+    catalogId: number,
+    categorySlug: string,
+    productSlug: string
+  ) => {
+    setLoadingItems((prev) => ({ ...prev, [catalogId]: true }));
     router.push(`/katalog/${categorySlug}/${productSlug}`);
   };
 
@@ -143,8 +154,22 @@ export default function FilterableCatalog() {
         {/* Main Content Area - Konten selalu di kanan filter */}
         <div className="flex-1 min-h-screen">
           {isLoading ? (
-            <div className="w-full h-[calc(100vh-8rem)] flex items-center justify-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, index) => (
+                <Card key={index} className="shadow-lg">
+                  <CardBody>
+                    <Skeleton className="w-full aspect-square rounded-xl" />
+                    <div className="mt-4 space-y-3">
+                      <Skeleton className="h-6 w-3/4" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-1/2" />
+                    </div>
+                  </CardBody>
+                  <CardFooter>
+                    <Skeleton className="h-10 w-full rounded-lg" />
+                  </CardFooter>
+                </Card>
+              ))}
             </div>
           ) : error ? (
             <div className="w-full p-4 text-center text-red-500">{error}</div>
@@ -155,9 +180,9 @@ export default function FilterableCatalog() {
                   <CardBody>
                     <div className="relative w-full aspect-square">
                       <Image
-                        src={`http://localhost:5000/catalog/images/${catalog.image
-                          ?.split("/")
-                          .pop()}`}
+                        src={`${
+                          process.env.NEXT_PUBLIC_API_URL
+                        }/catalog/images/${catalog.image?.split("/").pop()}`}
                         alt={catalog.name}
                         fill
                         className="rounded-xl object-cover"
@@ -170,12 +195,28 @@ export default function FilterableCatalog() {
                         {catalog.description}
                       </p>
                       <p className="mt-2 font-medium">
-                        Starting from Rp{" "}
+                        Starting from{" "}
                         {catalog.sizes.length > 0
-                          ? parseFloat(
-                              catalog.sizes[0].price.replace(/[^0-9.-]+/g, "")
-                            ).toLocaleString("id-ID")
-                          : "0"}
+                          ? "Rp" +
+                            catalog.sizes
+                              .map((size) =>
+                                size.price.replace(/[^0-9.-]+/g, "")
+                              )
+                              .reduce((minPriceStr, currentPriceStr) => {
+                                // Fungsi bantu untuk membandingkan harga string
+                                const numMinPrice = parseInt(
+                                  minPriceStr.replace(/[^0-9]/g, ""),
+                                  10
+                                );
+                                const numCurrentPrice = parseInt(
+                                  currentPriceStr.replace(/[^0-9]/g, ""),
+                                  10
+                                );
+                                return numCurrentPrice < numMinPrice
+                                  ? currentPriceStr
+                                  : minPriceStr;
+                              })
+                          : "Rp 0"}
                       </p>
                       {parseInt(catalog.qty) === 0 && (
                         <p className="text-red-500 font-bold mt-1">
@@ -189,17 +230,18 @@ export default function FilterableCatalog() {
                       className="w-full"
                       onPress={() =>
                         viewProductDetails(
+                          catalog.id,
                           catalog.categorySlug,
                           catalog.productSlug
                         )
                       }
                       disabled={parseInt(catalog.qty) === 0}
-                      isLoading={isLoading}
+                      isLoading={loadingItems[catalog.id] || false}
                       spinner={
                         <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
                       }
                     >
-                      {isLoading ? "Loading..." : "View Details"}
+                      {loadingItems[catalog.id] ? "Loading..." : "View Details"}
                     </NextUIButton>
                   </CardFooter>
                 </Card>

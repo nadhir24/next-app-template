@@ -43,10 +43,10 @@ export default function Modall() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
-  // Update the handleCart function to have a proper type for cart
+  // Fix: Remove the recursive call to handleCart
   const handleCart = (cart: CartItem[]) => {
-    // Function to handle cart
-    console.log(cart);
+    saveCart(cart);
+    // You might want to perform other actions here, but avoid calling handleCart again
   };
 
   const {
@@ -205,9 +205,14 @@ export default function Modall() {
       setPhoneNumber("");
       setPassword("");
       setConfirmPassword("");
-    } catch (error) {
+      toast.success("Registrasi berhasil! Silakan login.");
+    } catch (error: any) {
       console.error("Error during sign up:", error);
-      alert("Registrasi gagal. Silakan coba lagi.");
+      if (error.response && error.response.data && error.response.data.message) {
+        toast.error(`Registrasi gagal: ${error.response.data.message}`);
+      } else {
+        toast.error("Registrasi gagal. Silakan coba lagi.");
+      }
     }
   };
 
@@ -319,10 +324,10 @@ export default function Modall() {
                 >
                   Close
                 </Button>
+                {/* Fix: Use the Button component directly with the handleLogin function */}
                 <Button
                   color="primary"
                   onPress={handleLogin}
-                  isLoading={isLoading}
                   isDisabled={isLoading}
                 >
                   Sign in

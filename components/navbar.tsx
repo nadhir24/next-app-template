@@ -8,6 +8,7 @@ import {
   NavbarItem,
   NavbarMenuItem,
 } from "@heroui/navbar";
+import { Skeleton } from "@heroui/skeleton";
 import Modall from "./modal";
 import { siteConfig } from "@/config/site";
 import { ThemeSwitch } from "./theme-switch";
@@ -21,21 +22,33 @@ export default function Navy() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Cek status login dan user data
-    const userData = localStorage.getItem("user");
-    if (userData) {
-      const parsedUser = JSON.parse(userData);
-      setUser(parsedUser);
-      setIsLoggedIn(true);
-    }
+    const initializeData = async () => {
+      setIsLoading(true);
+      try {
+        // Cek status login dan user data
+        const userData = localStorage.getItem("user");
+        if (userData) {
+          const parsedUser = JSON.parse(userData);
+          setUser(parsedUser);
+          setIsLoggedIn(true);
+        }
 
-    // Ambil data cart dari localStorage
-    const storedCart = localStorage.getItem("cart");
-    if (storedCart) {
-      setCartItems(JSON.parse(storedCart));
-    }
+        // Ambil data cart dari localStorage
+        const storedCart = localStorage.getItem("cart");
+        if (storedCart) {
+          setCartItems(JSON.parse(storedCart));
+        }
+      } catch (error) {
+        console.error("Error initializing data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initializeData();
   }, []);
 
   return (
@@ -66,16 +79,25 @@ export default function Navy() {
         justify="end"
       >
         <NavbarItem className="sm:flex gap-2">
-          <HoverCartModal
-            cartItems={cartItems}
-            setCartItems={setCartItems}
-            isLoggedIn={isLoggedIn}
-            userId={user?.id}
-          />
-          <ThemeSwitch />
+          {isLoading ? (
+            <div className="flex gap-2">
+              <Skeleton className="h-10 w-24 rounded-lg" />
+              <Skeleton className="h-10 w-10 rounded-lg" />
+            </div>
+          ) : (
+            <>
+              <HoverCartModal
+                cartItems={cartItems}
+                setCartItems={setCartItems}
+                isLoggedIn={isLoggedIn}
+                userId={user?.id}
+              />
+              <ThemeSwitch />
+            </>
+          )}
         </NavbarItem>
         <NavbarItem>
-          <Modall />
+          {isLoading ? <Skeleton className="h-10 w-24 rounded-lg" /> : <Modall />}
         </NavbarItem>
       </NavbarContent>
       <NavbarMenu>

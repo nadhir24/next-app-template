@@ -5,7 +5,13 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "@/components/ui/card";
 import { TruckIcon, CreditCard, ShieldCheck, Package } from "lucide-react";
 import Tombol from "@/components/button";
 
@@ -70,6 +76,7 @@ export default function CheckoutPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [selectedShippingMethod, setSelectedShippingMethod] =
     useState<string>("gojek");
+  const [totalFromBackend, setTotalFromBackend] = useState<number | null>(null);
 
   const shippingMethods: ShippingMethod[] = [
     {
@@ -81,15 +88,15 @@ export default function CheckoutPage() {
     },
   ];
 
-  // Fungsi untuk mengambil data user jika sudah login
   const fetchUserData = async (userId: string) => {
+    console.log("Fetching user data for userId:", userId);
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/users/${userId}`
       );
       if (!response.ok) throw new Error("Failed to fetch user data");
-
       const userData = await response.json();
+      console.log("User data received:", userData);
       setShippingAddress({
         firstName: userData.firstName || "",
         lastName: userData.lastName || "",
@@ -103,71 +110,98 @@ export default function CheckoutPage() {
       });
     } catch (error) {
       console.error("Error fetching user data:", error);
+      toast.error("Gagal mengambil data pengguna");
     }
   };
 
-  // Fungsi untuk mengambil data checkout
-  const fetchCheckoutData = useCallback(
-    async (userIdParam?: string) => {
-      try {
-        const isLoggedIn = !!userIdParam || !!userId;
-        const guestIdFromStorage = localStorage.getItem("guestId");
+  const fetchCartData = useCallback(async () => {
+    try {
+      const userIdParam = userId || localStorage.getItem("userId");
+      const guestIdFromStorage = localStorage.getItem("guestId");
+      
+      let url;
+      if (userIdParam) {
+        url = `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?userId=${userIdParam}`;
+      } else if (guestIdFromStorage) {
+        url = `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?guestId=${guestIdFromStorage}`;
+      } else {
+        console.log("No valid session found");
+        return;
+      }
 
-        let url = "";
-        if (isLoggedIn) {
-          url = `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?userId=${
-            userIdParam || userId
-          }`;
-        } else if (guestIdFromStorage) {
-          url = `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?guestId=${guestIdFromStorage}`;
-        } else {
-          return;
-        }
+      const [itemsRes, totalRes] = await Promise.all([
+        fetch(url),
+        fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/cart/total?${
+            userIdParam ? `userId=${userIdParam}` : `guestId=${guestIdFromStorage}`
+          }`
+        ),
+      ]);
 
-        const response = await fetch(url);
-        if (!response.ok) throw new Error("Gagal mengambil data");
-        const items = await response.json();
+      if (!itemsRes.ok || !totalRes.ok) {
+        throw new Error("Gagal mengambil data");
+      }
 
-        // Transformasi data untuk format CheckoutData
-        const transformedItems = items.map((item: any) => ({
+      const [items, totalText] = await Promise.all([
+        itemsRes.json(),
+        totalRes.text(),
+      ]);
+
+      // Extract numeric value from total text (e.g., "Rp150.000" -> 150000)
+      const totalValue = parseInt(totalText.replace(/[^0-9]/g, "")) || 0;
+      setTotalFromBackend(totalValue);
+
+      const transformedItems = items.map((item: any) => {
+        const sizeValue =
+          typeof item.size === "object" ? item.size.size : item.size || "";
+
+        const priceValue =
+          typeof item.size === "object" && item.size.price
+            ? parseInt(item.size.price.replace(/[^0-9]/g, ""))
+            : 0;
+
+        return {
           id: item.id.toString(),
           name: item.catalog?.name || "",
-          price: parseFloat(item.size?.price?.replace(/[^0-9.-]+/g, "") || "0"),
+          price: priceValue,
           quantity: item.quantity,
-          size: item.size?.size || "",
+          size: sizeValue,
           image: item.catalog?.image || "",
-        }));
+        };
+      });
 
-        const subtotal = transformedItems.reduce((total: number, item: any) => {
-          return total + item.price * item.quantity;
-        }, 0);
+      const subtotal = transformedItems.reduce(
+        (total: number, item: CartItem) => total + item.price * item.quantity,
+        0
+      );
 
-        setCheckoutData({
-          items: transformedItems,
-          subtotal: subtotal,
-          shipping: 0,
-          total: subtotal,
-        });
+      const shippingCost =
+        shippingMethods.find((method) => method.id === selectedShippingMethod)
+          ?.price || 0;
 
-        // Update localStorage dengan data terbaru
-        localStorage.setItem("cart", JSON.stringify(items));
-      } catch (error) {
-        console.error("Error fetching cart:", error);
-        toast.error("Gagal mengambil data cart");
-      }
-    },
-    [userId, setCheckoutData]
-  );
+      setCheckoutData({
+        items: transformedItems,
+        subtotal: subtotal,
+        shipping: shippingCost,
+        total: totalValue || subtotal + shippingCost,
+      });
+    } catch (error) {
+      console.error("Error fetching cart:", error);
+      toast.error("Gagal mengambil data cart");
+    }
+  }, [userId, selectedShippingMethod]);
+  
+  // Keeping the old function name for compatibility
+  const fetchCheckoutData = fetchCartData;
 
-  // Effect untuk mengecek user login dan mengambil data
   useEffect(() => {
     const userIdFromStorage = localStorage.getItem("userId");
     if (userIdFromStorage) {
       setUserId(userIdFromStorage);
       fetchUserData(userIdFromStorage);
     }
-    fetchCheckoutData(userIdFromStorage || undefined);
-  }, [fetchCheckoutData]);
+    fetchCartData();
+  }, [fetchCartData, fetchUserData]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -180,24 +214,26 @@ export default function CheckoutPage() {
   const createTransaction = async () => {
     setLoading(true);
     try {
-      // Get the selected shipping method
       const selectedMethod = shippingMethods.find(
         (method) => method.id === selectedShippingMethod
       );
+
+      // Pastikan total yang dikirim ke Midtrans sudah benar
+      // Gunakan totalFromBackend jika tersedia, jika tidak hitung dari subtotal + shipping
+      const finalTotal = totalFromBackend || (checkoutData.subtotal + (selectedMethod?.price || 0));
+      console.log("Sending transaction with total:", finalTotal);
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/payment/snap/create-transaction`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             userId,
             shippingAddress,
             items: checkoutData.items,
             shipping: selectedMethod?.price || 0,
-            total: checkoutData.subtotal + (selectedMethod?.price || 0),
+            total: finalTotal,
           }),
         }
       );
@@ -216,18 +252,42 @@ export default function CheckoutPage() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen py-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-8">
+            <div className="h-8 w-48 mx-auto bg-gray-200 rounded animate-pulse mb-2"></div>
+            <div className="h-4 w-64 mx-auto bg-gray-200 rounded animate-pulse"></div>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-6">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="h-64 bg-gray-200 rounded animate-pulse"
+                ></div>
+              ))}
+            </div>
+            <div className="h-96 bg-gray-200 rounded animate-pulse"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 py-10">
+    <div className="min-h-screen py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Checkout</h1>
-          <p className="mt-2 text-gray-600">Selesaikan pembelian Anda dengan aman</p>
+          <p className="mt-2 text-gray-600">
+            Selesaikan pembelian Anda dengan aman
+          </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Form Bagian */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Contact Section */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -261,7 +321,6 @@ export default function CheckoutPage() {
               </CardContent>
             </Card>
 
-            {/* Delivery Section */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -349,7 +408,6 @@ export default function CheckoutPage() {
               </CardContent>
             </Card>
 
-            {/* Shipping Method Section */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -360,7 +418,11 @@ export default function CheckoutPage() {
                 {shippingMethods.map((method) => (
                   <div
                     key={method.id}
-                    className={`border rounded-lg p-4 flex justify-between items-center cursor-pointer transition-colors ${selectedShippingMethod === method.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
+                    className={`border rounded-lg p-4 flex justify-between items-center cursor-pointer transition-colors ${
+                      selectedShippingMethod === method.id
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
                     onClick={() => setSelectedShippingMethod(method.id)}
                   >
                     <div className="flex items-center">
@@ -390,7 +452,6 @@ export default function CheckoutPage() {
               </CardContent>
             </Card>
 
-            {/* Payment Section */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -398,27 +459,33 @@ export default function CheckoutPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg mb-4 bg-white">
+                <div className="border p-4">
+                  <div className="flex items-center justify-between p-3 border mb-4 bg-white">
                     <div className="flex items-center">
                       <span className="font-medium">Payments By Midtrans</span>
                     </div>
                     <div className="flex space-x-2 opacity-70">
-                      <span className="text-xs bg-gray-100 px-2 py-1 rounded">VISA</span>
-                      <span className="text-xs bg-gray-100 px-2 py-1 rounded">MASTERCARD</span>
-                      <span className="text-xs bg-gray-100 px-2 py-1 rounded">JCB</span>
+                      <span className="text-xs px-2 py-1 rounded">VISA</span>
+                      <span className="text-xs px-2 py-1 rounded">
+                        MASTERCARD
+                      </span>
+                      <span className="text-xs px-2 py-1 rounded">JCB</span>
                     </div>
                   </div>
                   <div className="text-center text-sm text-gray-600 mt-4">
-                    <p>Setelah mengklik "Bayar Sekarang", Anda akan diarahkan ke</p>
-                    <p>Payments By Midtrans untuk menyelesaikan pembelian Anda dengan aman.</p>
+                    <p>
+                      Setelah mengklik "Bayar Sekarang", Anda akan diarahkan ke
+                    </p>
+                    <p>
+                      Payments By Midtrans untuk menyelesaikan pembelian Anda
+                      dengan aman.
+                    </p>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Cart Summary */}
           <div className="lg:col-span-1">
             <div className="sticky top-6">
               <Card>
@@ -426,14 +493,13 @@ export default function CheckoutPage() {
                   <CardTitle className="text-lg">Ringkasan Pesanan</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Cart Items */}
                   <div className="max-h-[300px] overflow-y-auto pr-2 space-y-4">
                     {checkoutData.items.map((item) => (
                       <div
                         key={item.id}
-                        className="flex items-center pb-4 border-b border-gray-100"
+                        className="flex items-center pb-4 border-b"
                       >
-                        <div className="relative w-16 h-16 bg-gray-100 rounded-md mr-4 overflow-hidden">
+                        <div className="relative w-16 h-16 rounded-md mr-4 overflow-hidden">
                           <Image
                             src={item.image || "/blurry.svg"}
                             alt={item.name}
@@ -445,8 +511,12 @@ export default function CheckoutPage() {
                           </div>
                         </div>
                         <div className="flex-1">
-                          <h3 className="text-sm font-medium line-clamp-1">{item.name}</h3>
-                          <p className="text-xs text-gray-500">Ukuran: {item.size}</p>
+                          <h3 className="text-sm font-medium line-clamp-1">
+                            {item.name}
+                          </h3>
+                          <p className="text-xs text-gray-500">
+                            Ukuran: {item.size}
+                          </p>
                         </div>
                         <div className="text-right">
                           <p className="text-sm font-medium">
@@ -457,7 +527,6 @@ export default function CheckoutPage() {
                     ))}
                   </div>
 
-                  {/* Discount Code */}
                   <div className="flex space-x-2">
                     <Input
                       type="text"
@@ -466,42 +535,36 @@ export default function CheckoutPage() {
                       onChange={(e) => setDiscountCode(e.target.value)}
                       className="flex-1"
                     />
-                    <Tombol variant="shadow" size="sm" className="whitespace-nowrap">
+                    <Tombol
+                      variant="shadow"
+                      size="sm"
+                      className="whitespace-nowrap"
+                    >
                       Terapkan
                     </Tombol>
                   </div>
 
-                  {/* Order Summary */}
-                  <div className="space-y-2 pt-4 border-t border-gray-100">
+                  <div className="space-y-2 pt-4 border-t">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Subtotal</span>
                       <span>Rp {checkoutData.subtotal.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Pengiriman</span>
-                      {selectedShippingMethod ? (
-                        <span>
-                          Rp{" "}
-                          {shippingMethods
-                            .find((m) => m.id === selectedShippingMethod)
-                            ?.price.toLocaleString() || 0}
-                        </span>
-                      ) : (
-                        <span className="text-gray-500">
-                          Pilih metode pengiriman
-                        </span>
-                      )}
+                      <span>
+                        Rp{" "}
+                        {shippingMethods
+                          .find((m) => m.id === selectedShippingMethod)
+                          ?.price.toLocaleString() || 0}
+                      </span>
                     </div>
-                    <div className="flex justify-between pt-2 border-t border-gray-100 text-base font-medium">
+                    <div className="flex justify-between pt-2 border-t text-base font-medium">
                       <span>Total</span>
                       <span>
                         Rp{" "}
-                        {(
-                          checkoutData.subtotal +
-                          (shippingMethods.find(
-                            (m) => m.id === selectedShippingMethod
-                          )?.price || 0)
-                        ).toLocaleString()}
+                        {totalFromBackend
+                          ? totalFromBackend.toLocaleString()
+                          : checkoutData.total.toLocaleString()}
                       </span>
                     </div>
                   </div>

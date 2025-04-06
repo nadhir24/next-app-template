@@ -43,17 +43,9 @@ const HoverCartModal: React.FC<HoverCartModalProps> = ({
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [guestId, setGuestId] = useState<string | null>(null);
-  const [localCartItems, setLocalCartItems] = useState<CartItem[]>([]);
-
-  // Inisialisasi data dari localStorage
-  useEffect(() => {
-    const storedCart = localStorage.getItem("cart");
-    if (storedCart) {
-      const parsedCart = JSON.parse(storedCart);
-      setLocalCartItems(parsedCart);
-      setCartItems(parsedCart); // Update parent state juga
-    }
-  }, []);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isDebouncing, setIsDebouncing] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
 
   // Inisialisasi guest session
   const initializeGuestSession = useCallback(async () => {
@@ -61,7 +53,7 @@ const HoverCartModal: React.FC<HoverCartModalProps> = ({
     if (!storedGuestId) {
       try {
         const response = await fetch(
-          "http://localhost:5000/cart/guest-session"
+          `${process.env.NEXT_PUBLIC_API_URL}/cart/guest-session`
         );
         const { guestId } = await response.json();
         localStorage.setItem("guestId", guestId);
@@ -76,12 +68,16 @@ const HoverCartModal: React.FC<HoverCartModalProps> = ({
 
   // Mengambil data cart dari backend
   const fetchCartData = useCallback(async () => {
+    if (isLoading || isDebouncing) return;
+
     try {
+      setIsLoading(true);
+      setIsDebouncing(true);
       let url = "";
       if (isLoggedIn && userId) {
-        url =  `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?userId=${userId}`;
+        url = `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?userId=${userId}`;
       } else if (guestId) {
-        url =  `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?guestId=${guestId}`;
+        url = `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?guestId=${guestId}`;
       } else {
         return;
       }
@@ -90,11 +86,14 @@ const HoverCartModal: React.FC<HoverCartModalProps> = ({
       if (!response.ok) throw new Error("Gagal mengambil data");
       const items = await response.json();
       setCartItems(items);
-      // Update localStorage dengan data terbaru dari backend
+      setCartCount(items.length); // Simpan jumlah item di state terpisah
       localStorage.setItem("cart", JSON.stringify(items));
     } catch (error) {
       console.error("Error fetching cart:", error);
       toast.error("Gagal mengambil data cart");
+    } finally {
+      setIsLoading(false);
+      setTimeout(() => setIsDebouncing(false), 1000); 
     }
   }, [guestId, isLoggedIn, userId, setCartItems]);
 
@@ -106,20 +105,13 @@ const HoverCartModal: React.FC<HoverCartModalProps> = ({
 
   useEffect(() => {
     fetchCartData();
-  }, [fetchCartData, isLoggedIn, userId, guestId]);
-
-  // Log untuk debugging
-  useEffect(() => {
-    console.log("Cart Items:", cartItems);
-    console.log("Is Logged In:", isLoggedIn);
-    console.log("User ID:", userId);
-    console.log("Guest ID:", guestId);
-  }, [cartItems, isLoggedIn, userId, guestId]);
-
+  }, [fetchCartData]);
+ 
   return (
     <>
       <Button onPress={() => setIsModalOpen(true)}>
-        Keranjang ({localCartItems.length || cartItems.length})
+        {cartCount > 0 ? `Keranjang (${cartCount})` : "Keranjang"}
+        {isLoading && " ..."}
       </Button>
 
       <Modal
