@@ -39,26 +39,27 @@ export default function SuksesPage() {
   const orderId = searchParams.get('order_id');
 
   useEffect(() => {
-    const fetchOrderDetail = async () => {
-      if (!orderId) {
-        setLoading(false);
-        return;
-      }
-      
+    if (!orderId) return;
+
+    const interval = setInterval(async () => {
       try {
-        setLoading(true);
         const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/payment/snap/order-detail?orderId=${orderId}`);
+        console.log("Respon dari backend:", response.data);
+
         if (response.data.success) {
           setOrderDetail(response.data.data);
-        }
-      } catch (error) {
-        console.error('Error fetching order details:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+          setLoading(false); // ✅ Set loading ke false setelah data didapat
 
-    fetchOrderDetail();
+          if (response.data.data.status === 'settlement') {
+            clearInterval(interval); // Stop polling kalau sudah sukses
+          }
+        }
+      } catch (err) {
+        console.error('Polling error:', err);
+      }
+    }, 3000); // Cek setiap 3 detik
+
+    return () => clearInterval(interval);
   }, [orderId]);
 
   return (
