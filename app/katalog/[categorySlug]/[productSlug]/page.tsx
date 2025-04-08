@@ -1,4 +1,5 @@
 "use client";
+
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import axios from "axios";
@@ -22,24 +23,12 @@ interface Catalog {
   sizes: Size[];
   qty: string;
   description: string;
-  blurDataURL?: string; // Optional field
-}
-
-interface GuestCartItem {
-  catalogId: number;
-  name: string;
-  image: string | null;
-  sizeId: number;
-  size: string;
-  price: string;
-  quantity: number;
 }
 
 const ProductDetailPage = () => {
   const [product, setProduct] = useState<Catalog | null>(null);
   const [selectedSize, setSelectedSize] = useState<Size | null>(null);
   const [isCartModalOpen, setIsCartModalOpen] = useState(false);
-  const [guestCart, setGuestCart] = useState<GuestCartItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const params = useParams();
 
@@ -56,11 +45,10 @@ const ProductDetailPage = () => {
           `${process.env.NEXT_PUBLIC_API_URL}/catalog/${categorySlug}/${productSlug}`
         );
         setProduct(response.data);
-        if (response.data.sizes.length > 0) {
+        if (response.data.sizes && response.data.sizes.length > 0) {
+          // Ensure sizes is defined
           setSelectedSize(response.data.sizes[0]);
         }
-        const guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
-        setGuestCart(guestCart);
       } catch (error) {
         console.error("Error fetching product details:", error);
         toast.error("Failed to load product details.");
@@ -88,44 +76,25 @@ const ProductDetailPage = () => {
       return;
     }
 
-    const isLoggedIn = localStorage.getItem("user") !== null; // Cek login sebenarnya
+    const isLoggedIn = localStorage.getItem("user") !== null;
     isLoggedIn ? handleAddToLoggedInCart() : handleAddToGuestCart();
   };
 
   const handleAddToLoggedInCart = async () => {
     try {
-      // Tambahkan null check dan non-null assertion
-      if (!selectedSize) {
-        toast.error("Silakan pilih ukuran terlebih dahulu");
-        return;
-      }
+      if (!selectedSize || !product || !product.image) return; // Ensure product.image is not null
 
-      // Ambil data user dari localStorage
       const userData = JSON.parse(localStorage.getItem("user") || "{}");
       const userId = userData.id || 0;
 
-      // Cek apakah item sudah ada di cart untuk menentukan quantity
-      const existingCartItems = JSON.parse(
-        localStorage.getItem("cart") || "[]"
-      );
-      const existingItem = existingCartItems.find(
-        (item: any) =>
-          item.catalogId === product?.id && item.sizeId === selectedSize.id
-      );
-
-      // Jika item sudah ada, tambahkan quantity, jika belum ada set quantity ke 1
-      const quantity = existingItem ? existingItem.quantity + 1 : 1;
-
       await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/cart/add`, {
-        userId: userId,
-        catalogId: product?.id || 0,
-        sizeId: selectedSize.id, // Sekarang aman karena sudah dilakukan null check
-        quantity: quantity,
+        userId,
+        catalogId: product.id,
+        sizeId: selectedSize.id,
+        quantity: 1,
       });
 
-      // Fetch cart data setelah berhasil menambahkan item
       await fetchCartData(userId);
-
       toast.success("Item berhasil ditambahkan ke keranjang!");
     } catch (error) {
       console.error("Error adding item to cart:", error);
@@ -133,75 +102,86 @@ const ProductDetailPage = () => {
     }
   };
 
-  // Fungsi untuk mengambil data cart dari server
+  const getOrCreateGuestId = async (): Promise<string | null> => {
+    let guestId = localStorage.getItem("guestId");
+
+    if (!guestId) {
+      try {
+        const res = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/cart/guest-session`
+        );
+        guestId = res.data.guestId;
+        if (guestId) {
+          localStorage.setItem("guestId", guestId);
+        }
+      } catch (error) {
+        console.error("Error creating guest session:", error);
+        return null;
+      }
+    }
+
+    return guestId;
+  };
+
+  const handleAddToGuestCart = async () => {
+    try {
+      if (!product || !selectedSize || !product.image) return;
+
+      const guestId = await getOrCreateGuestId();
+      if (!guestId) {
+        toast.error("Failed to create guest session");
+        return;
+      }
+
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/cart/add`,
+        {
+          guestId,
+          catalogId: product.id,
+          sizeId: selectedSize.id,
+          quantity: 1,
+        }
+      );
+
+      if (response.data.success) {
+        if (response.data.data) {
+          localStorage.setItem("cart", JSON.stringify(response.data.data));
+        }
+        setIsCartModalOpen(true);
+        toast.success("Item berhasil ditambahkan ke keranjang!");
+      } else {
+        throw new Error(
+          response.data.message || "Gagal menambahkan item ke keranjang"
+        );
+      }
+    } catch (error) {
+      const err = error as Error;
+      console.error("Error adding item to cart:", err);
+      toast.error(err.message || "Gagal menambahkan item ke keranjang");
+    }
+  };
+
   const fetchCartData = async (userId?: number) => {
     try {
       let url = "";
+
       if (userId) {
         url = `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?userId=${userId}`;
       } else {
         const guestId = localStorage.getItem("guestId");
-        if (guestId) {
-          url = `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?guestId=${guestId}`;
-        } else {
-          return;
-        }
+        if (!guestId) return;
+        url = `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?guestId=${guestId}`;
       }
 
       const response = await axios.get(url);
       if (response.data) {
-        // Update localStorage dengan data terbaru dari backend
         localStorage.setItem("cart", JSON.stringify(response.data));
       }
     } catch (error) {
       console.error("Error fetching cart:", error);
     }
   };
-  const handleAddToGuestCart = async () => {
-    if (!product || !selectedSize) return;
-    const productImage = product.image || "/default-product-image.jpg";
 
-    const newItem: GuestCartItem = {
-      catalogId: product.id,
-      name: product.name,
-      image: productImage, // Gunakan fallback jika null
-      sizeId: selectedSize.id,
-      size: selectedSize.size,
-      price: selectedSize.price,
-      quantity: 1,
-    };
-
-    setGuestCart((prevCart) => {
-      // Cari item yang sama di cart sebelumnya
-      const existingIndex = prevCart.findIndex(
-        (item) =>
-          item.catalogId === newItem.catalogId && item.sizeId === newItem.sizeId
-      );
-
-      let newCart = [...prevCart];
-
-      if (existingIndex > -1) {
-        // Jika item sudah ada, tambahkan quantity
-        newCart[existingIndex] = {
-          ...newCart[existingIndex],
-          quantity: newCart[existingIndex].quantity + 1,
-        };
-      } else {
-        // Jika item belum ada, tambahkan item baru
-        newCart = [...newCart, newItem];
-      }
-
-      // Simpan ke localStorage
-      localStorage.setItem("guestCart", JSON.stringify(newCart));
-      return newCart;
-    });
-
-    // Fetch cart data untuk memperbarui tampilan keranjang
-    await fetchCartData();
-
-    setIsCartModalOpen(true);
-    toast.success("Item berhasil ditambahkan ke keranjang!");
-  };
   const handleCloseCartModal = () => {
     setIsCartModalOpen(false);
   };
@@ -239,7 +219,7 @@ const ProductDetailPage = () => {
               <Image
                 src={`${
                   process.env.NEXT_PUBLIC_API_URL
-                }/catalog/images/${product.image.split("/").pop()}`}
+                }/catalog/images/${product.image.split("/").pop()!}`} // Non-null assertion
                 alt={product.name || "Product Image"}
                 width={500}
                 height={500}
@@ -250,7 +230,7 @@ const ProductDetailPage = () => {
         </div>
       </div>
 
-      {/* Product Info Section */}
+      {/* Product Info */}
       <div className="lg:w-1/2 w-full mt-4 lg:mt-0">
         {isLoading ? (
           <div className="space-y-4">
@@ -258,14 +238,12 @@ const ProductDetailPage = () => {
             <div className="h-20 bg-gray-200 rounded-md animate-pulse" />
             <div className="space-y-2">
               <div className="h-6 bg-gray-200 rounded-md w-1/4 animate-pulse" />
-              <div className="space-y-2">
-                {[1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="h-12 bg-gray-200 rounded-md animate-pulse"
-                  />
-                ))}
-              </div>
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="h-12 bg-gray-200 rounded-md animate-pulse"
+                />
+              ))}
             </div>
           </div>
         ) : (
@@ -273,27 +251,28 @@ const ProductDetailPage = () => {
             <h1 className="text-2xl font-bold">{product?.name}</h1>
             <p className="text-gray-600 mt-2">{product?.description}</p>
 
-            {product?.sizes && product.sizes.length > 0 && (
-              <div className="mt-4">
-                <h2 className="text-lg font-semibold">Pilih Ukuran:</h2>
-                <RadioGroup
-                  className="mt-2"
-                  value={selectedSize?.id.toString() || ""}
-                  onChange={handleSizeChange}
-                >
-                  {product.sizes.map((size) => (
-                    <Radio
-                      key={size.id}
-                      value={size.id.toString()}
-                      className="mb-2 p-2 border rounded-md"
-                    >
-                      <span className="font-medium">{size.size}</span>
-                      <span className="ml-2 text-primary">{size.price}</span>
-                    </Radio>
-                  ))}
-                </RadioGroup>
-              </div>
-            )}
+            {product?.sizes &&
+              product.sizes.length > 0 && ( // Ensure sizes is defined
+                <div className="mt-4">
+                  <h2 className="text-lg font-semibold">Pilih Ukuran:</h2>
+                  <RadioGroup
+                    className="mt-2"
+                    value={selectedSize?.id.toString() || ""}
+                    onChange={handleSizeChange}
+                  >
+                    {product.sizes.map((size) => (
+                      <Radio
+                        key={size.id}
+                        value={size.id.toString()}
+                        className="mb-2 p-2 border rounded-md"
+                      >
+                        <span className="font-medium">{size.size}</span>
+                        <span className="ml-2 text-primary">{size.price}</span>
+                      </Radio>
+                    ))}
+                  </RadioGroup>
+                </div>
+              )}
 
             <Button onClick={handleAddToCart} className="mt-4" color="primary">
               Add to Cart
@@ -302,13 +281,13 @@ const ProductDetailPage = () => {
         )}
       </div>
 
-      {/* Modal for Cart Confirmation */}
+      {/* Cart Confirmation Modal */}
       <Modal
         closeButton
         aria-labelledby="modal-title"
         isOpen={isCartModalOpen}
         onClose={handleCloseCartModal}
-        className="max-w-[400px] w-full" // Ganti prop width dengan className
+        className="max-w-[400px] w-full"
       >
         <ModalBody>
           <h3 className="text-xl font-bold mb-2">Item berhasil ditambahkan!</h3>
