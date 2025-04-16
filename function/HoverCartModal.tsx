@@ -11,6 +11,7 @@ import {
 import { Button } from "@heroui/button";
 import { Image } from "@heroui/image";
 import { Link } from "@heroui/link";
+import axios from "axios";
 
 interface Size {
   id: number;
@@ -52,60 +53,77 @@ const HoverCartModal: React.FC<HoverCartModalProps> = ({
     const storedGuestId = localStorage.getItem("guestId");
     if (!storedGuestId) {
       try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/cart/guest-session`
+        setIsLoading(true);
+        const response = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/cart/guest-session`,
+          { withCredentials: true }
         );
-        const { guestId } = await response.json();
-        localStorage.setItem("guestId", guestId);
-        setGuestId(guestId);
+        const { guestId } = response.data;
+        if (guestId) {
+          localStorage.setItem("guestId", guestId);
+          setGuestId(guestId);
+        } else {
+          toast.error("Failed to get guest session");
+        }
       } catch (error) {
-        toast.error("Gagal inisialisasi session");
+        console.error("Guest session error:", error);
+        toast.error("Failed to initialize session");
+      } finally {
+        setIsLoading(false);
       }
     } else {
       setGuestId(storedGuestId);
     }
   }, []);
 
-  // Mengambil data cart dari backend
-  const fetchCartData = useCallback(async () => {
-    if (isLoading || isDebouncing) return;
-
-    try {
-      setIsLoading(true);
-      setIsDebouncing(true);
-      let url = "";
-      if (isLoggedIn && userId) {
-        url = `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?userId=${userId}`;
-      } else if (guestId) {
-        url = `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?guestId=${guestId}`;
-      } else {
-        return;
-      }
-
-      const response = await fetch(url);
-      if (!response.ok) throw new Error("Gagal mengambil data");
-      const items = await response.json();
-      setCartItems(items);
-      setCartCount(items.length); // Simpan jumlah item di state terpisah
-      localStorage.setItem("cart", JSON.stringify(items));
-    } catch (error) {
-      console.error("Error fetching cart:", error);
-      toast.error("Gagal mengambil data cart");
-    } finally {
-      setIsLoading(false);
-      setTimeout(() => setIsDebouncing(false), 1000); 
-    }
-  }, [guestId, isLoggedIn, userId, setCartItems]);
-
+  // Effect untuk inisialisasi guest session
   useEffect(() => {
-    if (!isLoggedIn) {
+    if (!isLoggedIn && !guestId) {
       initializeGuestSession();
     }
-  }, [isLoggedIn, initializeGuestSession]);
+  }, [isLoggedIn, guestId, initializeGuestSession]);
 
+  // Effect untuk auto-refresh cart
   useEffect(() => {
-    fetchCartData();
-  }, [fetchCartData]);
+    const fetchCartItems = async () => {
+      if (isDebouncing) return;
+      
+      try {
+        setIsDebouncing(true);
+        const queryParams = isLoggedIn 
+          ? `userId=${userId}` 
+          : `guestId=${guestId}`;
+        
+        const response = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?${queryParams}`,
+          { withCredentials: true }
+        );
+        
+        if (response.data) {
+          setCartItems(response.data);
+          setCartCount(response.data.length);
+        }
+      } catch (error) {
+        console.error("Error fetching cart:", error);
+      } finally {
+        setTimeout(() => setIsDebouncing(false), 1000); // Debounce 1 second
+      }
+    };
+
+    // Fetch initial cart data
+    fetchCartItems();
+
+    // Set up interval for periodic refresh
+    const intervalId = setInterval(fetchCartItems, 5000); // Refresh every 5 seconds
+
+    // Cleanup interval on unmount
+    return () => clearInterval(intervalId);
+  }, [isLoggedIn, userId, guestId, setCartItems, isDebouncing]);
+
+  // Add new useEffect to watch for cartItems changes
+  useEffect(() => {
+    setCartCount(cartItems.length);
+  }, [cartItems]);
  
   return (
     <>
@@ -161,12 +179,7 @@ const HoverCartModal: React.FC<HoverCartModalProps> = ({
                     </p>
 
                     <p className="text-sm font-medium text-gray-900">
-                      Rp{" "}
-                      {new Intl.NumberFormat("id-ID").format(
-                        parseFloat(
-                          item.size?.price?.replace(/[^0-9.-]+/g, "") || "0"
-                        )
-                      )}
+                      {item.size?.price}
                     </p>
 
                     <p className="text-sm text-gray-500">
@@ -183,13 +196,10 @@ const HoverCartModal: React.FC<HoverCartModalProps> = ({
             <div className="text-lg font-semibold">
               Total: Rp{" "}
               {new Intl.NumberFormat("id-ID").format(
-                cartItems.reduce((total, item) => {
+                (Array.isArray(cartItems) ? cartItems : []).reduce((total, item) => {
                   return (
                     total +
-                    parseFloat(
-                      item.size?.price?.replace(/[^0-9.-]+/g, "") || "0"
-                    ) *
-                      item.quantity
+                    (parseFloat(item.size?.price?.replace(/[^0-9]/g, '') || '0') * item.quantity)
                   );
                 }, 0)
               )}

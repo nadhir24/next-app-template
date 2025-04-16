@@ -14,28 +14,20 @@ import { siteConfig } from "@/config/site";
 import { ThemeSwitch } from "./theme-switch";
 import Link from "next/link";
 import { RanoIcon } from "./icons";
-import HoverCartModal from "@/function/HoverCartModal"; // Pastikan jalur ini benar
+import HoverCartModal from "@/function/HoverCartModal";
 import { useState, useEffect } from "react";
 import { CartItem } from "@/function/CartItem";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Navy() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { user, isLoggedIn } = useAuth();
 
   useEffect(() => {
     const initializeData = async () => {
       setIsLoading(true);
       try {
-        // Cek status login dan user data
-        const userData = localStorage.getItem("user");
-        if (userData) {
-          const parsedUser = JSON.parse(userData);
-          setUser(parsedUser);
-          setIsLoggedIn(true);
-        }
-
         // Ambil data cart dari localStorage
         const storedCart = localStorage.getItem("cart");
         if (storedCart) {
@@ -49,6 +41,17 @@ export default function Navy() {
     };
 
     initializeData();
+
+    // Add event listener for storage changes
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'cart') {
+        const newCart = e.newValue ? JSON.parse(e.newValue) : [];
+        setCartItems(newCart);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   return (

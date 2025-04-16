@@ -16,6 +16,8 @@ import { title } from "@/components/primitives";
 import Navy from "@/components/navbar";
 import { Divider } from "@heroui/divider";
 import Image from "next/image";
+import { AuthProvider } from "@/context/AuthContext";
+import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
   title: {
@@ -52,97 +54,98 @@ export default function RootLayout({
         )}
       >
         <Providers themeProps={{ attribute: "class", defaultTheme: "light" }}>
-          <div className="relative flex flex-col min-h-screen bg-gradient-custom">
-            <Navy />
-            <main className="container mx-auto max-w-7xl pt-16 px-6 flex-grow">
-            
+          <AuthProvider>
+            <div className="relative flex flex-col min-h-screen bg-gradient-custom">
+              <Navy />
+              <main className="container mx-auto max-w-7xl pt-16 px-6 flex-grow">
+                {children}
+              </main>
 
-              {children}
-            </main>
+              {/* Footer */}
+              <footer className="container mx-auto max-w-7xl pt-16 px-6 bg-gradient-to-t from-red-600 to-yellow-500 text-white">
+                <Divider className="mb-4 border-gray-200" />
 
-            {/* Footer */}
-            <footer className="container mx-auto max-w-7xl pt-16 px-6 bg-gradient-to-t from-red-600 to-yellow-500 text-white">
-              <Divider className="mb-4 border-gray-200" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 mt-1">
+                  <div>
+                    <RanoIcon />
+                    <div className="grid grid-cols-10 gap-2 mt-2">
+                      <Link
+                        href={siteConfig.links.google}
+                        aria-label="Google"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Image
+                          className="mt-1"
+                          src="https://developers.google.com/static/maps/images/maps-icon.svg"
+                          alt="Google Maps Logo"
+                          width={30}
+                          height={30}
+                        />
+                      </Link>
+                      <Link
+                        href={siteConfig.links.whatsapp}
+                        aria-label="Whatsapp"
+                      >
+                        <WhatsappIcon />
+                      </Link>
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 mt-1">
-                <div>
-                  <RanoIcon />
-                  <div className="grid grid-cols-10 gap-2 mt-2">
-                    <Link
-                      href={siteConfig.links.google}
-                      aria-label="Google"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <Image
-                        className="mt-1"
-                        src="https://developers.google.com/static/maps/images/maps-icon.svg"
-                        alt="Google Maps Logo"
-                        width={30}
-                        height={30}
-                      />
-                    </Link>
-                    <Link
-                      href={siteConfig.links.whatsapp}
-                      aria-label="Whatsapp"
-                    >
-                      <WhatsappIcon />
-                    </Link>
+                  <div>
+                    <h1 className="text-lg font-semibold">Bantuan</h1>
+                    <ul className="text-sm">
+                      {siteConfig.footerItems.map((item) => (
+                        <li
+                          key={item.href}
+                          className="hover:text-yellow-200 transition-colors"
+                        >
+                          <Link href={item.href}>{item.label}</Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h1 className="text-lg font-semibold">Jam Kerja</h1>
+                    <ul className="text-sm">
+                      <li>Senin - Jumat: 8:00 WIB - 5:00 WIB</li>
+                      <li>Sabtu: 8:00 WIB - 12:00 WIB</li>
+                      <li>Minggu: tutup</li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h1 className="text-lg font-semibold">Metode Pembayaran</h1>
+                    <ul className="flex space-x-4 mt-2">
+                      <li>
+                        <Image
+                          src="/visa-logo.png"
+                          alt="Visa"
+                          width={40}
+                          height={20}
+                        />
+                      </li>
+                      <li>
+                        <Image
+                          src="/mastercard-logo.png"
+                          alt="Mastercard"
+                          width={40}
+                          height={20}
+                        />
+                      </li>
+                    </ul>
                   </div>
                 </div>
 
-                <div>
-                  <h1 className="text-lg font-semibold">Bantuan</h1>
-                  <ul className="text-sm">
-                    {siteConfig.footerItems.map((item) => (
-                      <li
-                        key={item.href}
-                        className="hover:text-yellow-200 transition-colors"
-                      >
-                        <Link href={item.href}>{item.label}</Link>
-                      </li>
-                    ))}
-                  </ul>
+                <Divider className="mt-4 border-gray-200" />
+                <div className="text-center py-4 text-sm">
+                  © 2024 Rano Cake. All rights reserved.
                 </div>
-
-                <div>
-                  <h1 className="text-lg font-semibold">Jam Kerja</h1>
-                  <ul className="text-sm">
-                    <li>Senin - Jumat: 8:00 WIB - 5:00 WIB</li>
-                    <li>Sabtu: 8:00 WIB - 12:00 WIB</li>
-                    <li>Minggu: tutup</li>
-                  </ul>
-                </div>
-
-                <div>
-                  <h1 className="text-lg font-semibold">Metode Pembayaran</h1>
-                  <ul className="flex space-x-4 mt-2">
-                    <li>
-                      <Image
-                        src="/visa-logo.png"
-                        alt="Visa"
-                        width={40}
-                        height={20}
-                      />
-                    </li>
-                    <li>
-                      <Image
-                        src="/mastercard-logo.png"
-                        alt="Mastercard"
-                        width={40}
-                        height={20}
-                      />
-                    </li>
-                  </ul>
-                </div>
-              </div>
-
-              <Divider className="mt-4 border-gray-200" />
-              <div className="text-center py-4 text-sm">
-                © 2024 Rano Cake. All rights reserved.
-              </div>
-            </footer>
-          </div>
+              </footer>
+            </div>
+            <Toaster />
+          </AuthProvider>
         </Providers>
       </body>
     </html>

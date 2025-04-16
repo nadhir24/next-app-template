@@ -1,6 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
 import {
@@ -25,29 +25,22 @@ import {
   DropdownItem,
 } from "@heroui/dropdown";
 import { Spinner } from "@nextui-org/spinner";
-
-interface User {
-  photoProfile: string | null;
-  fullName: string;
-  email: string;
-}
+import { useAuth } from "@/context/AuthContext";
 
 interface CartItem {
   id: number;
-  name: string;
-  qty: number;
-  price: number;
+  userId: number | null;
+  guestId: string | null;
+  quantity: number;
+  createdAt: string;
+  catalog?: { id: number; name: string; image: string } | null;
+  size?: { id: number; size: string; price: string } | null;
 }
 
 export default function Modall() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-
-  // Fix: Remove the recursive call to handleCart
-  const handleCart = (cart: CartItem[]) => {
-    saveCart(cart);
-    // You might want to perform other actions here, but avoid calling handleCart again
-  };
+  const { user, login, logout, isLoggedIn } = useAuth();
 
   const {
     isOpen: loginIsOpen,
@@ -64,117 +57,40 @@ export default function Modall() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null); // Token type updated to string | null
-  const [cart, setCart] = useState<CartItem[]>([]); // cart type updated to CartItem[]
   const [fullName, setFullName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [rememberMe, setRememberMe] = useState<boolean>(false);
 
-  useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (error) {
-        console.error("Error parsing user data from localStorage:", error);
-        localStorage.removeItem("user"); // Remove invalid data
-      }
-    }
-  }, []);
-
-  const getCart = (): CartItem[] => {
-    const storedCart = localStorage.getItem("cart");
-    if (!storedCart) return [];
-
-    try {
-      return JSON.parse(storedCart);
-    } catch (error) {
-      console.error("Error parsing cart data from localStorage:", error);
-      localStorage.removeItem("cart"); // Remove invalid data
-      return [];
-    }
-  };
-
-  const saveCart = (cart: CartItem[]) => {
-    localStorage.setItem("cart", JSON.stringify(cart));
-  };
-
-  // Login handler using Axios
   const handleLogin = async () => {
-    setIsLoading(true);
-    try {
-      const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/auth/login`,
-        {
-          email,
-          password,
-        }
-      );
-      const { token, loginData } = response.data;
-
-      if (rememberMe) {
-        localStorage.setItem("token", token);
-      } else {
-        sessionStorage.setItem("token", token);
-      }
-
-      setUser(loginData);
-      localStorage.setItem("user", JSON.stringify(loginData));
-
-      // Ambil cart dari localStorage dan sinkronkan dengan server
-      const localCart = getCart();
-      if (localCart.length > 0) {
-        await axios.post(
-          `${process.env.NEXT_PUBLIC_API_URL}/cart/sync`,
-          { cart: localCart },
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-      }
-
-      closeLogin();
-      toast.success("Login berhasil!");
-    } catch (error) {
-      console.error(error);
-      toast.error("Login gagal. Silakan cek email dan password Anda.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleLogout = async () => {
     try {
       setIsLoading(true);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
-      // Hapus data user dan token
-      setUser(null);
-      localStorage.removeItem("user");
-      localStorage.removeItem("token");
-      sessionStorage.removeItem("token");
+      if (!response.ok) {
+        throw new Error("Login failed");
+      }
 
-      // Hapus semua data cart
-      localStorage.removeItem("cart");
-      sessionStorage.removeItem("cart");
-
-      // Hapus guest ID jika ada
-      localStorage.removeItem("guestId");
-      sessionStorage.removeItem("guestId");
-
-      toast.success("Berhasil logout");
-
-      // Redirect ke halaman home
-      router.push("/");
-
-      // Trigger event untuk update komponen cart
-      window.dispatchEvent(new Event("cartUpdate"));
+      const data = await response.json();
+      login(data.user);
+      toast.success("Login successful!");
+      closeLogin();
     } catch (error) {
-      console.error("Error during logout:", error);
-      toast.error("Gagal logout. Silakan coba lagi.");
+      toast.error("Login failed. Please check your credentials.");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleLogout = () => {
+    logout();
+    toast.success("Logged out successfully!");
+    router.push("/");
   };
 
   const handleOpenRegister = () => {
@@ -186,7 +102,7 @@ export default function Modall() {
     const createUserDto = {
       fullName,
       email,
-      phoneNumber: `+62${phoneNumber}`, // Tambahkan kode negara di sini
+      phoneNumber: `+62${phoneNumber}`,
       password,
       confirmPassword,
     };
@@ -199,7 +115,6 @@ export default function Modall() {
       closeRegister();
       openLogin();
 
-      // Reset form setelah sukses
       setFullName("");
       setEmail("");
       setPhoneNumber("");
@@ -218,7 +133,7 @@ export default function Modall() {
 
   return (
     <>
-      {user ? (
+      {isLoggedIn ? (
         <Dropdown placement="bottom-end">
           <DropdownTrigger>
             <div className="flex items-center gap-3 cursor-pointer">
@@ -228,14 +143,12 @@ export default function Modall() {
                 </div>
               ) : (
                 <Avatar
-                  src={
-                    user.photoProfile || "https://i.pravatar.cc/150?u=default"
-                  }
+                  src={user?.photoProfile || "https://i.pravatar.cc/150?u=default"}
                   size="lg"
                   isBordered
                 />
               )}
-              <span>{isLoading ? "" : user.fullName}</span>
+              <span>{isLoading ? "" : user?.fullName}</span>
             </div>
           </DropdownTrigger>
           <DropdownMenu aria-label="User Actions" variant="flat">
@@ -249,26 +162,20 @@ export default function Modall() {
           </DropdownMenu>
         </Dropdown>
       ) : (
-        <Button
-          onPress={openLogin}
-          color="default"
-          isLoading={isLoading}
-          disabled={isLoading}
-        >
+        <Button onPress={openLogin} color="default" isLoading={isLoading} disabled={isLoading}>
           {isLoading ? <Spinner size="sm" /> : "Login"}
         </Button>
       )}
-      {/* Login Modal */}
       <Modal isOpen={loginIsOpen} onClose={closeLogin} placement="top-center">
         <ModalContent>
           {() => (
             <>
-              <ModalHeader className="flex flex-col gap-1">Log in</ModalHeader>
+              <ModalHeader className="flex flex-col gap-1">
+                {isLoggedIn ? "Logout" : "Login"}
+              </ModalHeader>
               <ModalBody>
-                {isLoading ? (
-                  <div className="flex items-center justify-center p-8">
-                    <Spinner size="lg" />
-                  </div>
+                {isLoggedIn ? (
+                  <p>Are you sure you want to logout?</p>
                 ) : (
                   <>
                     <Input
@@ -324,20 +231,18 @@ export default function Modall() {
                 >
                   Close
                 </Button>
-                {/* Fix: Use the Button component directly with the handleLogin function */}
                 <Button
                   color="primary"
-                  onPress={handleLogin}
+                  onPress={isLoggedIn ? handleLogout : handleLogin}
                   isDisabled={isLoading}
                 >
-                  Sign in
+                  {isLoggedIn ? "Logout" : "Login"}
                 </Button>
               </ModalFooter>
             </>
           )}
         </ModalContent>
       </Modal>
-      {/* Register Modal */}
       <Modal
         isOpen={registerIsOpen}
         onClose={closeRegister}

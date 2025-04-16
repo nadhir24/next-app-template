@@ -100,24 +100,21 @@ export default function Home() {
       subTitle: "Spesial",
       description:
         "Kue ulang tahun custom dengan desain menarik dan rasa yang lezat",
-      badge: "Best Seller",
-      badgeColor: "success" as const,
+   
     },
     {
       image: Choco,
       title: "Kue Kering",
       subTitle: "Homemade",
       description: "Kue kering renyah dan lezat, perfect untuk oleh-oleh",
-      badge: "New",
-      badgeColor: "warning" as const,
+      
     },
     {
       image: wkwkwkwk,
       title: "Nasi & Asinan",
       subTitle: "Fresh",
       description: "Menu nasi dan asinan segar untuk acara Anda",
-      badge: "Popular",
-      badgeColor: "primary" as const,
+     
     },
   ];
   const router = useRouter();
@@ -294,12 +291,7 @@ export default function Home() {
                           height={350}
                           className="w-full h-[350px] object-cover transition-transform duration-300 group-hover:scale-105"
                         />
-                        <Badge
-                          color={product.badgeColor}
-                          className="absolute top-4 right-4"
-                        >
-                          {product.badge}
-                        </Badge>
+                       
                       </div>
                       <div className="p-6">
                         <h3 className="text-xl font-bold text-gray-900 mb-2">
