@@ -1,8 +1,8 @@
 import { title } from "@/components/primitives";
-import tentangkami from "@/public/tentangkami.png";
-import saa from "@/public/saa.jpg";
-import duu from "@/public/duu.jpg";
-import tii from "@/public/tii.jpg";
+import tentangkami from "@/public/tentangkami.webp";
+import saa from "@/public/saa.webp";
+import duu from "@/public/duu.webp";
+import tii from "@/public/tii.webp";
 import Image from "next/image";
 
 export default function AboutPage() {

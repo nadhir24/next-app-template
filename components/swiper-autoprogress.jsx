@@ -53,15 +53,7 @@ export default function SwiperComponent() {
         <SwiperSlide>
           <Image src={grup2} width="100%" height="100%" />
         </SwiperSlide>
-        <SwiperSlide>
-          <Image src={grup2} width="100%" height="100%" />
-        </SwiperSlide>
-        <SwiperSlide>
-          <Image src={grup2} width="100%" height="100%" />
-        </SwiperSlide>
-        <SwiperSlide>
-          <Image src={grup2} width="100%" height="100%" />
-        </SwiperSlide>
+       
 
         <div className="autoplay-progress" slot="container-end">
           <svg viewBox="0 0 48 48" ref={progressCircle}>

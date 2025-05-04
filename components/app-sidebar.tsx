@@ -58,7 +58,6 @@ export function AppSidebar({ navigationData, ...props }: AppSidebarProps) {
   return (
     <Sidebar {...props} className="pt-16 fixed top-0 left-0 h-screen z-50">
       <SidebarHeader>
-        <VersionSwitcher versions={["1.0.0", "2.0.0"]} defaultVersion="1.0.0" />
         <SearchForm />
       </SidebarHeader>
       <SidebarContent>

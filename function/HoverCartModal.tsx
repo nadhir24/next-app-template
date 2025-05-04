@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { toast } from "react-toastify";
 import {
   Modal,
   ModalBody,
@@ -11,200 +10,147 @@ import {
 import { Button } from "@heroui/button";
 import { Image } from "@heroui/image";
 import { Link } from "@heroui/link";
-import axios from "axios";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useCart } from "@/context/CartContext";
 
-interface Size {
-  id: number;
-  size: string;
-  price: string;
-}
+// Custom hook to detect screen size (simple example)
+const useMediaQuery = (query: string) => {
+  const [matches, setMatches] = useState(false);
 
-interface CartItem {
-  id: number;
-  userId: number | null;
-  guestId: string | null;
-  quantity: number;
-  createdAt: string;
-  catalog?: { id: number; name: string; image: string } | null;
-  size?: Size | null;
-}
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    if (media.matches !== matches) {
+      setMatches(media.matches);
+    }
+    const listener = () => setMatches(media.matches);
+    window.addEventListener("resize", listener);
+    return () => window.removeEventListener("resize", listener);
+  }, [matches, query]);
 
-interface HoverCartModalProps {
-  cartItems: CartItem[];
-  setCartItems: React.Dispatch<React.SetStateAction<CartItem[]>>;
-  isLoggedIn: boolean;
-  userId?: number;
-}
+  return matches;
+};
 
-const HoverCartModal: React.FC<HoverCartModalProps> = ({
-  cartItems,
-  setCartItems,
-  isLoggedIn,
-  userId,
-}) => {
+const HoverCartModal: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [guestId, setGuestId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isDebouncing, setIsDebouncing] = useState(false);
-  const [cartCount, setCartCount] = useState(0);
+  const { cartItems, cartCount, cartTotal, isLoadingCart, fetchCart } =
+    useCart();
+  const isMobile = useMediaQuery("(max-width: 640px)"); // Check for mobile (adjust breakpoint if needed, sm: 640px)
 
-  // Inisialisasi guest session
-  const initializeGuestSession = useCallback(async () => {
-    const storedGuestId = localStorage.getItem("guestId");
-    if (!storedGuestId) {
-      try {
-        setIsLoading(true);
-        const response = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/cart/guest-session`,
-          { withCredentials: true }
-        );
-        const { guestId } = response.data;
-        if (guestId) {
-          localStorage.setItem("guestId", guestId);
-          setGuestId(guestId);
-        } else {
-          toast.error("Failed to get guest session");
-        }
-      } catch (error) {
-        console.error("Guest session error:", error);
-        toast.error("Failed to initialize session");
-      } finally {
-        setIsLoading(false);
-      }
-    } else {
-      setGuestId(storedGuestId);
+  // Fetch when modal opens (keep this for initial load if needed)
+  useEffect(() => {
+    if (isModalOpen) {
+      fetchCart();
     }
-  }, []);
+  }, [isModalOpen, fetchCart]);
 
-  // Effect untuk inisialisasi guest session
-  useEffect(() => {
-    if (!isLoggedIn && !guestId) {
-      initializeGuestSession();
-    }
-  }, [isLoggedIn, guestId, initializeGuestSession]);
+  // Skeleton component for cart item
+  const CartItemSkeleton = () => (
+    <div className="flex items-center gap-3 border-b py-3">
+      <Skeleton className="w-12 h-12 rounded flex-shrink-0" />
+      <div className="flex flex-col flex-1 min-w-0 space-y-1.5">
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-3 w-1/2" />
+        <Skeleton className="h-3 w-1/4" />
+        <Skeleton className="h-3 w-1/3" />
+      </div>
+    </div>
+  );
 
-  // Effect untuk auto-refresh cart
-  useEffect(() => {
-    const fetchCartItems = async () => {
-      if (isDebouncing) return;
-      
-      try {
-        setIsDebouncing(true);
-        const queryParams = isLoggedIn 
-          ? `userId=${userId}` 
-          : `guestId=${guestId}`;
-        
-        const response = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?${queryParams}`,
-          { withCredentials: true }
-        );
-        
-        if (response.data) {
-          setCartItems(response.data);
-          setCartCount(response.data.length);
-        }
-      } catch (error) {
-        console.error("Error fetching cart:", error);
-      } finally {
-        setTimeout(() => setIsDebouncing(false), 1000); // Debounce 1 second
-      }
-    };
-
-    // Fetch initial cart data
-    fetchCartItems();
-
-    // Set up interval for periodic refresh
-    const intervalId = setInterval(fetchCartItems, 5000); // Refresh every 5 seconds
-
-    // Cleanup interval on unmount
-    return () => clearInterval(intervalId);
-  }, [isLoggedIn, userId, guestId, setCartItems, isDebouncing]);
-
-  // Add new useEffect to watch for cartItems changes
-  useEffect(() => {
-    setCartCount(cartItems.length);
-  }, [cartItems]);
- 
   return (
     <>
-      <Button onPress={() => setIsModalOpen(true)}>
+      <Button onPress={() => setIsModalOpen(true)} className="relative">
         {cartCount > 0 ? `Keranjang (${cartCount})` : "Keranjang"}
-        {isLoading && " ..."}
       </Button>
 
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        className="fixed right-0 top-0 h-full w-full md:w-1/2 lg:w-1/3 bg-white shadow-lg"
+        placement={isMobile ? "bottom" : "auto"}
+        className={`fixed ${isMobile ? "bottom-0 w-full rounded-t-xl" : "right-0 top-0 h-auto sm:w-96 rounded-xl"} max-h-screen bg-white shadow-lg z-50 overflow-hidden flex flex-col`}
+        classNames={{
+          base: isMobile ? "m-0 rounded-b-none" : "",
+        }}
       >
-        <ModalContent>
-          <ModalHeader className="border-b p-4">
-            <h2 className="text-xl font-bold">Keranjang Belanja</h2>
-            <div className="flex justify-end mt-4 ml-9">
-              <Link href="/cart">
-                <Button
-                  color="primary"
-                  size="md"
-                  disabled={cartItems.length === 0}
-                  className="ml-auto"
-                >
-                  Selengkapnya
-                </Button>
-              </Link>
-            </div>
+        <ModalContent className="flex flex-col flex-grow overflow-hidden bg-white dark:bg-zinc-800">
+          <ModalHeader className="border-b p-4 pr-6 flex justify-between items-center flex-shrink-0">
+            <h2 className="text-lg font-semibold">
+              Keranjang Belanja
+              {isLoadingCart && (
+                <span className="ml-2 inline-block w-4 h-4 rounded-full border-2 border-t-transparent animate-spin"></span>
+              )}
+            </h2>
+            <Link href="/cart" className="mr-4">
+              <Button
+                as="a"
+                href="/cart"
+                color="primary"
+                size="sm"
+                isDisabled={cartCount === 0 || isLoadingCart}
+                className={isLoadingCart ? "cursor-not-allowed opacity-50" : ""}
+              >
+                {isLoadingCart ? (
+                  <>
+                    <span className="inline-block w-4 h-4 mr-2 rounded-full border-2 border-t-transparent animate-spin"></span>
+                    Memuat...
+                  </>
+                ) : (
+                  "Selengkapnya"
+                )}
+              </Button>
+            </Link>
           </ModalHeader>
 
-          <ModalBody className="p-4 overflow-y-auto max-h-[calc(100vh-200px)] scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-            {cartItems.length > 0 ? (
+          <ModalBody className="p-4 overflow-y-auto flex-grow scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 bg-white">
+            {isLoadingCart ? (
+              <div className="space-y-3">
+                <CartItemSkeleton />
+                <CartItemSkeleton />
+                <CartItemSkeleton />
+              </div>
+            ) : cartCount === 0 ? (
+              <p className="text-center text-gray-500 py-8">Keranjang kosong</p>
+            ) : (
               cartItems.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-center gap-4 border-b py-3"
+                  className="flex items-center gap-3 border-b py-3"
                 >
                   {item.catalog?.image && (
                     <Image
                       src={item.catalog.image}
-                      alt={item.catalog.name}
-                      className="w-16 h-16 object-cover rounded"
+                      alt={item.catalog.name ?? "Product Image"}
+                      className="w-12 h-12 object-cover rounded flex-shrink-0"
+                      width={48}
+                      height={48}
                     />
                   )}
-
-                  <div className="flex flex-col flex-1 capitalize">
-                    <h3 className="text-md font-semibold">
+                  <div className="flex flex-col flex-1 min-w-0 capitalize">
+                    <h3 className="text-sm font-semibold truncate">
                       {item.catalog?.name}
                     </h3>
-
-                    <p className="text-sm text-gray-500">
+                    <p className="text-xs text-gray-500">
                       Ukuran: {item.size?.size}
                     </p>
-
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-xs font-medium text-gray-900">
                       {item.size?.price}
                     </p>
-
-                    <p className="text-sm text-gray-500">
+                    <p className="text-xs text-gray-500">
                       Jumlah: {item.quantity}
                     </p>
                   </div>
                 </div>
               ))
-            ) : (
-              <p className="text-center text-gray-500">Keranjang kosong</p>
             )}
           </ModalBody>
-          <ModalFooter className="flex justify-between items-center p-4 border-t">
-            <div className="text-lg font-semibold">
-              Total: Rp{" "}
-              {new Intl.NumberFormat("id-ID").format(
-                (Array.isArray(cartItems) ? cartItems : []).reduce((total, item) => {
-                  return (
-                    total +
-                    (parseFloat(item.size?.price?.replace(/[^0-9]/g, '') || '0') * item.quantity)
-                  );
-                }, 0)
-              )}
-            </div>
-          </ModalFooter>
+
+          {cartCount > 0 && (
+            <ModalFooter className="flex justify-between items-center p-4 border-t flex-shrink-0">
+              <div className="text-md font-semibold">Total:</div>
+              <div className="text-md font-bold">
+                Rp{new Intl.NumberFormat("id-ID").format(cartTotal)}
+              </div>
+            </ModalFooter>
+          )}
         </ModalContent>
       </Modal>
     </>

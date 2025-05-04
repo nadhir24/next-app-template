@@ -2,7 +2,7 @@
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState, useContext } from "react";
 import axios from "axios";
-import { toast } from "react-toastify";
+import { useToast } from "@/components/ui/use-toast";
 import {
   Modal,
   ModalContent,
@@ -26,26 +26,39 @@ import {
 } from "@heroui/dropdown";
 import { Spinner } from "@nextui-org/spinner";
 import { useAuth } from "@/context/AuthContext";
+import { title } from "@/components/primitives";
+import { Eye, EyeOff } from "lucide-react";
 
-interface CartItem {
-  id: number;
-  userId: number | null;
-  guestId: string | null;
-  quantity: number;
-  createdAt: string;
-  catalog?: { id: number; name: string; image: string } | null;
-  size?: { id: number; size: string; price: string } | null;
-}
+// Custom hook to detect screen size (simple example) - copied from HoverCartModal
+const useMediaQuery = (query: string) => {
+  const [matches, setMatches] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    if (media.matches !== matches) {
+      setMatches(media.matches);
+    }
+    const listener = () => setMatches(media.matches);
+    window.addEventListener("resize", listener);
+    return () => window.removeEventListener("resize", listener);
+  }, [matches, query]);
+
+  return matches;
+};
 
 export default function Modall() {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
   const { user, login, logout, isLoggedIn } = useAuth();
+  const { toast } = useToast();
+  const [showPassword, setShowPassword] = useState(false);
+  const [isButtonLoading, setIsButtonLoading] = useState(false);
+  const [isFormLoading, setIsFormLoading] = useState(false);
 
   const {
     isOpen: loginIsOpen,
     onOpen: openLogin,
     onClose: closeLogin,
+    onOpenChange,
   } = useDisclosure();
 
   const {
@@ -60,36 +73,123 @@ export default function Modall() {
   const [fullName, setFullName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [rememberMe, setRememberMe] = useState<boolean>(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Effect to load remembered email when modal opens
+  useEffect(() => {
+    if (loginIsOpen) {
+      const rememberedEmail = localStorage.getItem("rememberedEmail");
+      if (rememberedEmail) {
+        setEmail(rememberedEmail);
+        setRememberMe(true);
+      } else {
+        // Ensure fields are clear if nothing is remembered
+        // setEmail(""); // Keep existing email if user typed before opening?
+        setRememberMe(false);
+      }
+    }
+  }, [loginIsOpen]); // Rerun when modal open state changes
 
   const handleLogin = async () => {
     try {
-      setIsLoading(true);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });
+      setIsFormLoading(true);
 
-      if (!response.ok) {
-        throw new Error("Login failed");
-      }
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/auth/login`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: email.trim(),
+            password,
+          }),
+        }
+      );
 
       const data = await response.json();
-      login(data.user);
-      toast.success("Login successful!");
+
+      if (!response.ok) {
+        // Throw error based on backend message if available, otherwise generic message
+        throw new Error(
+          data?.message || `HTTP error! Status: ${response.status}`
+        );
+      }
+
+      // ** Stricter Success Check **
+      // Check if the necessary data (token, loginData) exists in the response
+      if (!data || !data.token || !data.loginData) {
+        console.error(
+          "[Login] Backend response OK, but missing token or loginData:",
+          data
+        );
+        throw new Error("Login failed: Invalid response from server.");
+      }
+
+      // --- Proceed with successful login ---
+      console.log("[Login] Login successful, response data:", data);
+
+      // Store token first
+      localStorage.setItem("token", data.token);
+
+      // Store user data and update context
+      const userData = {
+        ...data.loginData,
+        token: data.token,
+      };
+      localStorage.setItem("user", JSON.stringify(userData));
+      login(userData);
+
+      toast({
+        // Success toast
+        title: "Login successful!",
+        variant: "default", // Keep success default
+      });
+
+      // Remember me logic
+      if (rememberMe) {
+        localStorage.setItem("rememberedEmail", email.trim());
+        console.log("Remembering email:", email.trim());
+      } else {
+        localStorage.removeItem("rememberedEmail");
+        console.log("Forgetting email.");
+      }
+
       closeLogin();
-    } catch (error) {
-      toast.error("Login failed. Please check your credentials.");
+
+      // Don't clear email if remembered, but clear password
+      // setEmail("");
+      setPassword("");
+    } catch (error: any) {
+      console.log("Executing catch block in handleLogin!");
+      toast({
+        // Failure toast
+        title: "Login Gagal",
+        // Use the specific error message thrown or a default
+        description: "Email atau password yang anda masukan salah.",
+        variant: "default", // Use destructive variant for errors
+      });
+      console.error("Login API error:", error.message);
     } finally {
-      setIsLoading(false);
+      setIsFormLoading(false);
+    }
+  };
+
+  // Wrapper function for form submission
+  const handleSubmitWrapper = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault(); // Prevent default page reload on form submission
+    if (!isFormLoading) {
+      // Prevent submission if already loading
+      handleLogin();
     }
   };
 
   const handleLogout = () => {
     logout();
-    toast.success("Logged out successfully!");
+    toast({
+      title: "Logged out successfully!",
+    });
     router.push("/");
   };
 
@@ -99,37 +199,93 @@ export default function Modall() {
   };
 
   const handleSignup = async () => {
-    const createUserDto = {
-      fullName,
-      email,
-      phoneNumber: `+62${phoneNumber}`,
-      password,
-      confirmPassword,
-    };
-
+    setIsFormLoading(true);
     try {
-      await axios.post(
+      const cleanPhoneNumber = phoneNumber.replace(/\D/g, "");
+      // Ensure the number starts with +62 for backend validation
+      let formattedPhoneNumber = cleanPhoneNumber;
+      if (formattedPhoneNumber.startsWith("62")) {
+        formattedPhoneNumber = `+${formattedPhoneNumber}`;
+      } else if (!formattedPhoneNumber.startsWith("+62")) {
+        // Assuming input is like 08... or 8...
+        // Remove leading 0 if present
+        if (formattedPhoneNumber.startsWith("0")) {
+          formattedPhoneNumber = formattedPhoneNumber.substring(1);
+        }
+        formattedPhoneNumber = `+62${formattedPhoneNumber}`;
+      }
+
+      const createUserDto = {
+        fullName: fullName.trim(),
+        email: email.trim(),
+        phoneNumber: formattedPhoneNumber, // Use the +62 format
+        password,
+      };
+
+      // Basic frontend check for password match
+      if (password !== confirmPassword) {
+        toast({
+          title: "Error",
+          description: "Passwords do not match.",
+          variant: "default",
+        }); // Use default
+        setIsFormLoading(false);
+        return;
+      }
+
+      // If axios.post does not throw, assume success (2xx status)
+      const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/auth/signup`,
-        createUserDto
+        createUserDto,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
       );
+
+      // Assume success if code reaches here (axios didn't throw for 4xx/5xx)
+      console.log(
+        "Signup successful, backend response status:",
+        response.status
+      );
+
       closeRegister();
       openLogin();
-
       setFullName("");
       setEmail("");
       setPhoneNumber("");
       setPassword("");
       setConfirmPassword("");
-      toast.success("Registrasi berhasil! Silakan login.");
+      toast({
+        title: "Registrasi berhasil!",
+        description: "Silakan login.",
+        // variant: "default", // Keep default for success
+      });
     } catch (error: any) {
-      console.error("Error during sign up:", error);
-      if (error.response && error.response.data && error.response.data.message) {
-        toast.error(`Registrasi gagal: ${error.response.data.message}`);
-      } else {
-        toast.error("Registrasi gagal. Silakan coba lagi.");
-      }
+      // This block now only catches actual HTTP errors (4xx, 5xx) or network errors
+      console.error("Signup Backend Error Response:", error.response?.data);
+      const errorMessage =
+        error.response?.data?.message || error.message || "Registrasi gagal";
+      toast({
+        title: "Registrasi gagal",
+        description: errorMessage,
+        variant: "default", // Use default for actual errors
+      });
+    } finally {
+      setIsFormLoading(false);
     }
   };
+
+  // Construct the absolute image URL
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "";
+  const imageName = user?.photoProfile?.split("/").pop() || ""; // Get only filename
+  const userImageUrl =
+    user?.photoProfile && imageName
+      ? `${apiBaseUrl}/uploads/users/${imageName}`
+      : "/defaultpp.svg"; // Use a local default image
+
+  const isMobile = useMediaQuery("(max-width: 640px)"); // Check for mobile
 
   return (
     <>
@@ -137,89 +293,172 @@ export default function Modall() {
         <Dropdown placement="bottom-end">
           <DropdownTrigger>
             <div className="flex items-center gap-3 cursor-pointer">
-              {isLoading ? (
-                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-gray-100">
-                  <Spinner size="sm" />
-                </div>
-              ) : (
-                <Avatar
-                  src={user?.photoProfile || "https://i.pravatar.cc/150?u=default"}
-                  size="lg"
-                  isBordered
-                />
-              )}
-              <span>{isLoading ? "" : user?.fullName}</span>
+              <Avatar src={userImageUrl} size="lg" isBordered />
+              <span>{user?.fullName}</span>
             </div>
           </DropdownTrigger>
           <DropdownMenu aria-label="User Actions" variant="flat">
-            <DropdownItem key="profile">
-              <p className="font-bold">Profile</p>
-            </DropdownItem>
-            <DropdownItem key="settings">My Settings</DropdownItem>
+            {/* Role-based Dashboard Link */}
+            {(() => {
+              let dashboardHref = "#"; // Default fallback
+              let isDashboardDisabled = true;
+              let userRole = null;
+
+              if (user && user.roleId && user.roleId.length > 0) {
+                userRole = user.roleId[0].roleId; // Assuming roleId is in an array
+                if (userRole === 1) {
+                  // Admin
+                  dashboardHref = "/admin/dashboard";
+                  isDashboardDisabled = false;
+                } else if (userRole === 3) {
+                  // User
+                  dashboardHref = "/dashboard";
+                  isDashboardDisabled = false;
+                }
+                // Role 2 or others: isDashboardDisabled remains true
+              }
+
+              // Render the item only if the user is logged in
+              // If the user is role 2, it will be rendered but disabled
+              if (isLoggedIn) {
+                return (
+                  <DropdownItem
+                    key="dashboard"
+                    href={isDashboardDisabled ? undefined : dashboardHref}
+                    as={isDashboardDisabled ? undefined : Link} // Only use Link if not disabled
+                    isDisabled={isDashboardDisabled}
+                    aria-disabled={isDashboardDisabled}
+                    className={
+                      isDashboardDisabled
+                        ? "text-gray-400 cursor-not-allowed"
+                        : "font-bold"
+                    } // Style disabled state
+                  >
+                    My Dashboard {userRole === 2 ? "(Disabled)" : ""}{" "}
+                    {/* Add label for disabled state */}
+                  </DropdownItem>
+                );
+              }
+              return null; // Don't render if not logged in (handled by outer check anyway)
+            })()}
             <DropdownItem key="logout" color="danger" onPress={handleLogout}>
               Log Out
             </DropdownItem>
           </DropdownMenu>
         </Dropdown>
       ) : (
-        <Button onPress={openLogin} color="default" isLoading={isLoading} disabled={isLoading}>
-          {isLoading ? <Spinner size="sm" /> : "Login"}
+        <Button
+          onPress={() => {
+            setIsButtonLoading(true);
+            setTimeout(() => {
+              openLogin();
+              setIsButtonLoading(false);
+            }, 300);
+          }}
+          color="default"
+          isLoading={isButtonLoading}
+          disabled={isButtonLoading}
+        >
+          Login
         </Button>
       )}
-      <Modal isOpen={loginIsOpen} onClose={closeLogin} placement="top-center">
+      <Modal
+        isOpen={loginIsOpen}
+        onClose={closeLogin}
+        onOpenChange={onOpenChange}
+        placement={isMobile ? "bottom" : "center"}
+        backdrop="blur"
+        classNames={{
+          base: isMobile ? "m-0 rounded-b-none" : "",
+        }}
+      >
         <ModalContent>
           {() => (
             <>
               <ModalHeader className="flex flex-col gap-1">
-                {isLoggedIn ? "Logout" : "Login"}
+                <h1 className={title({ color: "red", size: "sm" })}>
+                  {isLoggedIn ? "Logout" : "Login"}
+                </h1>
               </ModalHeader>
               <ModalBody>
                 {isLoggedIn ? (
                   <p>Are you sure you want to logout?</p>
                 ) : (
-                  <>
-                    <Input
-                      autoFocus
-                      label="Email"
-                      placeholder="Enter your email"
-                      variant="bordered"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      endContent={
-                        <MailIcon className="text-2xl text-default-400 pointer-events-none flex-shrink-0" />
-                      }
-                    />
+                  <div className="relative">
+                    {isFormLoading && (
+                      <div className="absolute inset-0 bg-white/70 dark:bg-black/50 flex items-center justify-center z-10 rounded-lg">
+                        <Spinner size="lg" />
+                      </div>
+                    )}
+                    <form onSubmit={handleSubmitWrapper} className="space-y-4">
+                      <Input
+                        autoFocus
+                        label="Email"
+                        placeholder="Enter your email"
+                        variant="bordered"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        disabled={isFormLoading}
+                        endContent={
+                          <MailIcon className="text-2xl text-default-400 pointer-events-none flex-shrink-0" />
+                        }
+                      />
 
-                    <Input
-                      label="Password"
-                      placeholder="Enter your password"
-                      type="password"
-                      variant="bordered"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      endContent={
-                        <LockIcon className="text-2xl text-default-400 pointer-events-none flex-shrink-0" />
-                      }
-                    />
+                      <Input
+                        label="Password"
+                        placeholder="Enter your password"
+                        type={showPassword ? "text" : "password"}
+                        variant="bordered"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        disabled={isFormLoading}
+                        endContent={
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword((prev) => !prev)}
+                            className="focus:outline-none"
+                          >
+                            {showPassword ? (
+                              <EyeOff className="text-2xl text-default-400" />
+                            ) : (
+                              <Eye className="text-2xl text-default-400" />
+                            )}
+                          </button>
+                        }
+                      />
 
-                    <div className="flex py-2 px-1 justify-between">
-                      <Checkbox
-                        isSelected={rememberMe}
-                        onChange={(e) => setRememberMe(e.target.checked)}
-                        classNames={{ label: "text-small" }}
-                      >
-                        Remember me
-                      </Checkbox>
+                      <div className="flex py-2 px-1 justify-between">
+                        <Checkbox
+                          isSelected={rememberMe}
+                          onValueChange={setRememberMe}
+                          classNames={{ label: "text-small" }}
+                          isDisabled={isFormLoading}
+                        >
+                          Remember me
+                        </Checkbox>
 
-                      <Link
-                        color="primary"
-                        onPress={handleOpenRegister}
-                        size="sm"
-                      >
-                        Don't have an account? Sign up
-                      </Link>
-                    </div>
-                  </>
+                        <Link
+                          color="primary"
+                          onPress={handleOpenRegister}
+                          size="sm"
+                          className={
+                            isFormLoading
+                              ? "pointer-events-none text-default-400"
+                              : ""
+                          }
+                        >
+                          Don't have an account? Sign up
+                        </Link>
+                      </div>
+
+                      {/* Add a hidden submit button to enable Enter key submission */}
+                      <button
+                        type="submit"
+                        style={{ display: "none" }}
+                        aria-hidden="true"
+                      />
+                    </form>
+                  </div>
                 )}
               </ModalBody>
               <ModalFooter>
@@ -227,14 +466,15 @@ export default function Modall() {
                   color="danger"
                   variant="flat"
                   onPress={closeLogin}
-                  isDisabled={isLoading}
+                  isDisabled={isFormLoading}
                 >
                   Close
                 </Button>
+                {/* This button remains outside the form, triggers login on click */}
                 <Button
                   color="primary"
                   onPress={isLoggedIn ? handleLogout : handleLogin}
-                  isDisabled={isLoading}
+                  isDisabled={isFormLoading}
                 >
                   {isLoggedIn ? "Logout" : "Login"}
                 </Button>
@@ -261,6 +501,7 @@ export default function Modall() {
                   variant="bordered"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
+                  disabled={isFormLoading}
                 />
                 <Input
                   label="Email"
@@ -268,6 +509,7 @@ export default function Modall() {
                   variant="bordered"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  disabled={isFormLoading}
                 />
                 <div className="flex items-center">
                   <span className="px-2 py-2 bg-gray-200 rounded-l-md border border-gray-300 text-gray-700">
@@ -282,30 +524,70 @@ export default function Modall() {
                       const inputValue = e.target.value.replace(/[^0-9]/g, "");
                       setPhoneNumber(inputValue);
                     }}
+                    disabled={isFormLoading}
                   />
                 </div>
                 <Input
                   label="Password"
                   placeholder="Enter your password"
                   variant="bordered"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  disabled={isFormLoading}
+                  endContent={
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="focus:outline-none"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="text-2xl text-default-400" />
+                      ) : (
+                        <Eye className="text-2xl text-default-400" />
+                      )}
+                    </button>
+                  }
                 />
+
                 <Input
                   label="Confirm Password"
                   placeholder="Re-enter your password"
                   variant="bordered"
-                  type="password"
+                  type={showConfirmPassword ? "text" : "password"}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
+                  disabled={isFormLoading}
+                  endContent={
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword((prev) => !prev)}
+                      className="focus:outline-none"
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="text-2xl text-default-400" />
+                      ) : (
+                        <Eye className="text-2xl text-default-400" />
+                      )}
+                    </button>
+                  }
                 />
               </ModalBody>
               <ModalFooter>
-                <Button color="danger" variant="flat" onPress={closeRegister}>
+                <Button
+                  color="danger"
+                  variant="flat"
+                  onPress={closeRegister}
+                  isDisabled={isFormLoading}
+                >
                   Close
                 </Button>
-                <Button color="primary" onPress={handleSignup}>
+                <Button
+                  color="primary"
+                  onPress={handleSignup}
+                  isDisabled={isFormLoading}
+                  isLoading={isFormLoading}
+                >
                   Sign up
                 </Button>
               </ModalFooter>

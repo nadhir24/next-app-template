@@ -12,15 +12,30 @@ import {
   CardTitle,
   CardFooter,
 } from "@/components/ui/card";
-import { TruckIcon, CreditCard, ShieldCheck, Package } from "lucide-react";
+import {
+  TruckIcon,
+  CreditCard,
+  ShieldCheck,
+  Package,
+  AlertCircle,
+} from "lucide-react";
 import Tombol from "@/components/button";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Spinner } from "@nextui-org/spinner";
 
 interface ShippingAddress {
   firstName: string;
   lastName: string;
   email: string;
   address: string;
-  district: string;
   city: string;
   province: string;
   postalCode: string;
@@ -47,26 +62,39 @@ interface ShippingMethod {
   id: string;
   name: string;
   description: string;
-  price: number;
+  price: number | null;
   estimatedDays: string;
 }
 
+interface SavedAddress {
+  id: string;
+  street: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  isDefault?: boolean;
+}
+
 export default function CheckoutPage() {
+  const router = useRouter();
+  const { user } = useAuth();
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
     firstName: "",
     lastName: "",
     email: "",
     address: "",
-    district: "",
     city: "",
     province: "",
     postalCode: "",
     phone: "",
   });
   const [saveInfo, setSaveInfo] = useState(false);
-  const [discountCode, setDiscountCode] = useState("");
   const [loading, setLoading] = useState(false);
-  const [emailOffers, setEmailOffers] = useState(false);
+  const [addressesLoading, setAddressesLoading] = useState(false);
   const [checkoutData, setCheckoutData] = useState<CheckoutData>({
     items: [],
     subtotal: 0,
@@ -77,68 +105,87 @@ export default function CheckoutPage() {
   const [selectedShippingMethod, setSelectedShippingMethod] =
     useState<string>("gojek");
   const [totalFromBackend, setTotalFromBackend] = useState<number | null>(null);
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] =
+    useState<string>("new_address");
+  const [phoneSuffix, setPhoneSuffix] = useState("");
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   const shippingMethods: ShippingMethod[] = [
     {
+      id: "free",
+      name: "Pengantaran Langsung",
+      description: "Gratis (Jarak 1-5km)",
+      price: 0,
+      estimatedDays: "1-2 hari",
+    },
+    {
       id: "gojek",
       name: "Gojek",
-      description: "Same day (max 30km)",
-      price: 25000,
-      estimatedDays: "Same day",
+      description:
+        "jika pesanan sudah jadi akan diberi notifikasidan ongkir ditanggung pembeli",
+      price: null,
+      estimatedDays: "Instant (1-2 jam)",
     },
   ];
 
-  const fetchUserData = async (userId: string) => {
-    console.log("Fetching user data for userId:", userId);
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/users/${userId}`
-      );
-      if (!response.ok) throw new Error("Failed to fetch user data");
-      const userData = await response.json();
-      console.log("User data received:", userData);
-      setShippingAddress({
-        firstName: userData.firstName || "",
-        lastName: userData.lastName || "",
-        email: userData.email || "",
-        address: userData.address || "",
-        district: userData.district || "",
-        city: userData.city || "",
-        province: userData.province || "",
-        postalCode: userData.postalCode || "",
-        phone: userData.phone || "",
-      });
-    } catch (error) {
-      console.error("Error fetching user data:", error);
-      toast.error("Gagal mengambil data pengguna");
-    }
-  };
-
   const fetchCartData = useCallback(async () => {
     try {
-      const userIdParam = userId || localStorage.getItem("userId");
+      // Get cart data from localStorage first
+      const cartData = localStorage.getItem("cart");
+
+      let parsedCartData;
+      try {
+        parsedCartData = cartData ? JSON.parse(cartData) : null;
+      } catch (e) {
+        console.error("Error parsing cart data:", e);
+      }
+
+      // Get user data with proper fallback chain
+      let effectiveUserId = userId;
+
+      // If no userId from context, try localStorage
+      if (!effectiveUserId) {
+        effectiveUserId = localStorage.getItem("userId");
+      }
+
+      // If still no userId, try to get it from cart data
+      if (!effectiveUserId && parsedCartData && Array.isArray(parsedCartData)) {
+        const firstCartItem = parsedCartData[0];
+        if (firstCartItem && firstCartItem.userId) {
+          effectiveUserId = firstCartItem.userId;
+        }
+      }
+
       const guestIdFromStorage = localStorage.getItem("guestId");
-      
-      let url;
-      if (userIdParam) {
-        url = `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?userId=${userIdParam}`;
-      } else if (guestIdFromStorage) {
-        url = `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?guestId=${guestIdFromStorage}`;
-      } else {
-        console.log("No valid session found");
+      const userDataFromStorage = localStorage.getItem("user");
+
+      if (!effectiveUserId && !guestIdFromStorage) {
+        toast.error(
+          "Silakan login atau tambahkan item ke keranjang terlebih dahulu"
+        );
         return;
       }
 
+      const baseUrl = `${process.env.NEXT_PUBLIC_API_URL}/cart`;
+      const queryParam = effectiveUserId
+        ? `userId=${effectiveUserId}`
+        : `guestId=${guestIdFromStorage}`;
+      const itemsUrl = `${baseUrl}/findMany?${queryParam}`;
+      const totalUrl = `${baseUrl}/total?${queryParam}`;
+
       const [itemsRes, totalRes] = await Promise.all([
-        fetch(url),
-        fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/cart/total?${
-            userIdParam ? `userId=${userIdParam}` : `guestId=${guestIdFromStorage}`
-          }`
-        ),
+        fetch(itemsUrl),
+        fetch(totalUrl),
       ]);
 
       if (!itemsRes.ok || !totalRes.ok) {
+        console.error("API Error Details:", {
+          itemsStatus: itemsRes.status,
+          totalStatus: totalRes.status,
+          itemsStatusText: itemsRes.statusText,
+          totalStatusText: totalRes.statusText,
+        });
         throw new Error("Gagal mengambil data");
       }
 
@@ -147,8 +194,24 @@ export default function CheckoutPage() {
         totalRes.text(),
       ]);
 
-      // Extract numeric value from total text (e.g., "Rp150.000" -> 150000)
-      const totalValue = parseInt(totalText.replace(/[^0-9]/g, "")) || 0;
+      if (!items || items.length === 0) {
+        console.warn("[Checkout] Cart is empty based on API response.");
+        setCheckoutData({ items: [], subtotal: 0, shipping: 0, total: 0 });
+        setTotalFromBackend(0);
+        return;
+      }
+
+      let totalValue = 0;
+      if (typeof totalText === "string" && totalText.startsWith("Rp")) {
+        totalValue = parseInt(totalText.replace(/[^0-9]/g, "")) || 0;
+        console.log(
+          `[Checkout] Parsed total string '${totalText}' to number: ${totalValue}`
+        );
+      } else {
+        console.warn(
+          `[Checkout] Unexpected format for totalText: ${totalText}`
+        );
+      }
       setTotalFromBackend(totalValue);
 
       const transformedItems = items.map((item: any) => {
@@ -186,22 +249,226 @@ export default function CheckoutPage() {
         total: totalValue || subtotal + shippingCost,
       });
     } catch (error) {
-      console.error("Error fetching cart:", error);
+      console.error("Error fetching cart - Full details:", error);
       toast.error("Gagal mengambil data cart");
     }
   }, [userId, selectedShippingMethod]);
-  
+
   // Keeping the old function name for compatibility
   const fetchCheckoutData = fetchCartData;
 
-  useEffect(() => {
-    const userIdFromStorage = localStorage.getItem("userId");
-    if (userIdFromStorage) {
-      setUserId(userIdFromStorage);
-      fetchUserData(userIdFromStorage);
+  const fetchSavedAddresses = async (userId: string) => {
+    console.log("🏠 Fetching saved addresses for user:", userId);
+    setAddressesLoading(true);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/users/${userId}/addresses`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch saved addresses");
+      }
+
+      const addresses = await response.json();
+      console.log("📍 Fetched addresses:", addresses);
+
+      // Filter alamat duplikat berdasarkan kombinasi street+city
+      const uniqueAddresses = addresses.reduce(
+        (acc: SavedAddress[], curr: SavedAddress) => {
+          // Cek apakah alamat dengan kombinasi street+city yang sama sudah ada
+          const isDuplicate = acc.some(
+            (addr) => addr.street === curr.street && addr.city === curr.city
+          );
+          if (!isDuplicate) {
+            acc.push(curr);
+          }
+          return acc;
+        },
+        []
+      );
+
+      setSavedAddresses(uniqueAddresses);
+    } catch (error) {
+      console.error("❌ Error fetching saved addresses:", error);
+      toast.error("Gagal mengambil daftar alamat tersimpan");
+    } finally {
+      setAddressesLoading(false);
     }
+  };
+
+  const handleAddressSelect = (addressId: string) => {
+    console.log("🔄 Selected address ID:", addressId);
+
+    if (addressId === "new_address") {
+      // Clear all fields except email (which should come from user context)
+      setShippingAddress((prev) => ({
+        ...prev,
+        firstName: "",
+        lastName: "",
+        phone: "",
+        address: "",
+        city: "",
+        province: "",
+        postalCode: "",
+        email: user?.email || "", // Keep email from context
+      }));
+      setSelectedAddressId("new_address");
+      console.log(
+        "🧹 Cleared address and personal fields (except email) for new address entry"
+      );
+      return;
+    }
+
+    const selectedAddress = savedAddresses.find(
+      (addr) => addr.id === addressId
+    );
+
+    if (selectedAddress && user) {
+      console.log("📍 Selected existing address:", selectedAddress);
+      // Split fullName from user context for first/last name
+      const nameParts = user.fullName ? user.fullName.split(" ") : ["", ""];
+      const firstName = nameParts[0];
+      const lastName = nameParts.slice(1).join(" ");
+
+      setShippingAddress((prev) => ({
+        ...prev,
+        // Get personal info from user context
+        firstName: firstName || "",
+        lastName: lastName || "",
+        email: user.email || "",
+        phone: user.phoneNumber || "",
+        // Get address info from selected saved address
+        address: selectedAddress.street || "",
+        city: selectedAddress.city || "",
+        province: selectedAddress.state || "",
+        postalCode: selectedAddress.postalCode || "",
+      }));
+      setSelectedAddressId(addressId);
+    } else {
+      console.error("⚠️ Selected address not found or user data unavailable");
+      // Fallback to new address if the selected address is not found
+      setShippingAddress((prev) => ({
+        ...prev,
+        firstName: "",
+        lastName: "",
+        phone: "",
+        address: "",
+        city: "",
+        province: "",
+        postalCode: "",
+        email: user?.email || "", // Keep email from context
+      }));
+      setSelectedAddressId("new_address");
+    }
+  };
+
+  useEffect(() => {
+    console.log("🔄 useEffect triggered");
+    console.log("📦 All localStorage items:", {
+      allKeys: Object.keys(localStorage),
+      userObj: localStorage.getItem("user"),
+      cart: localStorage.getItem("cart"),
+    });
+
+    // Mulai dengan status loading
+    setAddressesLoading(true);
+
+    // Get userId from user object in localStorage
+    let userIdFromStorage = null;
+    try {
+      const userStr = localStorage.getItem("user");
+      if (userStr) {
+        const userData = JSON.parse(userStr);
+        userIdFromStorage = userData.id?.toString();
+        console.log("👤 Parsed user data:", userData);
+      }
+    } catch (error) {
+      console.error("Error parsing user data:", error);
+    }
+
+    console.log("🔑 UserID extracted from user object:", userIdFromStorage);
+
+    if (userIdFromStorage) {
+      console.log(
+        "✅ Found userId in storage, fetching full user data and addresses:",
+        userIdFromStorage
+      );
+      setUserId(userIdFromStorage);
+
+      // Fetch full user data untuk pre-fill nama, email, telepon
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/${userIdFromStorage}`)
+        .then((res) => res.json())
+        .then((userData) => {
+          console.log("[Checkout] Fetched user data for pre-fill:", userData);
+          if (userData) {
+            const nameParts = userData.fullName
+              ? userData.fullName.split(" ")
+              : ["", ""];
+            const firstName = nameParts[0];
+            const lastName = nameParts.slice(1).join(" ");
+
+            setShippingAddress((prev) => ({
+              ...prev, // Pertahankan alamat kosong dari reset sebelumnya
+              firstName: firstName || "",
+              lastName: lastName || "",
+              email: userData.email || "",
+              phone: userData.phoneNumber || "",
+            }));
+          }
+        })
+        .catch((err) =>
+          console.error("Error fetching user data for pre-fill:", err)
+        );
+
+      // Fetch saved addresses untuk dropdown dan otomatis gunakan jika ada default
+      fetchSavedAddresses(userIdFromStorage)
+        .then(() => {
+          // Cek apakah ada alamat default dan gunakan
+          if (savedAddresses.length > 0) {
+            // Cari alamat default
+            const defaultAddress = savedAddresses.find(
+              (addr) => addr.isDefault
+            );
+            if (defaultAddress) {
+              // Gunakan alamat default
+              handleAddressSelect(defaultAddress.id);
+            }
+          }
+          setAddressesLoading(false);
+        })
+        .catch(() => {
+          setAddressesLoading(false);
+        });
+    } else {
+      console.log("⚠️ No valid userId found in storage");
+      setAddressesLoading(false);
+    }
+
+    console.log("🛒 Calling fetchCartData");
     fetchCartData();
-  }, [fetchCartData, fetchUserData]);
+  }, [fetchCartData]);
+
+  useEffect(() => {
+    if (shippingAddress.phone) {
+      let initialSuffix = shippingAddress.phone
+        .replace(/^\+?62/g, "")
+        .replace(/\D/g, "");
+      if (initialSuffix.startsWith("8")) {
+        setPhoneSuffix(initialSuffix.substring(1)); // Store without the leading 8
+      } else {
+        setPhoneSuffix(initialSuffix); // Store as is if format is unexpected
+      }
+    } else {
+      setPhoneSuffix("");
+    }
+  }, [shippingAddress.phone]);
+
+  const validateField = (name: string, value: string) => {
+    if (value.trim() === "" && name !== "lastName") {
+      return `${name} tidak boleh kosong`;
+    }
+    return "";
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -209,27 +476,106 @@ export default function CheckoutPage() {
       ...prev,
       [name]: value,
     }));
+
+    // Validasi saat input berubah
+    const error = validateField(name, value);
+    setErrors((prev) => ({
+      ...prev,
+      [name]: error,
+    }));
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target.value;
+    // Remove non-digits and the prefix if user accidentally typed it
+    const digits = input.replace(/^\+?62\s*/, "").replace(/\D/g, "");
+
+    // Update the suffix state (allow starting with 8 or not)
+    setPhoneSuffix(digits);
+
+    // Update the main shippingAddress state with the full +62 format
+    let fullNumber = "";
+    if (digits) {
+      if (digits.startsWith("8")) {
+        fullNumber = `+62${digits}`;
+      } else {
+        // Attempt to correct if starts with 08
+        if (digits.startsWith("08")) {
+          fullNumber = `+62${digits.substring(1)}`;
+        } else {
+          // If format is unexpected, store with +62 prefix anyway
+          fullNumber = `+62${digits}`;
+        }
+      }
+    }
+
+    handleInputChange({
+      target: {
+        name: "phone",
+        value: fullNumber,
+      },
+    } as React.ChangeEvent<HTMLInputElement>);
   };
 
   const createTransaction = async () => {
-    setLoading(true);
+    setLoading(true); // Aktifkan loading saat tombol dicetek
+    console.log("🚀 Loading state:", loading);
     try {
+      // Validasi field yang required saat metode pengiriman = free
+      if (selectedShippingMethod === "free") {
+        // Validasi field yang wajib diisi
+        const requiredFields = {
+          firstName: "Nama Depan",
+          address: "Alamat",
+          city: "Kota",
+          province: "Provinsi",
+          postalCode: "Kode Pos",
+          phone: "Nomor Telepon",
+          email: "Email",
+        };
+
+        const currentErrors: { [key: string]: string } = {};
+        let hasErrors = false;
+
+        Object.entries(requiredFields).forEach(([field, label]) => {
+          const value = shippingAddress[field as keyof ShippingAddress];
+          if (!value) {
+            currentErrors[field] = `${label} tidak boleh kosong`;
+            hasErrors = true;
+          }
+        });
+
+        if (hasErrors) {
+          setErrors(currentErrors);
+          toast.error(`Harap isi semua field yang diperlukan`);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Jika checkbox dicentang, simpan informasi pengiriman
+      if (saveInfo && userId) {
+        console.log("💾 Checkbox dicentang, menyimpan informasi pengiriman");
+        await handleSaveInfo(true);
+      }
       const selectedMethod = shippingMethods.find(
         (method) => method.id === selectedShippingMethod
       );
-
       // Pastikan total yang dikirim ke Midtrans sudah benar
       // Gunakan totalFromBackend jika tersedia, jika tidak hitung dari subtotal + shipping
-      const finalTotal = totalFromBackend || (checkoutData.subtotal + (selectedMethod?.price || 0));
-      console.log("Sending transaction with total:", finalTotal);
-
+      const finalTotal =
+        totalFromBackend ||
+        checkoutData.subtotal + (selectedMethod?.price || 0);
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/payment/snap/create-transaction`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            userId,
+            // Conditionally include userId or guestId
+            ...(userId
+              ? { userId }
+              : { guestId: localStorage.getItem("guestId") }),
             shippingAddress,
             items: checkoutData.items,
             shipping: selectedMethod?.price || 0,
@@ -237,44 +583,86 @@ export default function CheckoutPage() {
           }),
         }
       );
-
       if (!response.ok) throw new Error("Failed to create transaction");
-
       const data = await response.json();
       if (data.success && data.data.paymentLink) {
         window.location.href = data.data.paymentLink;
       }
     } catch (error) {
       console.error("Error creating transaction:", error);
-      toast.error("Gagal membuat transaksi");
+      toast.error("Gagal membuat transaksi"); // Tampilkan toast error jika gagal
     } finally {
-      setLoading(false);
+      setLoading(false); // Nonaktifkan loading setelah selesai
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen py-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-8">
-            <div className="h-8 w-48 mx-auto bg-gray-200 rounded animate-pulse mb-2"></div>
-            <div className="h-4 w-64 mx-auto bg-gray-200 rounded animate-pulse"></div>
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-6">
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="h-64 bg-gray-200 rounded animate-pulse"
-                ></div>
-              ))}
-            </div>
-            <div className="h-96 bg-gray-200 rounded animate-pulse"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const handleSaveInfo = async (shouldSave: boolean) => {
+    if (!shouldSave || !userId) return;
+
+    console.log("💾 Saving shipping info for user:", userId);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/users/${userId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            fullName: `${shippingAddress.firstName} ${shippingAddress.lastName}`,
+            email: shippingAddress.email,
+            phoneNumber: shippingAddress.phone,
+            address_street: shippingAddress.address,
+            address_city: shippingAddress.city,
+            address_state: shippingAddress.province,
+            address_postalCode: shippingAddress.postalCode,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to save shipping info");
+      }
+
+      console.log("✅ Shipping info saved successfully");
+      toast.success("Informasi pengiriman berhasil disimpan");
+    } catch (error) {
+      console.error("❌ Error saving shipping info:", error);
+      toast.error("Gagal menyimpan informasi pengiriman");
+      setSaveInfo(false); // Reset checkbox if save fails
+    }
+  };
+
+  // Tambahkan console.log di awal component untuk melihat render
+  console.log("🎨 Checkout Page Rendered", {
+    userId,
+    shippingAddress,
+    selectedShippingMethod,
+  });
+
+  // if (loading) {
+  //   return (
+  //     <div className="min-h-screen py-10">
+  //       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+  //         <div className="text-center mb-8">
+  //           <div className="h-8 w-48 mx-auto bg-gray-200 rounded animate-pulse mb-2"></div>
+  //           <div className="h-4 w-64 mx-auto bg-gray-200 rounded animate-pulse"></div>
+  //         </div>
+  //         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+  //           <div className="lg:col-span-2 space-y-6">
+  //             {[1, 2, 3].map((i) => (
+  //               <div
+  //                 key={i}
+  //                 className="h-64 bg-gray-200 rounded animate-pulse"
+  //               ></div>
+  //             ))}
+  //           </div>
+  //           <div className="h-96 bg-gray-200 rounded animate-pulse"></div>
+  //         </div>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="min-h-screen py-10">
@@ -301,110 +689,15 @@ export default function CheckoutPage() {
                   value={shippingAddress.email}
                   onChange={handleInputChange}
                   placeholder="Email"
-                  className="w-full"
+                  className={`w-full ${errors.email ? "border-red-500 focus:ring-red-500" : ""}`}
+                  required
                 />
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="emailOffers"
-                    checked={emailOffers}
-                    onChange={(e) => setEmailOffers(e.target.checked)}
-                    className="h-4 w-4 text-blue-600 rounded"
-                  />
-                  <label
-                    htmlFor="emailOffers"
-                    className="ml-2 text-sm text-gray-600"
-                  >
-                    Kirimkan saya berita dan penawaran melalui email
-                  </label>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <TruckIcon className="h-5 w-5" /> Informasi Pengiriman
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    type="text"
-                    name="firstName"
-                    value={shippingAddress.firstName}
-                    onChange={handleInputChange}
-                    placeholder="Nama Depan"
-                  />
-                  <Input
-                    type="text"
-                    name="lastName"
-                    value={shippingAddress.lastName}
-                    onChange={handleInputChange}
-                    placeholder="Nama Belakang"
-                  />
-                </div>
-                <Input
-                  type="text"
-                  name="address"
-                  value={shippingAddress.address}
-                  onChange={handleInputChange}
-                  placeholder="Alamat"
-                />
-                <Input
-                  type="text"
-                  name="district"
-                  value={shippingAddress.district}
-                  onChange={handleInputChange}
-                  placeholder="Kecamatan"
-                />
-                <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    type="text"
-                    name="city"
-                    value={shippingAddress.city}
-                    onChange={handleInputChange}
-                    placeholder="Kota"
-                  />
-                  <Input
-                    type="text"
-                    name="province"
-                    value={shippingAddress.province}
-                    onChange={handleInputChange}
-                    placeholder="Provinsi"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    type="text"
-                    name="postalCode"
-                    value={shippingAddress.postalCode}
-                    onChange={handleInputChange}
-                    placeholder="Kode Pos"
-                  />
-                  <Input
-                    type="tel"
-                    name="phone"
-                    value={shippingAddress.phone}
-                    onChange={handleInputChange}
-                    placeholder="Nomor Telepon"
-                  />
-                </div>
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="saveInfo"
-                    checked={saveInfo}
-                    onChange={(e) => setSaveInfo(e.target.checked)}
-                    className="h-4 w-4 text-blue-600 rounded"
-                  />
-                  <label
-                    htmlFor="saveInfo"
-                    className="ml-2 text-sm text-gray-600"
-                  >
-                    Simpan informasi ini untuk pembelian berikutnya
-                  </label>
-                </div>
+                {errors.email && (
+                  <div className="flex items-center mt-1 text-red-500 text-xs">
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    {errors.email}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -442,15 +735,249 @@ export default function CheckoutPage() {
                         <div className="text-sm text-gray-500">
                           {method.description}
                         </div>
+                        <div className="text-sm text-gray-500">
+                          Estimasi: {method.estimatedDays}
+                        </div>
                       </label>
                     </div>
                     <div className="text-right font-medium">
-                      Rp {method.price.toLocaleString()}
+                      {method.price === 0
+                        ? "Gratis"
+                        : method.price === null
+                          ? "Manual Via Aplikasi"
+                          : `Rp ${method.price.toLocaleString()}`}
                     </div>
                   </div>
                 ))}
               </CardContent>
             </Card>
+
+            {/* Informasi Pengiriman hanya ditampilkan jika memilih pengantaran langsung */}
+            {selectedShippingMethod === "free" && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <TruckIcon className="h-5 w-5" /> Informasi Pengiriman
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {savedAddresses.length > 0 && (
+                    <div className="space-y-2">
+                      <label className="text-sm text-gray-600">
+                        Pilih Alamat Tersimpan
+                      </label>
+                      <Select
+                        value={selectedAddressId}
+                        onValueChange={handleAddressSelect}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Pilih alamat tersimpan" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="new_address">
+                            Masukkan alamat baru
+                          </SelectItem>
+                          {savedAddresses.map((addr) => (
+                            <SelectItem key={addr.id} value={addr.id}>
+                              {addr.street}, {addr.city}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {/* Tampilkan skeleton loading saat addressesLoading=true */}
+                  {addressesLoading ? (
+                    <div className="space-y-4">
+                      <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+                        <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+                      </div>
+                      <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+                      <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+                        <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+                        <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Input
+                            type="text"
+                            name="firstName"
+                            value={shippingAddress.firstName}
+                            onChange={handleInputChange}
+                            placeholder="Nama Depan"
+                            className={
+                              errors.firstName
+                                ? "border-red-500 focus:ring-red-500"
+                                : ""
+                            }
+                            required
+                          />
+                          {errors.firstName && (
+                            <div className="flex items-center mt-1 text-red-500 text-xs">
+                              <AlertCircle className="h-3 w-3 mr-1" />
+                              {errors.firstName}
+                            </div>
+                          )}
+                        </div>
+                        <Input
+                          type="text"
+                          name="lastName"
+                          value={shippingAddress.lastName}
+                          onChange={handleInputChange}
+                          placeholder="Nama Belakang"
+                          // lastName bisa opsional jika diinginkan
+                        />
+                      </div>
+
+                      <div>
+                        <Input
+                          type="text"
+                          name="address"
+                          value={shippingAddress.address}
+                          onChange={handleInputChange}
+                          placeholder="Alamat"
+                          className={
+                            errors.address
+                              ? "border-red-500 focus:ring-red-500"
+                              : ""
+                          }
+                          required
+                        />
+                        {errors.address && (
+                          <div className="flex items-center mt-1 text-red-500 text-xs">
+                            <AlertCircle className="h-3 w-3 mr-1" />
+                            {errors.address}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Input
+                            type="text"
+                            name="city"
+                            value={shippingAddress.city}
+                            onChange={handleInputChange}
+                            placeholder="Kota"
+                            className={
+                              errors.city
+                                ? "border-red-500 focus:ring-red-500"
+                                : ""
+                            }
+                            required
+                          />
+                          {errors.city && (
+                            <div className="flex items-center mt-1 text-red-500 text-xs">
+                              <AlertCircle className="h-3 w-3 mr-1" />
+                              {errors.city}
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <Input
+                            type="text"
+                            name="province"
+                            value={shippingAddress.province}
+                            onChange={handleInputChange}
+                            placeholder="Provinsi"
+                            className={
+                              errors.province
+                                ? "border-red-500 focus:ring-red-500"
+                                : ""
+                            }
+                            required
+                          />
+                          {errors.province && (
+                            <div className="flex items-center mt-1 text-red-500 text-xs">
+                              <AlertCircle className="h-3 w-3 mr-1" />
+                              {errors.province}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Input
+                            type="text"
+                            name="postalCode"
+                            value={shippingAddress.postalCode}
+                            onChange={handleInputChange}
+                            placeholder="Kode Pos"
+                            className={
+                              errors.postalCode
+                                ? "border-red-500 focus:ring-red-500"
+                                : ""
+                            }
+                            required
+                          />
+                          {errors.postalCode && (
+                            <div className="flex items-center mt-1 text-red-500 text-xs">
+                              <AlertCircle className="h-3 w-3 mr-1" />
+                              {errors.postalCode}
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <div className="relative">
+                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                              +62
+                            </span>
+                            <Input
+                              type="tel"
+                              name="phone"
+                              value={phoneSuffix}
+                              onChange={handlePhoneChange}
+                              placeholder="812 3456 7890"
+                              className={`pl-10 ${errors.phone ? "border-red-500 focus:ring-red-500" : ""}`}
+                              required
+                            />
+                          </div>
+                          {errors.phone && (
+                            <div className="flex items-center mt-1 text-red-500 text-xs">
+                              <AlertCircle className="h-3 w-3 mr-1" />
+                              {errors.phone}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      {/* Conditionally render the save info checkbox only if userId exists */}
+                      {userId && (
+                        <div className="flex items-center">
+                          <input
+                            type="checkbox"
+                            id="saveInfo"
+                            checked={saveInfo}
+                            onChange={(e) => {
+                              setSaveInfo(e.target.checked);
+                              // Jangan lakukan save segera, biarkan user klik tombol bayar
+                            }}
+                            className="h-4 w-4 text-blue-600 rounded"
+                          />
+                          <label
+                            htmlFor="saveInfo"
+                            className="ml-2 text-sm text-gray-600"
+                          >
+                            Simpan informasi ini untuk pembelian berikutnya
+                          </label>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             <Card>
               <CardHeader className="pb-2">
@@ -465,11 +992,35 @@ export default function CheckoutPage() {
                       <span className="font-medium">Payments By Midtrans</span>
                     </div>
                     <div className="flex space-x-2 opacity-70">
-                      <span className="text-xs px-2 py-1 rounded">VISA</span>
                       <span className="text-xs px-2 py-1 rounded">
-                        MASTERCARD
+                        {" "}
+                        <Image
+                          src="/visa.svg"
+                          alt="visa"
+                          width={45}
+                          height={45}
+                          className="hover:opacity-80 transition-opacity object-contain h-auto"
+                        />
                       </span>
-                      <span className="text-xs px-2 py-1 rounded">JCB</span>
+                      <span className="text-xs px-2 py-1 rounded">
+                        <Image
+                          src="/msc.svg"
+                          alt="msc"
+                          width={45}
+                          height={45}
+                          className="hover:opacity-80 transition-opacity object-contain h-auto"
+                        />
+                      </span>
+                      <span className="text-xs px-2 py-1 rounded">
+                        {" "}
+                        <Image
+                          src="/jcb.svg"
+                          alt="jcb"
+                          width={45}
+                          height={45}
+                          className="hover:opacity-80 transition-opacity object-contain h-auto"
+                        />
+                      </span>
                     </div>
                   </div>
                   <div className="text-center text-sm text-gray-600 mt-4">
@@ -494,79 +1045,97 @@ export default function CheckoutPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="max-h-[300px] overflow-y-auto pr-2 space-y-4">
-                    {checkoutData.items.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center pb-4 border-b"
-                      >
-                        <div className="relative w-16 h-16 rounded-md mr-4 overflow-hidden">
-                          <Image
-                            src={item.image || "/blurry.svg"}
-                            alt={item.name}
-                            fill
-                            className="object-cover"
-                          />
-                          <div className="absolute -top-2 -right-2 bg-gray-700 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs">
-                            {item.quantity}
-                          </div>
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="text-sm font-medium line-clamp-1">
-                            {item.name}
-                          </h3>
-                          <p className="text-xs text-gray-500">
-                            Ukuran: {item.size}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-medium">
-                            Rp {item.price.toLocaleString()}
-                          </p>
-                        </div>
+                    {checkoutData.items.length === 0 ? (
+                      // Pesan keranjang kosong alih-alih skeleton loader
+                      <div className="flex flex-col items-center justify-center py-8 text-center space-y-4">
+                        <div className="text-4xl mb-2">🛒</div>
+                        <h3 className="font-semibold text-gray-800">
+                          Keranjang Anda kosong
+                        </h3>
+                        <p className="text-gray-500 text-sm mb-4">
+                          Silahkan berbelanja untuk melanjutkan checkout
+                        </p>
+                        <Tombol
+                          onPress={() => router.push("/katalog")}
+                          className="bg-black hover:bg-gray-800 text-white"
+                          isLoading={false}
+                        >
+                          Lihat Katalog
+                        </Tombol>
                       </div>
-                    ))}
+                    ) : (
+                      // Render Item Asli
+                      checkoutData.items.map((item) => {
+                        try {
+                          return (
+                            <div
+                              key={item.id}
+                              className="flex items-center pb-4 border-b"
+                            >
+                              <div className="relative w-16 h-16 rounded-md mr-4 overflow-hidden">
+                                <Image
+                                  src={item.image || "/blurry.svg"}
+                                  alt={item.name}
+                                  fill
+                                  className="object-cover"
+                                  onError={(e) => {
+                                    console.error("Error loading image:", e);
+                                    e.currentTarget.src = "/blurry.svg";
+                                  }}
+                                />
+                              </div>
+                              <div className="flex-1">
+                                <h3 className="text-sm font-medium line-clamp-1">
+                                  {item.name}
+                                </h3>
+                                <p className="text-xs text-gray-500">
+                                  qty: {item.quantity}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  Ukuran: {item.size}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm font-medium">
+                                  Rp {item.price.toLocaleString()}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        } catch (error) {
+                          console.error("Error rendering cart item:", error);
+                          return null;
+                        }
+                      })
+                    )}
                   </div>
 
-                  <div className="flex space-x-2">
-                    <Input
-                      type="text"
-                      placeholder="Kode Diskon"
-                      value={discountCode}
-                      onChange={(e) => setDiscountCode(e.target.value)}
-                      className="flex-1"
-                    />
-                    <Tombol
-                      variant="shadow"
-                      size="sm"
-                      className="whitespace-nowrap"
-                    >
-                      Terapkan
-                    </Tombol>
-                  </div>
-
+                  {/* Subtotal & Total Section */}
                   <div className="space-y-2 pt-4 border-t">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Subtotal</span>
-                      <span>Rp {checkoutData.subtotal.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Pengiriman</span>
-                      <span>
-                        Rp{" "}
-                        {shippingMethods
-                          .find((m) => m.id === selectedShippingMethod)
-                          ?.price.toLocaleString() || 0}
-                      </span>
-                    </div>
-                    <div className="flex justify-between pt-2 border-t text-base font-medium">
-                      <span>Total</span>
-                      <span>
-                        Rp{" "}
-                        {totalFromBackend
-                          ? totalFromBackend.toLocaleString()
-                          : checkoutData.total.toLocaleString()}
-                      </span>
-                    </div>
+                    {checkoutData.items.length === 0 ? (
+                      // Tidak perlu tampilkan skeleton untuk Subtotal & Total jika keranjang kosong
+                      <div className="text-center text-sm text-gray-500 py-2">
+                        Tambahkan produk untuk melihat total
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Subtotal</span>
+                          <span>
+                            Rp {checkoutData.subtotal.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex justify-between pt-2 border-t text-base font-medium">
+                          <span>Total</span>
+                          <span>
+                            Rp{" "}
+                            {totalFromBackend
+                              ? totalFromBackend.toLocaleString()
+                              : checkoutData.subtotal.toLocaleString()}
+                          </span>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </CardContent>
                 <CardFooter>
@@ -574,8 +1143,17 @@ export default function CheckoutPage() {
                     onPress={createTransaction}
                     className="w-full bg-black hover:bg-gray-800 text-white"
                     size="lg"
+                    isDisabled={loading} // Menambahkan prop disabled untuk mencegah pencetan saat loading
                   >
-                    {loading ? "Memproses..." : "Bayar Sekarang"}
+                   {loading ? (
+    <>
+      <Spinner size="sm" className="mr-2" />
+      Memproses...
+    </>
+  ) : (
+    "Bayar Sekarang"
+  )}
+
                   </Tombol>
                 </CardFooter>
               </Card>

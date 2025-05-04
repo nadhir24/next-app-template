@@ -17,6 +17,7 @@ import Navy from "@/components/navbar";
 import { Divider } from "@heroui/divider";
 import Image from "next/image";
 import { AuthProvider } from "@/context/AuthContext";
+import { CartProvider } from "@/context/CartContext";
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
@@ -34,7 +35,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#FFD700" }, // Gold for light mode
+    { media: "(prefers-color-scheme: light)", color: "#FFD500" }, // Gold for light mode
     { media: "(prefers-color-scheme: dark)", color: "#8B0000" }, // Dark red for dark mode
   ],
 };
@@ -46,7 +47,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head />
+      <head>
+        {process.env.NEXT_PUBLIC_API_URL && (
+          <link 
+            rel="preconnect" 
+            href={process.env.NEXT_PUBLIC_API_URL} 
+          />
+        )}
+      </head>
       <body
         className={clsx(
           "min-h-screen font-sans antialiased",
@@ -55,96 +63,83 @@ export default function RootLayout({
       >
         <Providers themeProps={{ attribute: "class", defaultTheme: "light" }}>
           <AuthProvider>
-            <div className="relative flex flex-col min-h-screen bg-gradient-custom">
-              <Navy />
-              <main className="container mx-auto max-w-7xl pt-16 px-6 flex-grow">
-                {children}
-              </main>
+            <CartProvider>
+              <div className="relative flex flex-col min-h-screen bg-gradient-custom">
+                <Navy />
+                <main className="container mx-auto pt-16 px-6 flex-grow">
+                  {children}
+                </main>
 
-              {/* Footer */}
-              <footer className="container mx-auto max-w-7xl pt-16 px-6 bg-gradient-to-t from-red-600 to-yellow-500 text-white">
-                <Divider className="mb-4 border-gray-200" />
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 mt-1">
-                  <div>
-                    <RanoIcon />
-                    <div className="grid grid-cols-10 gap-2 mt-2">
-                      <Link
-                        href={siteConfig.links.google}
-                        aria-label="Google"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <Image
-                          className="mt-1"
-                          src="https://developers.google.com/static/maps/images/maps-icon.svg"
-                          alt="Google Maps Logo"
-                          width={30}
-                          height={30}
-                        />
-                      </Link>
-                      <Link
-                        href={siteConfig.links.whatsapp}
-                        aria-label="Whatsapp"
-                      >
-                        <WhatsappIcon />
-                      </Link>
+                {/* Footer */}
+                <footer className="w-full bg-gradient-to-t from-red-600 to-yellow-500 text-white mt-32">
+                  <div className="container mx-auto max-w-7xl px-6 py-12">
+                    <Divider className="mb-8 border-gray-200" />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+                      <div>
+                        <h3 className="text-xl font-bold mb-6">Tentang Kami</h3>
+                        <p className="text-gray-100">Rano cake adalah produsen makanan ringan berkualitas baik.</p>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold mb-6">Kontak</h3>
+                        <p className="text-gray-100">Email: info@ranocake.com</p>
+                        <p className="text-gray-100">Telepon: (021) 123-4567</p>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold mb-6">Support Pembayaran</h3>
+                        <div className="flex flex-col space-y-6">
+                          <div className="grid grid-cols-3 gap-4 items-center">
+                            <Link href={siteConfig.links.whatsapp} target="_blank" rel="noopener noreferrer" title="Hubungi via WhatsApp">
+                              <WhatsappIcon className="text-white hover:text-gray-300 transition-colors" size={35} />
+                            </Link>
+                            <Image
+                              src="/GoPay.svg"
+                              alt="GoPay"
+                              width={80}
+                              height={80}
+                              className="hover:opacity-80 transition-opacity object-contain h-auto w-auto"
+                            />
+                            <Image
+                              src="/QRIS.svg"
+                              alt="QRIS"
+                              width={80}
+                              height={80}
+                              className="hover:opacity-80 transition-opacity object-contain h-auto w-auto"
+                            />
+                          </div>
+                          <div className="grid grid-cols-3 gap-4 items-center">
+                            <Image
+                              src="/jcb.svg"
+                              alt="jcb"
+                              width={60}
+                              height={60}
+                              className="hover:opacity-80 transition-opacity object-contain h-auto w-auto"
+                            />
+                            <Image
+                              src="/visa.svg"
+                              alt="visa"
+                              width={60}
+                              height={60}
+                              className="hover:opacity-80 transition-opacity object-contain h-auto w-auto"
+                            />
+                            <Image
+                              src="/msc.svg"
+                              alt="msc"
+                              width={60}
+                              height={60}
+                              className="hover:opacity-80 transition-opacity object-contain h-auto w-auto"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-center mt-12">
+                      <p className="text-gray-100">&copy; {new Date().getFullYear()} Rano Cake. All rights reserved.</p>
                     </div>
                   </div>
-
-                  <div>
-                    <h1 className="text-lg font-semibold">Bantuan</h1>
-                    <ul className="text-sm">
-                      {siteConfig.footerItems.map((item) => (
-                        <li
-                          key={item.href}
-                          className="hover:text-yellow-200 transition-colors"
-                        >
-                          <Link href={item.href}>{item.label}</Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h1 className="text-lg font-semibold">Jam Kerja</h1>
-                    <ul className="text-sm">
-                      <li>Senin - Jumat: 8:00 WIB - 5:00 WIB</li>
-                      <li>Sabtu: 8:00 WIB - 12:00 WIB</li>
-                      <li>Minggu: tutup</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h1 className="text-lg font-semibold">Metode Pembayaran</h1>
-                    <ul className="flex space-x-4 mt-2">
-                      <li>
-                        <Image
-                          src="/visa-logo.png"
-                          alt="Visa"
-                          width={40}
-                          height={20}
-                        />
-                      </li>
-                      <li>
-                        <Image
-                          src="/mastercard-logo.png"
-                          alt="Mastercard"
-                          width={40}
-                          height={20}
-                        />
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-
-                <Divider className="mt-4 border-gray-200" />
-                <div className="text-center py-4 text-sm">
-                  © 2024 Rano Cake. All rights reserved.
-                </div>
-              </footer>
-            </div>
-            <Toaster />
+                </footer>
+              </div>
+              <Toaster />
+            </CartProvider>
           </AuthProvider>
         </Providers>
       </body>

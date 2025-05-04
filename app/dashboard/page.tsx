@@ -1,240 +1,754 @@
 "use client";
 
-import { useEffect, useState, useContext } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import axios from "axios";
-import { AppSidebar } from "@/components/app-sidebar";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useRouter } from "next/navigation";
+import { jwtDecode } from "jwt-decode";
+
+// Components
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+import { Avatar } from "@nextui-org/react";
+import { useAuth } from "@/context/AuthContext";
 
 interface UserProfile {
-  id: number;
+  id?: number;
   fullName: string;
-  email: string;
+  email?: string;
   phoneNumber: string;
   photoProfile?: string;
-  roleId?: { roleId: number }[];
   userProfile?: {
-    birthDate?: string;
-    gender?: string;
     address?: {
-      street: string;
-      city: string;
-      state: string;
-      postalCode: string;
-      country: string;
+      label?: string;
+      street?: string;
+      city?: string;
+      state?: string;
+      postalCode?: string;
+      country?: string;
     };
   };
 }
 
-const navigationData = [
-  {
-    title: "Dashboard",
-    items: [
-      { title: "Overview", url: "/dashboard" },
-      { title: "Profile", url: "/dashboard/profile" },
-      { title: "Settings", url: "/dashboard/settings" },
-    ],
-  },
-];
+interface Invoice {
+  id: number;
+  midtransOrderId: string;
+  status: string;
+  totalAmount: number;
+  createdAt: string;
+  items: Array<{
+    id: number;
+    productName: string;
+    quantity: number;
+    price: number;
+  }>;
+  midtransInvoicePdfUrl?: string;
+}
 
-function DashboardPage() {
-  console.log("DashboardPage rendering...");
-  const { user, setUserState, isLoading: isUserLoading } = useUser();
-  
-  const [isEditing, setIsEditing] = useState(false);
+export default function DashboardPage() {
+  const router = useRouter();
+  const { user, isLoading, setUserState } = useAuth();
+  console.log("Dashboard render - User:", user, "isLoading:", isLoading);
+
+  // Form states
   const [formData, setFormData] = useState<Partial<UserProfile>>({
     fullName: "",
-    email: "",
     phoneNumber: "",
+    userProfile: {
+      address: {
+        label: "",
+        street: "",
+        city: "",
+        state: "",
+        postalCode: "",
+        country: "Indonesia",
+      },
+    },
   });
 
+  // Image upload states
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Invoices
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    totalItems: 0,
+    totalPages: 0,
+    currentPage: 1,
+    hasNextPage: false,
+    hasPreviousPage: false,
+  });
+  const [isLoadingInvoices, setIsLoadingInvoices] = useState(false);
+
+  // Avatar preview URL
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "";
+  // Pastikan user.photoProfile tidak mengandung path lama dan hanya nama file
+  const imageName = user?.photoProfile?.split("/").pop() || ""; // Ambil hanya nama file
+  const imageUrl =
+    user?.photoProfile && imageName
+      ? `${apiBaseUrl}/uploads/users/${imageName}` // <<<=== UBAH INI: Gunakan path /uploads/users/
+      : "/defaultpp.svg";
+  console.log("Constructed imageUrl:", imageUrl);
+  // Load user data on mount
   useEffect(() => {
+    console.log("User effect triggered", { user, isLoading });
+    if (!user && !isLoading) {
+      console.log("No user, redirecting to home");
+      router.push("/");
+    }
+
     if (user) {
-      console.log("[Dashboard] User context loaded/changed:", user);
+      const userAddress = getUserPrimaryAddress(user);
+      console.log("Setting form data with user address:", userAddress);
       setFormData({
         fullName: user.fullName || "",
-        email: user.email || "",
         phoneNumber: user.phoneNumber || "",
+        userProfile: {
+          address: {
+            label: userAddress?.label || "",
+            street: userAddress?.street || "",
+            city: userAddress?.city || "",
+            state: userAddress?.state || "",
+            postalCode: userAddress?.postalCode || "",
+            country: userAddress?.country || "Indonesia",
+          },
+        },
       });
-    } else {
-        setFormData({ fullName: "", email: "", phoneNumber: "" }); 
+      setImagePreview(imageUrl);
     }
-  }, [user]);
+  }, [user, isLoading]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  // Load order history
+  useEffect(() => {
+    console.log("Invoices effect triggered", { userId: user?.id, currentPage });
+    fetchInvoices();
+  }, [user?.id, currentPage]);
+
+  const getUserPrimaryAddress = (userData: any) => {
+    console.log("Getting primary address from:", userData);
+    const address =
+      userData.userProfile?.addresses?.find((addr: any) => addr.isDefault) ||
+      userData.userProfile?.address ||
+      {};
+    console.log("Found address:", address);
+    return address;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) {
-      toast.error("User not logged in.");
+  const fetchInvoices = async () => {
+    if (!user?.id) {
+      console.log("No user ID, skipping invoice fetch");
       return;
     }
 
+    console.log("Fetching invoices for user:", user.id, "page:", currentPage);
+    setIsLoadingInvoices(true);
     try {
-      const token = user.token || localStorage.getItem("token"); 
-      
-      if (!token) {
-         toast.error("Authentication token not found. Please log in again.");
-         return;
-      }
-
-      const roleID = user.roleId?.[0]?.roleId || 3;
-      console.log("RoleID:", roleID);
-
-      const requestPayload = {
-        ...formData,
-        roleID: roleID,
-      };
-
-      console.log("Making PUT request to update user data:", requestPayload);
-      const response = await axios.put(
-        `${process.env.NEXT_PUBLIC_API_URL}/users/${user.id}`,
-        requestPayload,
-        { headers: { Authorization: `Bearer ${token}` } }
+      const token = localStorage.getItem("token");
+      console.log(
+        "Using token for fetch:",
+        token ? "Token exists" : "No token"
+      );
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/payment/invoice/user?userId=${user.id}&page=${currentPage}&limit=10`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
       );
 
-      console.log("Response:", response.data);
-      const updatedUser = response.data.data;
+      if (!res.ok) throw new Error("Gagal mengambil riwayat pesanan");
 
-      if (!updatedUser) {
-        throw new Error("Update response did not contain user data.");
-      }
-
-      setUserState(updatedUser);
-      console.log("User state updated via context after successful PUT.");
-      
-      setFormData({
-        fullName: updatedUser.fullName || "",
-        email: updatedUser.email || "",
-        phoneNumber: updatedUser.phoneNumber || "",
-      });
-
-      setIsEditing(false);
-      toast.success("Data berhasil diperbarui");
-
-    } catch (error) {
-      console.error("Error updating user data:", error);
-      if (axios.isAxiosError(error)) {
-        console.error("Axios error details:", {
-          status: error.response?.status,
-          statusText: error.response?.statusText,
-          data: error.response?.data,
-          config: {
-            url: error.config?.url,
-            method: error.config?.method,
-            headers: error.config?.headers,
-            data: error.config?.data
-          }
-        });
-        console.error("Request payload:", JSON.parse(error.config?.data || "{}"));
-      }
-      if (axios.isAxiosError(error) && error.response?.status === 401) {
-        toast.error("Sesi Anda telah berakhir, silakan login ulang");
-      } else {
-        const errorMessage = axios.isAxiosError(error) && error.response?.data?.message;
-        if (errorMessage?.includes("already in use")) {
-            toast.error("Email sudah digunakan. Silakan gunakan email lain.");
-        } else {
-            toast.error(errorMessage || "Gagal memperbarui data");
-        }
-      }
+      const data = await res.json();
+      console.log("Invoices fetched:", data);
+      setInvoices(data.data || []);
+      setPagination(data.pagination || {});
+    } catch (err) {
+      console.error("Error fetching invoices:", err);
+      toast.error("Gagal memuat riwayat pesanan.");
+    } finally {
+      setIsLoadingInvoices(false);
     }
   };
 
-  if (isUserLoading) {
-    return <div>Loading user data...</div>;
-  }
+  // Handle input change
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    console.log("Input changed:", { name, value });
 
-  if (!user) {
-    return <div>Please log in to view the dashboard.</div>;
-  }
+    if (name.startsWith("address.")) {
+      const field = name.split(".")[1];
+      console.log(
+        "Updating address field:",
+        field,
+        "Current address state:",
+        formData.userProfile?.address
+      );
+      setFormData((prev) => {
+        console.log("Previous state:", prev);
+        const updated = {
+          ...prev,
+          userProfile: {
+            ...prev.userProfile,
+            address: {
+              ...(prev.userProfile?.address || {}),
+              [field]: value,
+            },
+          },
+        };
+        console.log("Updated state:", updated);
+        return updated;
+      });
+    } else {
+      console.log("Updating regular field:", name);
+      setFormData((prev) => {
+        const updated = { ...prev, [name]: value };
+        console.log("Updated regular state:", updated);
+        return updated;
+      });
+    }
+  };
+
+  // Handle image change
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log("Image input changed:", e.target.files);
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      console.log("Selected file:", file.name, file.size);
+      setSelectedFile(file);
+      setImagePreview(URL.createObjectURL(file));
+    } else {
+      console.log("No file selected, resetting");
+      setSelectedFile(null);
+      setImagePreview(imageUrl); // Reset to current profile photo
+    }
+  };
+
+  // Submit form
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log("Form submission initiated with data:", formData);
+
+    const userId = user?.id;
+    if (!userId) {
+      console.log("No user ID found for submission");
+      toast.error("User ID tidak ditemukan. Silakan login ulang.");
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      console.log("No token found for submission");
+      toast.error("Sesi tidak ditemukan. Silakan login kembali.");
+      router.push("/");
+      return;
+    }
+
+    // Validate JWT
+    try {
+      const { exp } = jwtDecode<{ exp: number }>(token);
+      console.log(
+        "Token expiration:",
+        new Date(exp * 1000),
+        "Current time:",
+        new Date()
+      );
+      if (Date.now() / 1000 > exp) {
+        console.log("Token expired");
+        toast.error("Token telah kadaluarsa. Silakan login kembali.");
+        localStorage.removeItem("token");
+        router.push("/");
+        return;
+      }
+    } catch (err) {
+      console.error("Error decoding token:", err);
+      toast.error("Token tidak valid. Silakan login kembali.");
+      localStorage.removeItem("token");
+      router.push("/");
+      return;
+    }
+
+    setIsSubmitting(true);
+    const loadingToast = toast.loading("Menyimpan perubahan...");
+    console.log("Starting form submission process");
+
+    try {
+      // Prepare FormData for profile update
+      const formDataToSend = new FormData();
+      formDataToSend.append("fullName", formData.fullName || "");
+      formDataToSend.append("phoneNumber", formData.phoneNumber || "");
+
+      if (selectedFile) {
+        console.log("Adding file to form data:", selectedFile.name);
+        formDataToSend.append("image", selectedFile);
+      }
+
+      // Update user profile
+      console.log("Updating user profile for user ID:", userId);
+      const profileResponse = await axios.put(
+        `${process.env.NEXT_PUBLIC_API_URL}/users/${userId}`,
+        formDataToSend,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      console.log("Profile update response:", profileResponse.data);
+
+      // Update user address
+      const address = formData.userProfile?.address;
+      console.log("Address to update:", address);
+      if (!address?.postalCode) {
+        console.log("Missing postal code");
+        toast.error("Kode Pos tidak boleh kosong.");
+        return;
+      }
+
+      console.log("Updating address for user ID:", userId);
+      const addressResponse = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/users/${userId}/addresses`,
+        {
+          label: address.label,
+          street: address.street,
+          city: address.city,
+          state: address.state,
+          postalCode: address.postalCode,
+          country: address.country || "Indonesia",
+          isDefault: true,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      console.log("Address update response:", addressResponse.data);
+
+      // Refresh user data
+      console.log("Refreshing user data");
+      const res = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}/users/${userId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      console.log("Updated user data:", res.data);
+
+      setUserState(res.data);
+      toast.success("Profil dan alamat berhasil diperbarui!");
+      setSelectedFile(null);
+      // Perbarui imagePreview dengan URL yang benar setelah submit
+      const updatedImageName = res.data?.photoProfile?.split("/").pop() || "";
+      const newImageUrl = updatedImageName
+        ? `${apiBaseUrl}/uploads/users/${updatedImageName}`
+        : "/defaultpp.svg";
+      setImagePreview(newImageUrl);
+      setIsEditing(false);
+    } catch (err: any) {
+      console.error("Error in submission:", err);
+      const msg =
+        err.response?.data?.message ||
+        err.message ||
+        "Terjadi kesalahan saat menyimpan data.";
+      console.log("Error message:", msg);
+      toast.error(Array.isArray(msg) ? msg.join(", ") : msg);
+    } finally {
+      toast.dismiss(loadingToast);
+      setIsSubmitting(false);
+      console.log("Form submission completed");
+    }
+  };
+
+  // Format currency and date
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+    }).format(amount);
+
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString("id-ID", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+  // Filter orders
+  const filteredInvoices = invoices.filter((invoice) => {
+    const matchesSearch =
+      invoice.midtransOrderId
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      invoice.items.some((item) =>
+        item.productName.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    const matchesStatus =
+      statusFilter === "all" || invoice.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   return (
-    <SidebarProvider>
-      <AppSidebar navigationData={navigationData} />
-      <SidebarInset>
-        <div className="container mx-auto p-6">
-          <h1 className="text-2xl font-bold mb-6">Dashboard Pengguna</h1>
-          <Tabs defaultValue="profile" className="w-full">
-            <TabsList>
-              <TabsTrigger value="profile">Profil</TabsTrigger>
-              <TabsTrigger value="orders">Pesanan</TabsTrigger>
-            </TabsList>
-            <TabsContent value="profile" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Informasi Profil</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                      <Label htmlFor="fullName">Nama Lengkap</Label>
-                      <Input id="fullName" name="fullName" value={formData.fullName} onChange={handleInputChange} disabled={!isEditing} />
-                    </div>
-                    <div>
-                      <Label htmlFor="email">Email</Label>
-                      <Input id="email" name="email" type="email" value={formData.email} onChange={handleInputChange} disabled={!isEditing} />
-                    </div>
-                    <div>
-                      <Label htmlFor="phoneNumber">Nomor Telepon</Label>
-                      <Input id="phoneNumber" name="phoneNumber" value={formData.phoneNumber} onChange={handleInputChange} disabled={!isEditing} />
-                    </div>
-                    <div className="flex justify-end space-x-2">
-                      {isEditing ? (
+    <div className="container mx-auto p-6 rounded-lg">
+      <h1 className="text-2xl font-bold mb-6">Dashboard Pengguna</h1>
+
+      <Tabs defaultValue="profile" className="w-full">
+        <TabsList>
+          <TabsTrigger value="profile">Profil</TabsTrigger>
+          <TabsTrigger value="orders">Pesanan</TabsTrigger>
+        </TabsList>
+
+        {/* Profil Tab */}
+        <TabsContent value="profile" className="mt-6">
+          <Card>
+            <CardHeader className="flex flex-row justify-between items-center">
+              <div>
+                <CardTitle>Informasi Pribadi</CardTitle>
+                <CardDescription>
+                  Perbarui detail pribadi Anda di sini.
+                </CardDescription>
+              </div>
+
+              <Button
+                type="button"
+                onClick={() => setIsEditing(true)}
+                size="sm"
+              >
+                Edit Profile
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Foto Profil */}
+                <div className="space-y-3">
+                  <Label htmlFor="photo" className="text-md font-medium">
+                    Upload Profile Picture
+                  </Label>
+
+                  <div className="flex flex-col space-y-3">
+                    <Input
+                      id="photo"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      disabled={!isEditing}
+                      className={
+                        !isEditing ? "opacity-50 cursor-not-allowed" : ""
+                      }
+                    />
+
+                    {imagePreview && (
+                      <div className="flex items-center space-x-3">
+                        <p className="text-sm text-gray-600">Preview:</p>
+                        <img
+                          src={imagePreview}
+                          alt="Preview"
+                          width={64}
+                          height={64}
+                          className="rounded-full object-cover border"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Nama Lengkap */}
+                <div>
+                  <Label htmlFor="fullName">Nama Lengkap</Label>
+                  <Input
+                    id="fullName"
+                    name="fullName"
+                    value={formData.fullName || ""}
+                    onChange={handleInputChange}
+                    disabled={!isEditing}
+                  />
+                </div>
+
+                {/* Nomor Telepon */}
+                <div>
+                  <Label htmlFor="phoneNumber">Nomor Telepon</Label>
+                  <Input
+                    id="phoneNumber"
+                    name="phoneNumber"
+                    value={formData.phoneNumber || ""}
+                    onChange={handleInputChange}
+                    disabled={!isEditing}
+                  />
+                </div>
+
+                {/* Alamat */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Alamat</h3>
+                  <div>
+                    <Label htmlFor="address.label">Label Alamat</Label>
+                    <Input
+                      id="address.label"
+                      name="address.label"
+                      value={formData.userProfile?.address?.label || ""}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="address.street">Alamat Lengkap</Label>
+                    <Input
+                      id="address.street"
+                      name="address.street"
+                      value={formData.userProfile?.address?.street || ""}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="address.city">Kota</Label>
+                    <Input
+                      id="address.city"
+                      name="address.city"
+                      value={formData.userProfile?.address?.city || ""}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="address.state">Provinsi</Label>
+                    <Input
+                      id="address.state"
+                      name="address.state"
+                      value={formData.userProfile?.address?.state || ""}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="address.postalCode">Kode Pos</Label>
+                    <Input
+                      id="address.postalCode"
+                      name="address.postalCode"
+                      value={formData.userProfile?.address?.postalCode || ""}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                </div>
+
+                {/* Tombol Aksi */}
+                {isEditing && (
+                  <div className="flex justify-end space-x-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setIsEditing(false);
+                        setSelectedFile(null);
+                        setImagePreview(imageUrl);
+                      }}
+                      disabled={isSubmitting}
+                    >
+                      Batal
+                    </Button>
+                    <Button type="submit" disabled={isSubmitting}>
+                      {isSubmitting ? (
                         <>
-                          <Button type="button" variant="outline" onClick={() => {
-                            setIsEditing(false);
-                            setFormData({
-                              fullName: user.fullName || "", 
-                              email: user.email || "", 
-                              phoneNumber: user.phoneNumber || ""
-                            });
-                          }}>
-                            Batal
-                          </Button>
-                          <Button type="submit" variant="default">
-                            Simpan
-                          </Button>
+                          <span className="animate-spin h-4 w-4 mr-2 border-b-2 border-white rounded-full"></span>
+                          Menyimpan...
                         </>
                       ) : (
-                        <>
-                          <Button type="button" variant="default" onClick={(e) => { e.preventDefault(); setIsEditing(true); }}>
-                            Edit
-                          </Button>
-                        </>
+                        "Simpan Perubahan"
                       )}
-                    </div>
-                  </form>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            <TabsContent value="orders" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Riwayat Pesanan</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p>Riwayat pesanan akan ditampilkan di sini</p>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+                    </Button>
+                  </div>
+                )}
+              </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Pesanan Tab */}
+        <TabsContent value="orders" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Riwayat Pesanan</CardTitle>
+              <CardDescription>
+                Lihat dan kelola riwayat pesanan Anda
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {/* Search & Filter */}
+              <div className="flex gap-4 mb-4">
+                <Input
+                  placeholder="Cari berdasarkan ID atau nama produk..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="border px-3 py-2 rounded-md bg-white dark:bg-black"
+                >
+                  <option value="all">All Status</option>
+                  <option value="PENDING">PENDING</option>
+                  <option value="SETTLEMENT">SETTLEMENT</option>
+                  <option value="PROCESSING">PROCESSING</option>
+                  <option value="SHIPPED">DELIVERED</option>
+                  <option value="DELIVERED">DELIVERED</option>
+                  <option value="CANCELLED">CANCELLED</option>
+                  <option value="EXPIRE">EXPIRE</option>
+                  <option value="Ditolak">DENY</option>
+                </select>
+              </div>
+
+              {/* Orders Table */}
+              {isLoadingInvoices ? (
+                <div className="text-center py-4">Memuat...</div>
+              ) : filteredInvoices.length === 0 ? (
+                <div className="text-center py-4">
+                  Tidak ada pesanan ditemukan
+                </div>
+              ) : (
+                <div className="rounded-md border overflow-hidden">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-sm font-semibold">
+                          ID Pesanan
+                        </th>
+                        <th className="px-6 py-3 text-left text-sm font-semibold">
+                          Tanggal
+                        </th>
+                        <th className="px-6 py-3 text-left text-sm font-semibold">
+                          Produk
+                        </th>
+                        <th className="px-6 py-3 text-left text-sm font-semibold">
+                          Total
+                        </th>
+                        <th className="px-6 py-3 text-left text-sm font-semibold">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-sm font-semibold">
+                          Aksi
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {filteredInvoices.map((invoice) => (
+                        <tr key={invoice.id}>
+                          <td className="px-6 py-4">
+                            {invoice.midtransOrderId}
+                          </td>
+                          <td className="px-6 py-4">
+                            {formatDate(invoice.createdAt)}
+                          </td>
+                          <td className="px-6 py-4">
+                            {invoice.items.map((item) => (
+                              <div key={item.id}>
+                                {item.productName} x{item.quantity}
+                              </div>
+                            ))}
+                          </td>
+                          <td className="px-6 py-4">
+                            {formatCurrency(invoice.totalAmount)}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span
+                              className={`inline-block px-2 py-1 rounded-full text-sm ${
+                                ["SETTLEMENT", "DELIVERED"].includes(
+                                  invoice.status
+                                )
+                                  ? "bg-green-100 text-green-800"
+                                  : ["PENDING", "PROCESSING"].includes(
+                                        invoice.status
+                                      )
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : "bg-red-100 text-red-800"
+                              }`}
+                            >
+                              {invoice.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            {[
+                              "SETTLEMENT",
+                              "PROCESSING",
+                              "SHIPPED",
+                              "DELIVERED",
+                            ].includes(invoice.status) &&
+                              invoice.midtransInvoicePdfUrl && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    window.open(
+                                      invoice.midtransInvoicePdfUrl!,
+                                      "_blank"
+                                    )
+                                  }
+                                >
+                                  PDF
+                                </Button>
+                              )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Pagination */}
+              {pagination.totalPages > 1 && (
+                <div className="mt-4 flex justify-center">
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.max(1, prev - 1))
+                      }
+                      disabled={!pagination.hasPreviousPage}
+                    >
+                      Previous
+                    </Button>
+                    <span className="py-2 px-4">
+                      Page {pagination.currentPage} of {pagination.totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        setCurrentPage((prev) =>
+                          Math.min(pagination.totalPages, prev + 1)
+                        )
+                      }
+                      disabled={!pagination.hasNextPage}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }
-
-export default DashboardPage;

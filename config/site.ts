@@ -12,7 +12,10 @@ export const siteConfig = {
       label: "Katalog",
       href: "/katalog",
     },
-
+    {
+      label: "Invoice",
+      href: "/invoice",
+    },
     {
       label: "Tentang kami",
       href: "/tentangkami",
@@ -23,7 +26,10 @@ export const siteConfig = {
       label: "Profile",
       href: "/profile",
     },
-
+    {
+      label: "Invoice",
+      href: "/invoice",
+    },
     {
       label: "tentang kami",
       href: "/tentangkami",
@@ -38,7 +44,6 @@ export const siteConfig = {
       label: "tentang kami",
       href: "/tentangkami",
     },
-
     {
       label: "Katalog",
       href: "/Katalog",

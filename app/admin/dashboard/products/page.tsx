@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, PencilIcon, Trash2Icon, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
@@ -28,6 +28,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { useToast } from "@/components/ui/use-toast";
 
 interface Size {
   id: number;
@@ -60,7 +61,11 @@ export default function ProductsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [productToDelete, setProductToDelete] = useState<number | null>(null);
   const router = useRouter();
+  const { toast, dismiss } = useToast();
   const ITEMS_PER_PAGE = 10;
 
   const fetchProducts = async (page: number) => {
@@ -89,27 +94,6 @@ export default function ProductsPage() {
     setCurrentPage(page);
   };
 
-  const handleDelete = async (productId: number) => {
-    if (confirm("Are you sure you want to delete this product?")) {
-      try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/catalog/${productId}`,
-          {
-            method: "DELETE",
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-          }
-        );
-        if (response.ok) {
-          fetchProducts(currentPage);
-        }
-      } catch (error) {
-        console.error("Error deleting product:", error);
-      }
-    }
-  };
-
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -119,12 +103,139 @@ export default function ProductsPage() {
     }).format(price);
   };
 
+  const handleDelete = async (productId: number) => {
+    console.log('Handling delete for product:', productId);
+
+    setProductToDelete(productId);
+
+    await Promise.resolve();
+
+    const toastId = toast({
+      title: "Delete Product",
+      description: "Are you sure you want to delete this product?",
+      variant: "destructive",
+      duration: 5000,
+      action: (
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              dismiss(toastId.id);
+              setProductToDelete(null);
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={async () => {
+              dismiss(toastId.id);
+              await confirmDelete(productId);
+            }}
+          >
+            Delete
+          </Button>
+        </div>
+      ),
+    });
+  };
+
+  const confirmDelete = async (id: number) => {
+    console.log('Starting delete confirmation for ID:', id);
+
+    if (!id || typeof id !== 'number' || isNaN(id)) {
+      console.error("Invalid product ID provided to confirmDelete:", id);
+      toast({
+        title: "Error",
+        description: "Invalid product ID provided.",
+        variant: "destructive"
+      });
+      setProductToDelete(null);
+      return;
+    }
+
+    console.log('Delete confirmed, proceeding...');
+    try {
+      const token = localStorage.getItem("token");
+      console.log('Token found:', token ? 'Yes' : 'No');
+
+      if (!token) {
+        toast({
+          title: "Error",
+          description: "Authentication token not found",
+          variant: "destructive",
+          duration: 3000,
+        });
+      } else {
+        const deleteUrl = `${process.env.NEXT_PUBLIC_API_URL}/catalog/${id}`;
+        console.log('Sending DELETE request to:', deleteUrl);
+
+        const response = await fetch(deleteUrl, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        console.log('Delete response:', {
+          status: response.status,
+          statusText: response.statusText,
+          headers: Object.fromEntries(response.headers.entries())
+        });
+
+        let responseData = null;
+        if (!response.ok) {
+            try {
+                responseData = await response.json();
+                console.log('Error data:', responseData);
+                throw new Error(responseData?.message || `Failed to delete product (status: ${response.status})`);
+            } catch (parseError) {
+                console.error("Failed to parse error response:", parseError);
+                throw new Error(`Failed to delete product and parse error response (status: ${response.status})`);
+            }
+        } else {
+             try {
+                responseData = await response.json();
+                console.log('Success response data (if any):', responseData);
+             } catch (parseError) {
+                 console.log("No JSON body in successful DELETE response.");
+                 responseData = null;
+             }
+        }
+
+        toast({
+          title: "Success",
+          description: "Product deleted successfully",
+          variant: "default",
+          duration: 3000,
+        });
+
+        console.log('Refreshing product list...');
+        await fetchProducts(currentPage);
+      }
+    } catch (error) {
+      console.error('Delete error details:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete product",
+        variant: "destructive",
+        duration: 3000,
+      });
+    } finally {
+      setProductToDelete(null);
+      console.log('Delete process finished, resetting productToDelete state.');
+    }
+  };
+
   return (
     <div className="container mx-auto py-10">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Products</h1>
-        <Button onClick={() => router.push("/admin/dashboard/products/add")}>
-          Add Product
+        <Button onClick={() => router.push("/admin/dashboard/products/add")} disabled={isLoading}>
+          {isLoading ? "Loading..." : "Add Product"}
         </Button>
       </div>
 
@@ -165,7 +276,11 @@ export default function ProductsPage() {
                     <TableCell>
                       <div className="relative w-16 h-16">
                         <Image
-                          src={`${process.env.NEXT_PUBLIC_API_URL}${product.image}`}
+                          src={
+                            product.image
+                              ? `${process.env.NEXT_PUBLIC_API_URL}${product.image}`
+                              : "/default-product.jpg"
+                          }
                           alt={product.name}
                           fill
                           className="object-cover rounded"
@@ -181,7 +296,11 @@ export default function ProductsPage() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <DropdownMenu>
+                      <DropdownMenu onOpenChange={(isOpen) => {
+                        if (!isOpen && productToDelete === product.id) {
+                          setProductToDelete(null);
+                        }
+                      }}>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" className="h-8 w-8 p-0">
                             <MoreHorizontal className="h-4 w-4" />
@@ -189,17 +308,45 @@ export default function ProductsPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
-                            onClick={() =>
-                              router.push(`/admin/dashboard/products/edit/${product.id}`)
-                            }
+                            onClick={() => {
+                              setEditingId(product.id);
+                              router.push(`/admin/dashboard/products/edit/${product.id}`);
+                            }}
                           >
-                            Edit
+                            <Button 
+                              variant="ghost" 
+                              className="w-full justify-start"
+                              disabled={editingId === product.id}
+                            >
+                              {editingId === product.id ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Editing...
+                                </>
+                              ) : (
+                                <>
+                                  <PencilIcon className="mr-2 h-4 w-4" />
+                                  Edit
+                                </>
+                              )}
+                            </Button>
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => handleDelete(product.id)}
-                            className="text-red-600"
+                            className="text-red-600 focus:bg-red-100 focus:text-red-700"
+                            disabled={productToDelete === product.id}
                           >
-                            Delete
+                            {productToDelete === product.id ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Deleting...
+                              </>
+                            ) : (
+                              <>
+                                <Trash2Icon className="mr-2 h-4 w-4" />
+                                Delete
+                              </>
+                            )}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

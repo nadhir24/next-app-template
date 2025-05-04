@@ -1,440 +1,333 @@
 "use client";
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Button } from "@heroui/button";
-import { Card, CardBody, CardHeader } from "@heroui/card";
+import { Card, CardBody } from "@heroui/card";
 import { Link } from "@heroui/link";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { toast } from "sonner";
 import { Image } from "@heroui/image";
 import { Divider } from "@heroui/divider";
 import { Trash2 } from "lucide-react";
 import { Modal, ModalContent, ModalBody, useDisclosure } from "@heroui/modal";
+import { useCart, CartItem } from "@/context/CartContext";
+import { useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
 
-interface CartItem {
-  id: number;
-  userId: number | null;
-  guestId: string | null;
-  quantity: number;
-  createdAt: string;
-  user?: { id: number; email: string } | null;
-  catalog?: { id: number; name: string; image: string } | null;
-  size?: { id: number; size: string; price: string; qty?: number } | null;
-}
+const CartPage = () => {
+  const router = useRouter();
+  const {
+    cartItems: contextCartItems,
+    cartCount,
+    cartTotal,
+    isLoadingCart,
+    fetchCart,
+    updateCartItem,
+    removeFromCart,
+  } = useCart();
+  const { theme } = useTheme();
 
-const CartPage: React.FC = () => {
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [total, setTotal] = useState<string>("Rp0");
-  const [guestId, setGuestId] = useState<string | null>(null);
-  const [user, setUser] = useState<any>(null);
-  const [processingItems, setProcessingItems] = useState<number[]>([]);
+  const [displayCartItems, setDisplayCartItems] = useState<CartItem[]>([]);
+  const [processingItems, setProcessingItems] = useState<
+    Record<number, boolean>
+  >({});
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const [itemToDelete, setItemToDelete] = useState<number | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<CartItem | null>(null);
 
+  // Initialize local state from context
   useEffect(() => {
-    const userData = localStorage.getItem("user");
-    if (userData) {
-      setUser(JSON.parse(userData));
-    } else {
-      initializeGuestSession();
-    }
-  }, []);
+    setDisplayCartItems(contextCartItems);
+  }, [contextCartItems]);
 
-  const fetchCartData = useCallback(async () => {
-    setLoading(true);
-    try {
-      let url;
-      if (user?.id) {
-        url = `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?userId=${user.id}`;
-        console.log("Fetching cart with userId:", user.id);
-      } else if (guestId) {
-        url = `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?guestId=${guestId}`;
-        console.log("Fetching cart with guestId:", guestId);
-      } else {
-        console.log("No user or guest ID available for cart fetch");
-        return;
-      }
+  // Handle quantity change with optimistic update
+  const handleUpdateQuantity = useCallback(
+    async (id: number, currentQuantity: number, change: number) => {
+      const newQuantity = currentQuantity + change;
+      if (newQuantity < 1 || processingItems[id]) return;
 
-      const [itemsRes, totalRes] = await Promise.all([
-        fetch(url),
-        fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/cart/total?${
-            user?.id ? `userId=${user.id}` : `guestId=${guestId}`
-          }`
-        ),
-      ]);
-
-      if (!itemsRes.ok || !totalRes.ok) {
-        throw new Error("Gagal mengambil data");
-      }
-
-      const [items, total] = await Promise.all([
-        itemsRes.json(),
-        totalRes.text(),
-      ]);
-      console.log("Cart items fetched:", items);
-      console.log("Cart total fetched:", total);
-      setCartItems(items);
-      setTotal(total);
-    } catch (error) {
-      console.error("Error in fetchCartData:", error);
-      toast.error("Gagal mengambil data cart");
-    } finally {
-      setLoading(false);
-    }
-  }, [user, guestId]);
-
-  useEffect(() => {
-    fetchCartData();
-  }, [user, guestId, fetchCartData]);
-
-  const updateCartItem = async (id: number, newQuantity: number) => {
-    console.log(`Updating cart item ${id} to quantity ${newQuantity}`);
-    // Simpan state awal untuk rollback jika terjadi error
-    const originalItems = [...cartItems];
-    const originalTotal = total;
-    console.log("Original items:", originalItems);
-
-    try {
-      // Tandai item sedang diproses
-      setProcessingItems((prev) => [...prev, id]);
-      const itemToUpdate = cartItems.find((item) => item.id === id);
-
-      // Validasi client-side
-      if (
-        itemToUpdate &&
-        itemToUpdate.size?.qty !== undefined &&
-        newQuantity > itemToUpdate.size.qty
-      ) {
-        toast.error(`Stok tidak mencukupi. Tersedia: ${itemToUpdate.size.qty}`);
-        return;
-      }
-
-      // PENTING: Tunda update UI sampai konfirmasi dari server
-      // Jangan lakukan update optimistic
-
-      // Kirim request ke server
-      console.log("Sending update request with payload:", {
-        quantity: newQuantity,
-        userId: user?.id,
-        guestId: guestId,
-      });
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/cart/${id}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            quantity: newQuantity,
-            userId: user?.id,
-            guestId: guestId,
-          }),
-        }
+      const originalItems = [...displayCartItems];
+      setDisplayCartItems((prevItems) =>
+        prevItems.map((item) =>
+          item.id === id ? { ...item, quantity: newQuantity } : item
+        )
       );
+      setProcessingItems((prev) => ({ ...prev, [id]: true }));
 
-      // Tangani response dengan benar
-      let result;
       try {
-        // Parse response JSON hanya sekali
-        result = await response.json();
-        console.log("Update response:", result);
-      } catch (e) {
-        console.error("Failed to parse response:", e);
-        throw new Error("Invalid response from server");
+        await updateCartItem(id, newQuantity);
+      } catch (error) {
+        toast.error("Gagal mengubah jumlah item");
+        setDisplayCartItems(originalItems);
+      } finally {
+        setProcessingItems((prev) => ({ ...prev, [id]: false }));
       }
+    },
+    [updateCartItem, displayCartItems, processingItems]
+  );
 
-      // Cek apakah request berhasil
-      if (!response.ok || !result.success) {
-        throw new Error(result.message || "Gagal update quantity");
-      }
-
-      // Hanya update UI setelah konfirmasi server
-      if (result.data) {
-        console.log("Updating UI with result data:", result.data);
-        setCartItems((prevItems) =>
-          prevItems.map((item) =>
-            item.id === id ? { ...item, ...result.data } : item
-          )
-        );
-      } else {
-        console.log("No result data, refreshing cart data");
-        // Jika tidak ada data yang dikembalikan, refresh cart data
-        await fetchCartData();
-      }
-
-      // Update total
-      const totalRes = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/cart/total?${
-          user?.id ? `userId=${user.id}` : `guestId=${guestId}`
-        }`
-      );
-      if (totalRes.ok) {
-        const serverTotal = await totalRes.text();
-        setTotal(serverTotal);
-      }
-    } catch (error) {
-      console.error("Error in updateCartItem:", error);
-
-      // Kembalikan ke state awal jika terjadi error
-      setCartItems(originalItems);
-      setTotal(originalTotal);
-
-      // Tampilkan error
-      toast.error(
-        error instanceof Error ? error.message : "Gagal update quantity"
-      );
-    } finally {
-      setProcessingItems((prev) => prev.filter((itemId) => itemId !== id));
-    }
-  };
-
-  const deleteCartItem = async (id: number) => {
-    console.log(`Deleting cart item ${id}`);
-    try {
-      setProcessingItems((prev) => [...prev, id]);
-
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/cart/${id}`,
-        {
-          method: "DELETE",
-        }
-      );
-      if (!response.ok) {
-        throw new Error("Gagal menghapus item");
-      }
-
-      setCartItems((prevItems) => prevItems.filter((item) => item.id !== id));
-
-      const totalRes = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/cart/total?${
-          user?.id ? `userId=${user.id}` : `guestId=${guestId}`
-        }`
-      );
-      if (!totalRes.ok) {
-        throw new Error("Gagal mengambil total");
-      }
-      const total = await totalRes.text();
-      setTotal(total);
-    } catch (error) {
-      toast.error("Gagal menghapus item");
-    } finally {
-      setProcessingItems((prev) => prev.filter((itemId) => itemId !== id));
-    }
-  };
-
-  const confirmDeletion = (id: number) => {
-    setItemToDelete(id);
+  // Handle delete confirmation
+  const confirmDeletion = (item: CartItem) => {
+    setItemToDelete(item);
     onOpen();
   };
 
-  const handleDelete = async () => {
-    if (itemToDelete) {
-      await deleteCartItem(itemToDelete);
-    }
+  // Handle item removal with optimistic update
+  const handleDelete = useCallback(async () => {
+    if (!itemToDelete || processingItems[itemToDelete.id]) return;
+    const idToDelete = itemToDelete.id;
+    const originalItems = [...displayCartItems];
+
+    setDisplayCartItems((prevItems) =>
+      prevItems.filter((item) => item.id !== idToDelete)
+    );
+    setProcessingItems((prev) => ({ ...prev, [idToDelete]: true }));
+
     onClose();
+
+    try {
+      await removeFromCart(idToDelete);
+      toast.success("Item berhasil dihapus");
+    } catch (error) {
+      toast.error("Gagal menghapus item");
+      setDisplayCartItems(originalItems);
+    } finally {
+      setProcessingItems((prev) => ({ ...prev, [idToDelete]: false }));
+      setItemToDelete(null);
+    }
+  }, [itemToDelete, removeFromCart, displayCartItems, processingItems]);
+
+  // Loading skeleton
+  if (isLoadingCart && displayCartItems.length === 0) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-2xl font-bold mb-6">Keranjang Belanja</h1>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="md:col-span-2 space-y-4">
+            {[...Array(2)].map((_, i) => (
+              <Card key={i} shadow="sm" className="overflow-hidden">
+                <CardBody className="p-4">
+                  <div className="flex gap-4">
+                    <div className="w-24 h-24 rounded bg-gray-200 dark:bg-gray-700"></div>
+                    <div className="flex-1 space-y-2 py-1">
+                      <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+                      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
+                    </div>
+                  </div>
+                </CardBody>
+              </Card>
+            ))}
+          </div>
+          <div className="md:col-span-1">
+            <Card shadow="sm">
+              <CardBody className="p-4 space-y-3">
+                <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+                <div className="h-px bg-gray-200 dark:bg-gray-700 w-full"></div>
+                <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
+                <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-full mt-4"></div>
+                <div className="h-10 bg-gray-300 dark:bg-gray-600 rounded w-full mt-2"></div>
+              </CardBody>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const formatPrice = (price: string | number | undefined) => {
+    if (!price) return "Rp0";
+    if (typeof price === "string") {
+      return price;
+    }
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    }).format(price);
   };
 
-  const initializeGuestSession = useCallback(async () => {
-    const storedGuestId = localStorage.getItem("guestId");
-    if (!storedGuestId) {
-      try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/cart/guest-session`
-        );
-        const { guestId } = await response.json();
-        localStorage.setItem("guestId", guestId);
-        setGuestId(guestId);
-      } catch (error) {
-        toast.error("Gagal inisialisasi session");
-        console.error("Session error:", error);
-      }
-    } else {
-      setGuestId(storedGuestId);
-    }
-  }, []);
-
   return (
-    <div className="container mx-auto p-4">
-      {/* Toast Container untuk notifikasi */}
-      <ToastContainer position="top-center" />
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-2xl font-bold mb-6">Keranjang Belanja</h1>
 
-      {/* Judul Halaman */}
-      <h2 className="text-2xl font-bold mb-4">Keranjang Belanja</h2>
-
-      {/* Loading State */}
-      {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <p className="text-lg text-gray-600 animate-pulse">
-            Memuat keranjang...
-          </p>
-        </div>
-      ) : cartItems.length === 0 ? (
-        <div className="flex items-center justify-center h-64">
-          <p className="text-lg">Keranjang Anda kosong.</p>
-        </div>
+      {displayCartItems.length === 0 && !isLoadingCart ? (
+        <Card className="dark:bg-zinc-800">
+          <CardBody className="text-center pt-6 pb-12">
+            <p className="text-gray-500 dark:text-gray-400 mb-6">
+              Keranjang belanja Anda kosong
+            </p>
+            <div className="flex justify-center">
+              <Link href="/katalog">
+                <Button color="primary">Belanja Sekarang</Button>
+              </Link>
+            </div>
+          </CardBody>
+        </Card>
       ) : (
-        <div className="flex flex-col md:flex-row gap-6">
-          {/* Bagian Kiri: Daftar Item */}
-          <div className="w-full md:w-2/3">
-            <div className="grid gap-4">
-              {cartItems.map((item) => (
-                <Card key={item.id} className="shadow-sm">
-                  <CardBody>
-                    <div className="flex flex-col md:flex-row gap-4 items-center">
-                      {/* Gambar Produk */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="md:col-span-2">
+            {displayCartItems.map((item) => (
+              <div key={item.id} className="mb-4">
+                <Card
+                  shadow="sm"
+                  className={`overflow-hidden dark:bg-zinc-800 dark:border dark:border-zinc-700`}
+                >
+                  <CardBody className="p-4">
+                    <div className="flex flex-col sm:flex-row gap-4">
                       {item.catalog?.image && (
                         <Image
                           src={item.catalog.image}
-                          alt={item.catalog.name}
-                          width={190}
-                          height={190}
-                          className="object-cover rounded-lg"
+                          alt={item.catalog?.name || "Product Image"}
+                          className="w-24 h-24 object-cover rounded flex-shrink-0"
+                          width={96}
+                          height={96}
                         />
                       )}
-
-                      {/* Detail Produk */}
-                      <div className="flex-1 text-center md:text-left">
-                        <h3 className="text-lg capitalize font-semibold">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-lg font-semibold capitalize truncate">
                           {item.catalog?.name}
                         </h3>
-                        <p className="text-medium text-gray-600">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
                           Ukuran: {item.size?.size}
                         </p>
-                        <p className="text-medium text-gray-600">
-                          Harga: {item.size?.price}
+                        <p className="text-md font-medium">
+                          Harga: {formatPrice(item.size?.price)}
                         </p>
-                        {item.size?.qty !== undefined && (
-                          <p className="text-sm text-gray-500">
-                            Tersedia: {item.size.qty}
+                        <div className="flex items-center mt-2">
+                          <Button
+                            size="sm"
+                            isIconOnly
+                            variant="flat"
+                            isDisabled={
+                              processingItems[item.id] || item.quantity <= 1
+                            }
+                            onPress={() =>
+                              handleUpdateQuantity(item.id, item.quantity, -1)
+                            }
+                          >
+                            -
+                          </Button>
+                          <span className="mx-4 w-8 text-center font-medium">
+                            {item.quantity}
+                          </span>
+                          <Button
+                            size="sm"
+                            isIconOnly
+                            variant="flat"
+                            isDisabled={processingItems[item.id]}
+                            onPress={() =>
+                              handleUpdateQuantity(item.id, item.quantity, +1)
+                            }
+                          >
+                            +
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end justify-between sm:pl-4">
+                        <Button
+                          isIconOnly
+                          color="danger"
+                          variant="light"
+                          onPress={() => confirmDeletion(item)}
+                          isDisabled={processingItems[item.id]}
+                          className="flex-shrink-0"
+                        >
+                          <Trash2 size={18} />
+                        </Button>
+                        <div className="text-right mt-4 sm:mt-0">
+                          <p className="font-semibold whitespace-nowrap">
+                            {formatPrice(
+                              parseInt(
+                                item.size?.price?.replace(/[^\d]/g, "") || "0"
+                              ) * item.quantity
+                            )}
                           </p>
-                        )}
+                        </div>
                       </div>
-
-                      {/* Tombol Pengaturan Jumlah */}
-                      <div className="flex flex-row gap-2 items-center">
-                        {/* Tombol Kurangi (-) */}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          disabled={
-                            processingItems.includes(item.id) ||
-                            item.quantity <= 1
-                          }
-                          onPress={() => {
-                            const newQuantity = item.quantity - 1;
-                            updateCartItem(item.id, newQuantity);
-                          }}
-                        >
-                          -
-                        </Button>
-
-                        {/* Jumlah Saat Ini */}
-                        <span className="px-2">{item.quantity}</span>
-
-                        {/* Tombol Tambah (+) */}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          disabled={
-                            processingItems.includes(item.id) ||
-                            (item.size?.qty !== undefined &&
-                              item.quantity >= item.size.qty)
-                          }
-                          onPress={() => {
-                            // Validasi tambahan untuk mencegah spam klik
-                            if (processingItems.includes(item.id)) {
-                              return; // Jangan proses jika sedang memproses item ini
-                            }
-
-                            // Validasi client-side
-                            if (
-                              item.size?.qty !== undefined &&
-                              item.quantity >= item.size.qty
-                            ) {
-                              toast.error(
-                                `Stok tidak mencukupi. Tersedia: ${item.size.qty}`
-                              );
-                              return;
-                            }
-
-                            const newQuantity = item.quantity + 1;
-                            updateCartItem(item.id, newQuantity);
-                          }}
-                        >
-                          +
-                        </Button>
-                      </div>
-
-                      {/* Tombol Hapus */}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        disabled={processingItems.includes(item.id)}
-                        onPress={() => confirmDeletion(item.id)}
-                      >
-                        <Trash2 />
-                      </Button>
                     </div>
                   </CardBody>
                 </Card>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
 
-          {/* Bagian Kanan: Ringkasan Belanja */}
-          <div className="w-full md:w-1/3">
-            <Card className="sticky top-4">
-              <CardHeader>
-                <h3 className="text-xl font-bold">Ringkasan Belanja</h3>
-              </CardHeader>
-              <CardBody>
-                <div className="flex flex-col gap-4">
-                  {/* Total Harga */}
-                  <div className="flex justify-between items-center">
-                    <span className="text-lg">Total:</span>
-                    <span className="text-xl font-bold">{total}</span>
-                  </div>
-
-                  {/* Divider */}
-                  <Divider />
-
-                  {/* Tombol Checkout */}
-                  <div className="flex justify-end">
-                    <Link href="/checkout">
-                      <Button
-                        color="primary"
-                        size="md"
-                        disabled={cartItems.length === 0}
-                      >
-                        Checkout Sekarang
-                      </Button>
-                    </Link>
-                  </div>
+          <div>
+            <Card
+              shadow="sm"
+              className="sticky top-4 dark:bg-zinc-800 dark:border dark:border-zinc-700"
+            >
+              <CardBody className="p-4">
+                <h3 className="text-xl font-bold mb-4">Ringkasan Belanja</h3>
+                <Divider className="my-2 dark:border-zinc-700" />
+                <div className="flex justify-between items-center mb-2">
+                  <span>Total Item:</span>
+                  <span>{cartCount}</span>
                 </div>
+                <div className="flex justify-between items-center mb-4">
+                  <span>Total:</span>
+                  <span className="font-semibold text-xl">
+                    {formatPrice(cartTotal)}
+                  </span>
+                </div>
+                <Button
+                  color="primary"
+                  className="w-full mt-4"
+                  onPress={() => {
+                    setIsCheckingOut(true);
+                    router.push("/checkout");
+                  }}
+                  isDisabled={displayCartItems.length === 0 || isCheckingOut}
+                >
+                  Checkout Sekarang
+                </Button>
+                <Button
+                  variant="flat"
+                  className="w-full mt-2 dark:text-gray-300 dark:border-zinc-700 dark:hover:bg-zinc-700"
+                  onPress={() => router.push("/katalog")}
+                  isDisabled={isCheckingOut}
+                >
+                  Lanjut Belanja
+                </Button>
               </CardBody>
             </Card>
           </div>
         </div>
       )}
 
-      {/* Modal Konfirmasi Hapus */}
-      <Modal isOpen={isOpen} onClose={onClose}>
-        <ModalContent>
-          <ModalBody>
-            <div className="pt-1">
-              <h3 className="text-lg font-bold mb-4">Konfirmasi</h3>
-              <p className="mb-4 font-medium">
-                Yakin ingin menghapus item ini?
-              </p>
-              <div className="flex justify-end gap-2">
-                <Button variant="ghost" onPress={onClose}>
-                  Batal
-                </Button>
-                <Button color="primary" onPress={handleDelete}>
-                  Hapus
-                </Button>
-              </div>
+      <Modal
+        isOpen={isOpen}
+        onClose={() => {
+          if (!processingItems[itemToDelete?.id ?? 0]) {
+            setItemToDelete(null);
+            onClose();
+          }
+        }}
+      >
+        <ModalContent className="dark:bg-zinc-800">
+          <ModalBody className="p-6">
+            <p className="mb-4 dark:text-gray-300">
+              Apakah Anda yakin ingin menghapus item "
+              {itemToDelete?.catalog?.name} ({itemToDelete?.size?.size})"?
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="light"
+                onPress={() => {
+                  setItemToDelete(null);
+                  onClose();
+                }}
+                isDisabled={processingItems[itemToDelete?.id ?? 0]}
+              >
+                Batal
+              </Button>
+              <Button
+                color="danger"
+                onPress={handleDelete}
+                isLoading={processingItems[itemToDelete?.id ?? 0]}
+              >
+                Hapus
+              </Button>
             </div>
           </ModalBody>
         </ModalContent>

@@ -45,9 +45,9 @@ const formatCurrency = (value: string | number): string => {
   return numStr.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 };
 
-// Removes formatting from currency string (e.g., 100.000 -> 100000)
+// Removes formatting from currency string (e.g., "Rp100.000" -> "100000")
 const unformatCurrency = (value: string): string => {
-  return String(value).replace(/\./g, "");
+  return String(value).replace(/[^\d]/g, "");  // Remove everything except digits
 };
 
 // --- Interfaces ---
@@ -118,11 +118,14 @@ const EditProductPage = () => {
         // Parse backend sizes into frontend format
         setSizes(backendSizes?.map(s => {
            const parsedSize = parseSizeString(s.size);
+           console.log('Processing size:', s);  // Debug log
+           const price = unformatCurrency(s.price);
+           console.log('Processed price:', price);  // Debug log
            return {
              id: s.id,
              sizeValue: parsedSize.value,
              sizeUnit: parsedSize.unit,
-             price: unformatCurrency(String(s.price)),
+             price: price,
              qty: String(s.qty)
            };
         }) || [{ sizeValue: "", sizeUnit: "gram", price: "", qty: "" }]);
@@ -340,7 +343,7 @@ const EditProductPage = () => {
   // --- Main Form Render ---
   return (
     <div className="container mx-auto py-10">
-      <Link href="/admin/products" className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-4">
+      <Link href="/admin/dashboard/products" className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-4">
         <ArrowLeft className="mr-1 h-4 w-4" />
         Back to Products
       </Link>
@@ -428,7 +431,7 @@ const EditProductPage = () => {
                            <Input
                              id={`price-${index}`}
                              type="text"
-                             value={formatCurrency(sizeItem.price)}
+                             value={sizeItem.price ? formatCurrency(sizeItem.price) : ''}
                              onChange={(e) => handleSizeChange(index, "price", e.target.value)}
                              required
                              className="text-sm rounded-l-none"

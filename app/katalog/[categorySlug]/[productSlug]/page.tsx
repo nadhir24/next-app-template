@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { RadioGroup, Radio } from "@heroui/radio";
@@ -8,7 +8,7 @@ import { toast, Toaster } from "sonner";
 import { Modal, ModalBody, ModalFooter } from "@heroui/modal";
 import { Button } from "@heroui/button";
 import { Image } from "@heroui/image";
-import router from "next/router";
+import { useCart } from "@/context/CartContext";
 
 interface Size {
   id: number;
@@ -29,8 +29,11 @@ const ProductDetailPage = () => {
   const [product, setProduct] = useState<Catalog | null>(null);
   const [selectedSize, setSelectedSize] = useState<Size | null>(null);
   const [isCartModalOpen, setIsCartModalOpen] = useState(false);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const params = useParams();
+  const router = useRouter();
+  const { addToCart: contextAddToCart } = useCart();
 
   const categorySlug = params.categorySlug as string;
   const productSlug = Array.isArray(params.productSlug)
@@ -44,10 +47,26 @@ const ProductDetailPage = () => {
         const response = await axios.get<Catalog>(
           `${process.env.NEXT_PUBLIC_API_URL}/catalog/${categorySlug}/${productSlug}`
         );
-        setProduct(response.data);
-        if (response.data.sizes && response.data.sizes.length > 0) {
-          // Ensure sizes is defined
-          setSelectedSize(response.data.sizes[0]);
+        const productData = response.data;
+
+        // Sort sizes before setting state
+        if (productData.sizes && productData.sizes.length > 0) {
+          productData.sizes.sort((a, b) => {
+            // Basic numeric check (handles "40", "41", "10x10", "20x20" etc.)
+            const aNum = parseFloat(a.size);
+            const bNum = parseFloat(b.size);
+            if (!isNaN(aNum) && !isNaN(bNum)) {
+              return aNum - bNum;
+            }
+            // Fallback to alphabetical sort (handles "S", "M", "L", etc.)
+            return a.size.localeCompare(b.size);
+          });
+        }
+
+        setProduct(productData);
+        if (productData.sizes && productData.sizes.length > 0) {
+          // Select the first size (which is now the smallest)
+          setSelectedSize(productData.sizes[0]);
         }
       } catch (error) {
         console.error("Error fetching product details:", error);
@@ -70,120 +89,30 @@ const ProductDetailPage = () => {
     setSelectedSize(selected || null);
   };
 
-  const handleAddToCart = () => {
-    if (!selectedSize) {
+  const handleAddToCart = async () => {
+    if (!selectedSize || !product) {
       toast.error("Silakan pilih ukuran terlebih dahulu");
       return;
     }
 
-    const isLoggedIn = localStorage.getItem("user") !== null;
-    isLoggedIn ? handleAddToLoggedInCart() : handleAddToGuestCart();
-  };
-
-  const handleAddToLoggedInCart = async () => {
+    setIsAddingToCart(true);
     try {
-      if (!selectedSize || !product || !product.image) return; // Ensure product.image is not null
-
-      const userData = JSON.parse(localStorage.getItem("user") || "{}");
-      const userId = userData.id || 0;
-
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/cart/add`, {
-        userId,
-        catalogId: product.id,
-        sizeId: selectedSize.id,
-        quantity: 1,
-      });
-
-      await fetchCartData(userId);
-      toast.success("Item berhasil ditambahkan ke keranjang!");
+      await contextAddToCart(product.id, selectedSize.id, 1);
+      setIsCartModalOpen(true);
     } catch (error) {
-      console.error("Error adding item to cart:", error);
-      toast.error("Gagal menambahkan item ke keranjang");
-    }
-  };
-
-  const getOrCreateGuestId = async (): Promise<string | null> => {
-    let guestId = localStorage.getItem("guestId");
-
-    if (!guestId) {
-      try {
-        const res = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/cart/guest-session`
-        );
-        guestId = res.data.guestId;
-        if (guestId) {
-          localStorage.setItem("guestId", guestId);
-        }
-      } catch (error) {
-        console.error("Error creating guest session:", error);
-        return null;
-      }
-    }
-
-    return guestId;
-  };
-
-  const handleAddToGuestCart = async () => {
-    try {
-      if (!product || !selectedSize || !product.image) return;
-
-      const guestId = await getOrCreateGuestId();
-      if (!guestId) {
-        toast.error("Failed to create guest session");
-        return;
-      }
-
-      const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/cart/add`,
-        {
-          guestId,
-          catalogId: product.id,
-          sizeId: selectedSize.id,
-          quantity: 1,
-        }
-      );
-
-      if (response.data.success) {
-        if (response.data.data) {
-          localStorage.setItem("cart", JSON.stringify(response.data.data));
-        }
-        setIsCartModalOpen(true);
-        toast.success("Item berhasil ditambahkan ke keranjang!");
-      } else {
-        throw new Error(
-          response.data.message || "Gagal menambahkan item ke keranjang"
-        );
-      }
-    } catch (error) {
-      const err = error as Error;
-      console.error("Error adding item to cart:", err);
-      toast.error(err.message || "Gagal menambahkan item ke keranjang");
-    }
-  };
-
-  const fetchCartData = async (userId?: number) => {
-    try {
-      let url = "";
-
-      if (userId) {
-        url = `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?userId=${userId}`;
-      } else {
-        const guestId = localStorage.getItem("guestId");
-        if (!guestId) return;
-        url = `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?guestId=${guestId}`;
-      }
-
-      const response = await axios.get(url);
-      if (response.data) {
-        localStorage.setItem("cart", JSON.stringify(response.data));
-      }
-    } catch (error) {
-      console.error("Error fetching cart:", error);
+      console.error("Add to cart failed from ProductDetailPage:", error);
+    } finally {
+      setIsAddingToCart(false);
     }
   };
 
   const handleCloseCartModal = () => {
     setIsCartModalOpen(false);
+  };
+
+  const navigateToCategory = (category: string) => {
+    console.log(`Navigating to category: "${category}"`);
+    router.push(`/katalog?category=${category}`);
   };
 
   return (
@@ -200,30 +129,35 @@ const ProductDetailPage = () => {
             <li>/</li>
             <li>
               <a
-                href={`/category/${categorySlug}`}
-                className="hover:text-blue-600"
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigateToCategory(categorySlug);
+                }}
+                className="hover:text-blue-600 capitalize"
               >
-                {categorySlug}
+                {categorySlug?.replace(/-/g, " ")}
               </a>
             </li>
             <li>/</li>
-            <li className="font-semibold text-gray-800">{product?.name}</li>
+            <li className="font-semibold text-gray-800 capitalize">
+              {product?.name}
+            </li>
           </ol>
         </nav>
 
-        <div className="relative w-full aspect-square lg:aspect-auto">
+        <div className="relative aspect-square w-full max-w-[500px] mx-auto">
           {isLoading ? (
-            <div className="w-full h-full rounded-xl bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 animate-[shimmer_1.5s_infinite] bg-[length:400%_100%]" />
+            <div className="w-full h-full rounded-xl bg-gray-200"></div>
           ) : (
             product?.image && (
               <Image
-                src={`${
-                  process.env.NEXT_PUBLIC_API_URL
-                }/catalog/images/${product.image.split("/").pop()!}`} // Non-null assertion
+                src={`${process.env.NEXT_PUBLIC_API_URL}${product.image}`}
                 alt={product.name || "Product Image"}
+                className="object-contain rounded-lg w-full h-full"
                 width={500}
                 height={500}
-                className="rounded-xl"
+                sizes="(max-width: 768px) 100vw, 50vw"
               />
             )
           )}
@@ -248,61 +182,100 @@ const ProductDetailPage = () => {
           </div>
         ) : (
           <>
-            <h1 className="text-2xl font-bold">{product?.name}</h1>
-            <p className="text-gray-600 mt-2">{product?.description}</p>
+            <h1 className="text-2xl font-bold capitalize">{product?.name}</h1>
+            <p className="text-gray-600 mt-2 text-justify">
+              {product?.description}
+            </p>
 
-            {product?.sizes &&
-              product.sizes.length > 0 && ( // Ensure sizes is defined
-                <div className="mt-4">
-                  <h2 className="text-lg font-semibold">Pilih Ukuran:</h2>
-                  <RadioGroup
-                    className="mt-2"
-                    value={selectedSize?.id.toString() || ""}
-                    onChange={handleSizeChange}
-                  >
-                    {product.sizes.map((size) => (
-                      <Radio
-                        key={size.id}
-                        value={size.id.toString()}
-                        className="mb-2 p-2 border rounded-md"
-                      >
-                        <span className="font-medium">{size.size}</span>
-                        <span className="ml-2 text-primary">{size.price}</span>
-                      </Radio>
-                    ))}
-                  </RadioGroup>
-                </div>
-              )}
+            {product?.sizes && product.sizes.length > 0 && (
+              <div className="mt-4">
+                <h2 className="text-lg font-semibold">Pilih Ukuran:</h2>
+                <RadioGroup
+                  className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2"
+                  value={selectedSize?.id.toString() || ""}
+                  onChange={handleSizeChange}
+                >
+                  {product.sizes.map((size) => (
+                    <Radio
+                      key={size.id}
+                      value={size.id.toString()}
+                      className="mb-1 p-3 border rounded-md flex justify-between items-center hover:bg-gray-50 transition-colors"
+                    >
+                      <span className="font-medium text-sm capitalize">
+                        {size.size}
+                      </span>
+                      <span className="ml-2 text-primary font-semibold text-sm">
+                        {size.price}
+                      </span>
+                    </Radio>
+                  ))}
+                </RadioGroup>
+              </div>
+            )}
 
-            <Button onClick={handleAddToCart} className="mt-4" color="primary">
-              Add to Cart
+            <Button
+              onClick={handleAddToCart}
+              className="mt-4 w-full sm:w-auto"
+              color="primary"
+              isLoading={isAddingToCart}
+              isDisabled={!selectedSize || isAddingToCart}
+            >
+              {isAddingToCart ? "Menambahkan..." : "Add to Cart"}
             </Button>
+            <p className="text-sm text-gray-400 mt-2">
+              *Penambahan quantity ada di halaman keranjang.
+            </p>
           </>
         )}
       </div>
 
       {/* Cart Confirmation Modal */}
       <Modal
-        closeButton
+        isDismissable={false}
+        hideCloseButton
         aria-labelledby="modal-title"
         isOpen={isCartModalOpen}
         onClose={handleCloseCartModal}
         className="max-w-[400px] w-full"
       >
-        <ModalBody>
-          <h3 className="text-xl font-bold mb-2">Item berhasil ditambahkan!</h3>
-          <p>
-            Kamu telah menambahkan {selectedSize?.size} {product?.name} ke
-            keranjang
+        <ModalBody className="text-center p-6">
+          <div className="text-green-500 mb-4">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-12 w-12 mx-auto"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+          </div>
+          <h3 id="modal-title" className="text-xl font-bold mb-2">
+            Berhasil Ditambahkan!
+          </h3>
+          <p className="text-gray-600">
+            Anda telah menambahkan ukuran{" "}
+            <span className="font-semibold">{selectedSize?.size}</span> produk{" "}
+            <span className="font-semibold capitalize">{product?.name}</span> ke
+            keranjang.
           </p>
         </ModalBody>
-        <ModalFooter>
-          <Button onClick={handleCloseCartModal}>Close</Button>
-          <Button onClick={() => router.push("/cart")}>View Cart</Button>
+        <ModalFooter className="flex justify-center gap-3 p-4">
+          <Button variant="flat" color="default" onPress={handleCloseCartModal}>
+            Lanjut Belanja
+          </Button>
+          <Button color="primary" onPress={() => router.push("/cart")}>
+            Lihat Keranjang
+          </Button>
         </ModalFooter>
       </Modal>
 
-      <Toaster />
+      <Toaster richColors position="top-center" />
     </div>
   );
 };

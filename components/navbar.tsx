@@ -23,12 +23,41 @@ export default function Navy() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user, isLoggedIn } = useAuth();
+  const [hasGuestId, setHasGuestId] = useState(false);
 
+  // Update guest ID state ketika status login berubah atau localStorage berubah
+  useEffect(() => {
+    const guestId = localStorage.getItem("guestId");
+    setHasGuestId(!!guestId);
+
+    // Fungsi untuk mengecek guestId ketika terjadi perubahan localStorage
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "guestId" || e.key === "token") {
+        setHasGuestId(!!localStorage.getItem("guestId"));
+      }
+    };
+
+    // Fungsi untuk menangani custom event untuk update guestId dalam tab yang sama
+    const handleGuestIdChange = () => {
+      setHasGuestId(!!localStorage.getItem("guestId"));
+    };
+
+    // Event listener untuk perubahan antar tab/window
+    window.addEventListener("storage", handleStorageChange);
+    // Event listener untuk perubahan dalam tab yang sama
+    window.addEventListener("guestIdChange", handleGuestIdChange);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("guestIdChange", handleGuestIdChange);
+    };
+  }, [isLoggedIn]); // Dependensi pada isLoggedIn agar dijalankan ulang saat status login berubah
+
+  // Cek guestInvoiceId hanya jika user belum login
   useEffect(() => {
     const initializeData = async () => {
       setIsLoading(true);
       try {
-        // Ambil data cart dari localStorage
         const storedCart = localStorage.getItem("cart");
         if (storedCart) {
           setCartItems(JSON.parse(storedCart));
@@ -42,16 +71,15 @@ export default function Navy() {
 
     initializeData();
 
-    // Add event listener for storage changes
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'cart') {
+      if (e.key === "cart") {
         const newCart = e.newValue ? JSON.parse(e.newValue) : [];
         setCartItems(newCart);
       }
     };
 
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
   return (
@@ -69,11 +97,19 @@ export default function Navy() {
         </div>
         <div className="hidden sm:flex items-center">
           <ul className="flex gap-4 justify-start ml-2">
-            {siteConfig.navItems.map((item) => (
-              <NavbarItem key={item.href}>
-                <Link href={item.href}>{item.label}</Link>
-              </NavbarItem>
-            ))}
+            {siteConfig.navItems
+              .filter((item) => {
+                // Filter out Invoice menu untuk user yang sudah login
+                if (item.href === "/invoice") {
+                  return !isLoggedIn && hasGuestId;
+                }
+                return true; // Keep all other menu items
+              })
+              .map((item) => (
+                <NavbarItem key={item.href}>
+                  <Link href={item.href}>{item.label}</Link>
+                </NavbarItem>
+              ))}
           </ul>
         </div>
       </NavbarContent>
@@ -81,7 +117,8 @@ export default function Navy() {
         className="flex basis-1/5 sm:basis-full px-4 lg:px-8"
         justify="end"
       >
-        <NavbarItem className="sm:flex gap-2">
+        {/* Tetap tampilkan keranjang dan theme switch */}
+        <NavbarItem className="flex gap-2">
           {isLoading ? (
             <div className="flex gap-2">
               <Skeleton className="h-10 w-24 rounded-lg" />
@@ -89,38 +126,50 @@ export default function Navy() {
             </div>
           ) : (
             <>
-              <HoverCartModal
-                cartItems={cartItems}
-                setCartItems={setCartItems}
-                isLoggedIn={isLoggedIn}
-                userId={user?.id}
-              />
+              <HoverCartModal />
               <ThemeSwitch />
             </>
           )}
         </NavbarItem>
-        <NavbarItem>
-          {isLoading ? <Skeleton className="h-10 w-24 rounded-lg" /> : <Modall />}
+        {/* Login hanya muncul di layar besar, masuk ke menu hamburger saat mobile */}
+        <NavbarItem className="hidden sm:block">
+          {isLoading ? (
+            <Skeleton className="h-10 w-24 rounded-lg" />
+          ) : (
+            <Modall />
+          )}
         </NavbarItem>
       </NavbarContent>
       <NavbarMenu>
         <div className="mx-4 mt-2 flex flex-col gap-2">
-          {siteConfig.navMenuItems.map((item, index) => (
-            <NavbarMenuItem key={`${item}-${index}`}>
-              <Link
-                className={
-                  index === 2
-                    ? "text-primary"
-                    : index === siteConfig.navMenuItems.length - 1
-                    ? "text-red-500"
-                    : "text-black"
-                }
-                href={item.href}
-              >
-                {item.label}
-              </Link>
-            </NavbarMenuItem>
-          ))}
+          {siteConfig.navMenuItems
+            .filter((item) => {
+              // Filter juga menu mobile dengan cara yang sama
+              if (item.href === "/invoice") {
+                return !isLoggedIn && hasGuestId;
+              }
+              return true; // Keep all other menu items
+            })
+            .map((item, index) => (
+              <NavbarMenuItem key={`${item}-${index}`}>
+                <Link
+                  className={
+                    index === 2
+                      ? "text-primary"
+                      : index === siteConfig.navMenuItems.length - 1
+                        ? "text-yellow"
+                        : "text-white"
+                  }
+                  href={item.href}
+                >
+                  {item.label}
+                </Link>
+              </NavbarMenuItem>
+            ))}
+          {/* Login dipindahkan ke dalam menu hamburger saat mobile */}
+          <NavbarMenuItem key="auth-mobile" className="sm:hidden">
+            <Modall />
+          </NavbarMenuItem>
         </div>
       </NavbarMenu>
     </Navbar>
