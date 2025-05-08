@@ -198,6 +198,11 @@ export default function Modall() {
     openRegister();
   };
 
+  const handleOpenLogin = () => {
+    closeRegister();
+    openLogin();
+  };
+
   const handleSignup = async () => {
     setIsFormLoading(true);
     try {
@@ -306,20 +311,21 @@ export default function Modall() {
 
               if (user && user.roleId && user.roleId.length > 0) {
                 userRole = user.roleId[0].roleId; // Assuming roleId is in an array
+
+                // Lihat roleId dan tentukan link yang tepat
                 if (userRole === 1) {
-                  // Admin
+                  // Role 1: Admin
                   dashboardHref = "/admin/dashboard";
                   isDashboardDisabled = false;
                 } else if (userRole === 3) {
-                  // User
+                  // Role 3: Regular User
                   dashboardHref = "/dashboard";
                   isDashboardDisabled = false;
                 }
-                // Role 2 or others: isDashboardDisabled remains true
+                // Role 2 (Guest) akan disabled
               }
 
               // Render the item only if the user is logged in
-              // If the user is role 2, it will be rendered but disabled
               if (isLoggedIn) {
                 return (
                   <DropdownItem
@@ -333,15 +339,20 @@ export default function Modall() {
                         ? "text-gray-400 cursor-not-allowed"
                         : "font-bold"
                     } // Style disabled state
+                    textValue="My Dashboard" // Add textValue for accessibility
                   >
-                    My Dashboard {userRole === 2 ? "(Disabled)" : ""}{" "}
-                    {/* Add label for disabled state */}
+                    My Dashboard {isDashboardDisabled ? "(Disabled)" : ""}
                   </DropdownItem>
                 );
               }
               return null; // Don't render if not logged in (handled by outer check anyway)
             })()}
-            <DropdownItem key="logout" color="danger" onPress={handleLogout}>
+            <DropdownItem
+              key="logout"
+              color="danger"
+              onPress={handleLogout}
+              textValue="Log Out"
+            >
               Log Out
             </DropdownItem>
           </DropdownMenu>
@@ -402,6 +413,8 @@ export default function Modall() {
                         endContent={
                           <MailIcon className="text-2xl text-default-400 pointer-events-none flex-shrink-0" />
                         }
+                        type="email"
+                        autoComplete="email"
                       />
 
                       <Input
@@ -425,6 +438,7 @@ export default function Modall() {
                             )}
                           </button>
                         }
+                        autoComplete="current-password"
                       />
 
                       <div className="flex py-2 px-1 justify-between">
@@ -574,6 +588,16 @@ export default function Modall() {
                 />
               </ModalBody>
               <ModalFooter>
+                <Link
+                  color="primary"
+                  onPress={handleOpenLogin}
+                  size="sm"
+                  className={
+                    isFormLoading ? "pointer-events-none text-default-400" : ""
+                  }
+                >
+                  Already have an account? Login
+                </Link>
                 <Button
                   color="danger"
                   variant="flat"

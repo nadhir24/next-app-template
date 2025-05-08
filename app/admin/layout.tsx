@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext'; // Assuming you use AuthContext
 import { jwtDecode } from 'jwt-decode';
 import { toast } from 'sonner'; // Or your preferred toast library
@@ -17,12 +17,20 @@ interface DecodedToken {
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   // Use auth context if available to potentially speed up check or get user info
-  // const { user, loading: authLoading } = useAuth(); 
+  const { user, logout } = useAuth(); 
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
+  // Force recheck auth on any route change within admin
   useEffect(() => {
+    console.log('[AdminLayout] Path changed to:', pathname);
+    checkAdminAuthorization();
+  }, [pathname]);
+
+  // Main authorization check function
+  const checkAdminAuthorization = () => {
     console.log('[AdminLayout] Starting auth check...');
     setCheckingAuth(true);
     
@@ -64,7 +72,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       } else {
         console.log(`[AdminLayout] User is not Admin (extracted roleId: ${userRoleId}), redirecting to home.`);
         toast.error('Akses ditolak. Anda tidak memiliki izin admin.');
-        router.replace('/'); // Redirect non-admins to home page
+        // If user has role 3, redirect to user dashboard, otherwise to home
+        if (userRoleId === 3) {
+          router.replace('/dashboard');
+        } else {
+          router.replace('/'); 
+        }
         return;
       }
     } catch (error) {
@@ -78,16 +91,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       setCheckingAuth(false);
       console.log('[AdminLayout] Auth check complete.');
     }
-  // Run only once on mount, router changes shouldn't trigger re-check unless needed
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router]); 
+  };
 
   // Show loading state while checking authorization
   if (checkingAuth) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <p className="mb-4">Memeriksa otorisasi admin...</p>
-        
+        <Skeleton className="h-4 w-[200px] mb-2" />
+        <Skeleton className="h-4 w-[150px] mb-2" />
+        <Skeleton className="h-4 w-[180px]" />
       </div>
     );
   }

@@ -23,8 +23,12 @@ export const siteConfig = {
   ],
   navMenuItems: [
     {
-      label: "Profile",
-      href: "/profile",
+      label: "My Dasboard",
+      href: "/dashboard",
+    },
+    {
+      label: "Katalog",
+      href: "/katalog",
     },
     {
       label: "Invoice",
@@ -34,23 +38,10 @@ export const siteConfig = {
       label: "tentang kami",
       href: "/tentangkami",
     },
-    {
-      label: "Katalog",
-      href: "/Katalog",
-    },
   ],
-  footerItems: [
-    {
-      label: "tentang kami",
-      href: "/tentangkami",
-    },
-    {
-      label: "Katalog",
-      href: "/Katalog",
-    },
-  ],
+  
   links: {
     google: "https://maps.app.goo.gl/uehWLXqC3s1z1Djw9",
-    whatsapp: "https://wa.me/081385642024",
+    whatsapp: "https://wa.me/08151831185",
   },
 };

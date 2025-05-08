@@ -14,6 +14,7 @@ interface Size {
   id: number;
   size: string;
   price: string;
+  qty?: number;
 }
 
 interface Catalog {
@@ -33,7 +34,7 @@ const ProductDetailPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const params = useParams();
   const router = useRouter();
-  const { addToCart: contextAddToCart } = useCart();
+  const { addToCart: contextAddToCart, cartItems } = useCart();
 
   const categorySlug = params.categorySlug as string;
   const productSlug = Array.isArray(params.productSlug)
@@ -95,6 +96,23 @@ const ProductDetailPage = () => {
       return;
     }
 
+    // Cari jumlah yang sudah ada di cart untuk produk/size ini
+    const cartQty = cartItems
+      .filter(
+        (item) =>
+          item.catalog?.id === product.id && item.size?.id === selectedSize.id
+      )
+      .reduce((sum, item) => sum + item.quantity, 0);
+    const availableStock = Number.isFinite(selectedSize.qty)
+      ? Number(selectedSize.qty)
+      : 0;
+    if (cartQty + 1 > availableStock) {
+      toast.warning(
+        `Stok tidak cukup. Maksimal yang bisa ditambahkan: ${availableStock - cartQty}`
+      );
+      return;
+    }
+
     setIsAddingToCart(true);
     try {
       await contextAddToCart(product.id, selectedSize.id, 1);
@@ -112,7 +130,14 @@ const ProductDetailPage = () => {
 
   const navigateToCategory = (category: string) => {
     console.log(`Navigating to category: "${category}"`);
-    router.push(`/katalog?category=${category}`);
+
+    // Jika kategori adalah 'cake', gunakan kata kunci pencarian 'Kue'
+    if (category.toLowerCase() === "cake") {
+      router.push(`/katalog?search=Kue`);
+    } else {
+      // Untuk kategori lain, gunakan parameter search bukan category
+      router.push(`/katalog?search=${category.replace(/-/g, " ")}`);
+    }
   };
 
   return (
@@ -154,7 +179,7 @@ const ProductDetailPage = () => {
               <Image
                 src={`${process.env.NEXT_PUBLIC_API_URL}${product.image}`}
                 alt={product.name || "Product Image"}
-                className="object-contain rounded-lg w-full h-full"
+                className="object-contain rounded-lg w-full h-auto max-h-[60vh] sm:max-h-[500px]"
                 width={500}
                 height={500}
                 sizes="(max-width: 768px) 100vw, 50vw"
@@ -205,7 +230,9 @@ const ProductDetailPage = () => {
                         {size.size}
                       </span>
                       <span className="ml-2 text-primary font-semibold text-sm">
-                        {size.price}
+                        {size.price && size.price.includes("Rp")
+                          ? size.price
+                          : `Rp${new Intl.NumberFormat("id-ID").format(parseInt(size.price?.replace(/\D/g, "") || "0"))}`}
                       </span>
                     </Radio>
                   ))}

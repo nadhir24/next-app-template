@@ -237,17 +237,16 @@ export default function SuksesPage() {
 
   // Tambahkan fungsi untuk mengarahkan ke halaman yang sesuai
   const navigateToOrderDetails = () => {
-    if (!orderDetail?.id) return;
 
     // Aktifkan state loading untuk memberikan feedback visual
     setIsNavigating(true);
 
     if (loginStatus === "LOGGED_IN") {
       // Jika user sudah login, arahkan ke dashboard
-      window.location.href = `/dashboard/invoice/${orderDetail.id}`;
+      window.location.href = `/dashboard/invoice`;
     } else {
       // Jika user adalah guest, arahkan ke halaman invoice detail
-      window.location.href = `/invoice/${orderDetail.id}`;
+      window.location.href = `/invoice`;
     }
   };
 
@@ -375,38 +374,27 @@ export default function SuksesPage() {
               </div>
             </div>
           )}
-          {isBrowser &&
-            (orderDetail?.status === "settlement" ||
-              orderDetail?.midtransInvoicePdfUrl) && (
-              <Tombol
-                className="w-full"
-                variant="ghost"
-                onPress={navigateToOrderDetails}
-                isDisabled={isNavigating}
-              >
-                {isNavigating ? (
-                  <>
-                    <div className="w-4 h-4 mr-2 border-2 border-t-transparent border-gray-600 rounded-full animate-spin"></div>
-                    {loginStatus === "LOGGED_IN"
-                      ? "Mengarahkan ke Dashboard..."
-                      : "Mengarahkan ke Detail Pesanan..."}
-                  </>
-                ) : loginStatus === "LOGGED_IN" ? (
-                  "Lihat di Dashboard"
-                ) : (
-                  "Lihat Detail Pesanan"
-                )}
-              </Tombol>
-            )}
-          {/* Tambahkan log untuk debugging */}
-          {isBrowser &&
-            orderDetail &&
-            console.log(
-              "Status order:",
-              orderDetail.status,
-              "PDF URL:",
-              orderDetail.midtransInvoicePdfUrl ? "Tersedia" : "Tidak tersedia"
-            )}
+          {isBrowser && orderDetail?.status === "SETTLEMENT" && (
+            <Tombol
+              className="w-full"
+              variant="ghost"
+              onPress={navigateToOrderDetails}
+              isDisabled={isNavigating}
+            >
+              {isNavigating ? (
+                <>
+                  <div className="w-4 h-4 mr-2 border-2 border-t-transparent border-gray-600 rounded-full animate-spin"></div>
+                  {loginStatus === "LOGGED_IN"
+                    ? "Mengarahkan ke Dashboard..."
+                    : "Mengarahkan ke Detail Pesanan..."}
+                </>
+              ) : loginStatus === "LOGGED_IN" ? (
+                "Lihat di Dashboard"
+              ) : (
+                "Lihat Detail Pesanan"
+              )}
+            </Tombol>
+          )}
           <Tombol
             variant="ghost"
             className="w-full"

@@ -44,6 +44,7 @@ interface Invoice {
   midtransOrderId: string;
   status: string;
   totalAmount: number;
+  amount?: number;
   createdAt: string;
   items: Array<{
     id: number;
@@ -52,6 +53,11 @@ interface Invoice {
     price: number;
   }>;
   midtransInvoicePdfUrl?: string;
+  shippingAddress?: string;
+  shippingDistrict?: string;
+  shippingCity?: string;
+  shippingProvince?: string;
+  shippingPostalCode?: string;
 }
 
 export default function DashboardPage() {
@@ -113,6 +119,16 @@ export default function DashboardPage() {
     }
 
     if (user) {
+      console.log("User object structure:", JSON.stringify(user, null, 2));
+      
+      // Ensure user has userProfile object
+      if (!user.userProfile) {
+        console.log("User has no userProfile, creating default");
+        user.userProfile = {
+          addresses: []
+        };
+      }
+      
       const userAddress = getUserPrimaryAddress(user);
       console.log("Setting form data with user address:", userAddress);
       setFormData({
@@ -120,11 +136,11 @@ export default function DashboardPage() {
         phoneNumber: user.phoneNumber || "",
         userProfile: {
           address: {
-            label: userAddress?.label || "",
+            label: userAddress?.label || "Rumah",
             street: userAddress?.street || "",
             city: userAddress?.city || "",
             state: userAddress?.state || "",
-            postalCode: userAddress?.postalCode || "",
+            postalCode: userAddress?.postalCode || "12345",
             country: userAddress?.country || "Indonesia",
           },
         },
@@ -141,12 +157,30 @@ export default function DashboardPage() {
 
   const getUserPrimaryAddress = (userData: any) => {
     console.log("Getting primary address from:", userData);
-    const address =
-      userData.userProfile?.addresses?.find((addr: any) => addr.isDefault) ||
-      userData.userProfile?.address ||
-      {};
-    console.log("Found address:", address);
-    return address;
+    
+    // First try to find default address from addresses array
+    if (userData.userProfile?.addresses && Array.isArray(userData.userProfile.addresses) && userData.userProfile.addresses.length > 0) {
+      const defaultAddress = userData.userProfile.addresses.find((addr: any) => addr.isDefault) || userData.userProfile.addresses[0];
+      console.log("Found address from addresses array:", defaultAddress);
+      return defaultAddress;
+    }
+    
+    // Then try single address object
+    if (userData.userProfile?.address) {
+      console.log("Found single address object:", userData.userProfile.address);
+      return userData.userProfile.address;
+    }
+    
+    // Finally return empty object with defaults for required fields
+    console.log("No address found, returning defaults");
+    return {
+      label: "",
+      street: "",
+      city: "",
+      state: "",
+      postalCode: "",
+      country: "Indonesia"
+    };
   };
 
   const fetchInvoices = async () => {
@@ -177,7 +211,41 @@ export default function DashboardPage() {
 
       const data = await res.json();
       console.log("Invoices fetched:", data);
-      setInvoices(data.data || []);
+      
+      // Make sure items are always properly mapped even if structure changes
+      const processedInvoices = data.data.map((invoice: any) => {
+        console.log("Raw invoice amount fields:", {
+          id: invoice.id,
+          amount: invoice.amount,
+          totalAmount: invoice.totalAmount,
+          total: invoice.total,
+          items: invoice.items?.length
+        });
+        
+        return {
+          ...invoice,
+          items: Array.isArray(invoice.items) 
+            ? invoice.items.map((item: any) => ({
+                id: item.id,
+                productName: item.productName || item.name || "Unnamed Product",
+                quantity: item.quantity || 1,
+                price: item.price || 0
+              }))
+            : [],
+          // Ensure shipping address fields are accessible
+          shippingAddress: invoice.shippingAddress || null,
+          shippingDistrict: invoice.shippingDistrict || null,
+          shippingCity: invoice.shippingCity || null,
+          shippingProvince: invoice.shippingProvince || null,
+          shippingPostalCode: invoice.shippingPostalCode || null,
+          // Ensure total amount is correctly mapped from all possible API field names
+          totalAmount: invoice.totalAmount || invoice.amount || invoice.total || 
+            (Array.isArray(invoice.items) ? invoice.items.reduce((sum: number, item: any) => 
+              sum + ((item.price || 0) * (item.quantity || 1)), 0) : 0)
+        };
+      });
+      
+      setInvoices(processedInvoices || []);
       setPagination(data.pagination || {});
     } catch (err) {
       console.error("Error fetching invoices:", err);
@@ -315,22 +383,17 @@ export default function DashboardPage() {
       // Update user address
       const address = formData.userProfile?.address;
       console.log("Address to update:", address);
-      if (!address?.postalCode) {
-        console.log("Missing postal code");
-        toast.error("Kode Pos tidak boleh kosong.");
-        return;
-      }
 
       console.log("Updating address for user ID:", userId);
       const addressResponse = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/users/${userId}/addresses`,
         {
-          label: address.label,
-          street: address.street,
-          city: address.city,
-          state: address.state,
-          postalCode: address.postalCode,
-          country: address.country || "Indonesia",
+          label: address?.label,
+          street: address?.street,
+          city: address?.city,
+          state: address?.state,
+          postalCode: address?.postalCode || "12345",
+          country: address?.country || "Indonesia",
           isDefault: true,
         },
         {
@@ -380,11 +443,20 @@ export default function DashboardPage() {
   };
 
   // Format currency and date
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat("id-ID", {
+  const formatCurrency = (amount: number | undefined | null) => {
+    // Ensure amount is a valid number
+    const numAmount = typeof amount === 'number' && !isNaN(amount) ? amount : 0;
+    
+    // Log the currency formatting
+    console.log(`Formatting currency: ${amount} → ${numAmount}`);
+    
+    return new Intl.NumberFormat("id-ID", {
       style: "currency",
       currency: "IDR",
-    }).format(amount);
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(numAmount);
+  };
 
   const formatDate = (dateString: string) =>
     new Date(dateString).toLocaleDateString("id-ID", {
@@ -430,13 +502,15 @@ export default function DashboardPage() {
                 </CardDescription>
               </div>
 
-              <Button
-                type="button"
-                onClick={() => setIsEditing(true)}
-                size="sm"
-              >
-                Edit Profile
-              </Button>
+              {!isEditing && (
+                <Button
+                  type="button"
+                  onClick={() => setIsEditing(true)}
+                  size="sm"
+                >
+                  Edit Profile
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -637,6 +711,9 @@ export default function DashboardPage() {
                           Tanggal
                         </th>
                         <th className="px-6 py-3 text-left text-sm font-semibold">
+                          Alamat
+                        </th>
+                        <th className="px-6 py-3 text-left text-sm font-semibold">
                           Produk
                         </th>
                         <th className="px-6 py-3 text-left text-sm font-semibold">
@@ -660,6 +737,22 @@ export default function DashboardPage() {
                             {formatDate(invoice.createdAt)}
                           </td>
                           <td className="px-6 py-4">
+                              <div className="text-sm">
+                                <p className="font-medium">{invoice.shippingAddress}</p>
+                                <p className="text-gray-500">
+                                  {invoice.shippingDistrict && invoice.shippingCity ? 
+                                    `${invoice.shippingDistrict}, ${invoice.shippingCity}` : 
+                                    invoice.shippingCity || invoice.shippingDistrict || ''}
+                                </p>
+                                <p className="text-gray-500">
+                                  {invoice.shippingProvince && invoice.shippingPostalCode ? 
+                                    `${invoice.shippingProvince} ${invoice.shippingPostalCode}` : 
+                                    invoice.shippingProvince || invoice.shippingPostalCode || ''}
+                                </p>
+                              </div>
+                           
+                          </td>
+                          <td className="px-6 py-4">
                             {invoice.items.map((item) => (
                               <div key={item.id}>
                                 {item.productName} x{item.quantity}
@@ -667,20 +760,26 @@ export default function DashboardPage() {
                             ))}
                           </td>
                           <td className="px-6 py-4">
-                            {formatCurrency(invoice.totalAmount)}
+                            {invoice.totalAmount === 0 && Array.isArray(invoice.items) && invoice.items.length > 0 ? (
+                              formatCurrency(invoice.items.reduce((sum, item) => sum + (item.price * item.quantity), 0))
+                            ) : (
+                              formatCurrency(invoice.totalAmount || invoice.amount)
+                            )}
                           </td>
                           <td className="px-6 py-4">
                             <span
                               className={`inline-block px-2 py-1 rounded-full text-sm ${
-                                ["SETTLEMENT", "DELIVERED"].includes(
-                                  invoice.status
-                                )
-                                  ? "bg-green-100 text-green-800"
-                                  : ["PENDING", "PROCESSING"].includes(
-                                        invoice.status
-                                      )
-                                    ? "bg-yellow-100 text-yellow-800"
-                                    : "bg-red-100 text-red-800"
+                                invoice.status === "PROCESSING"
+                                  ? "bg-blue-100 text-blue-700"
+                                  : invoice.status === "SHIPPED"
+                                  ? "bg-yellow-100 text-yellow-700"
+                                  : ["DELIVERED", "SETTLEMENT"].includes(invoice.status)
+                                  ? "bg-green-100 text-green-700"
+                                  : invoice.status === "CANCELLED"
+                                  ? "bg-red-100 text-red-700"
+                                  : invoice.status === "PENDING"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-gray-100 text-gray-700"
                               }`}
                             >
                               {invoice.status}

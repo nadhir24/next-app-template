@@ -40,6 +40,40 @@ export default function InvoicePage() {
   const router = useRouter();
   const { isLoggedIn } = useAuth();
 
+  // Clear invoice data when component unmounts or when login state changes
+  useEffect(() => {
+    return () => {
+      // Cleanup function when component unmounts
+      if (!isLoggedIn) {
+        // Only save data if we're in guest mode
+        localStorage.removeItem("invoiceData");
+      }
+    };
+  }, [isLoggedIn]);
+
+  // Listen for storage events (such as login/logout that clear localStorage)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const storedGuestId = localStorage.getItem("guestId");
+      setGuestId(storedGuestId);
+      
+      if (!storedGuestId) {
+        setInvoices([]);
+      }
+    };
+    
+    // Listen for storage changes
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Listen for auth events
+    window.addEventListener('cart_clear_needed', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('cart_clear_needed', handleStorageChange);
+    };
+  }, []);
+
   useEffect(() => {
     if (typeof isLoggedIn === "boolean") {
       if (isLoggedIn) {
@@ -67,8 +101,8 @@ export default function InvoicePage() {
               throw new Error("Failed to fetch invoices");
             }
   
-            const data = await response.json();
-            setInvoices(data);
+            const result = await response.json();
+            setInvoices(result.data || []);
           } catch (error) {
             console.error("Error fetching guest invoices:", error);
             toast.error("Gagal mengambil data invoice");

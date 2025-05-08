@@ -71,6 +71,13 @@ const AddProductPage = () => {
     setSizes(newSizes);
   };
 
+// Formats a number string into currency format (e.g., 100000 -> 100.000)
+const formatCurrency = (value: string | number): string => {
+  const numStr = String(value).replace(/\./g, ''); // Remove existing dots
+  if (isNaN(parseFloat(numStr))) return ""; // Return empty if not a valid number
+  return numStr.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+};
+
   const handleUnitChange = (index: number, unit: string) => {
       const newSizes = [...sizes];
       newSizes[index].sizeUnit = unit;
@@ -144,30 +151,48 @@ const AddProductPage = () => {
       return;
     }
 
-    const formData = new FormData();
-    formData.append("name", name);
-    formData.append("category", category);
-    formData.append("description", description);
-    formData.append("isEnabled", String(isEnabled));
-
-    formData.append("sizes", JSON.stringify(sizesToSend));
-
-    if (image) {
-      formData.append("image", image);
-    }
-
     try {
-      console.log("Submitting FormData to POST /catalog/create");
+      // Siapkan data dalam format yang diharapkan oleh API
+      const requestData = {
+        name: name,
+        category: category,
+        description: description,
+        isEnabled: isEnabled,
+        sizes: sizesToSend
+      };
 
-      await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/catalog/create`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
+      // Jika ada gambar, gunakan FormData
+      if (image) {
+        console.log("Submitting with image using FormData");
+        const formData = new FormData();
+        
+        // Tambahkan data sebagai string untuk memastikan tipe data benar
+        formData.append("name", String(name));
+        formData.append("category", String(category));
+        formData.append("description", String(description));
+        formData.append("isEnabled", String(isEnabled));
+        formData.append("sizes", JSON.stringify(sizesToSend));
+        formData.append("image", image);
+        
+        await axios.post(
+          `${process.env.NEXT_PUBLIC_API_URL}/catalog`,
+          formData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+      } else {
+        // Tanpa gambar, kirim sebagai JSON biasa
+        console.log("Submitting without image using JSON");
+        
+        await axios.post(
+          `${process.env.NEXT_PUBLIC_API_URL}/catalog`,
+          requestData
+        );
+      }
+      
       toast.success("Product added successfully!");
       router.push("/admin/dashboard/products");
     } catch (err: any) {
@@ -233,7 +258,7 @@ const AddProductPage = () => {
                     <Input
                       id={`sizeValue-${index}`}
                       type="text"
-                      value={sizeItem.sizeValue || ""}
+                      value={sizeItem.sizeValue ? formatCurrency(sizeItem.sizeValue) : ""}
                       onChange={(e) => handleSizeChange(index, "sizeValue", e.target.value)}
                       required
                       className="text-sm"
@@ -264,77 +289,62 @@ const AddProductPage = () => {
                          <Input
                            id={`price-${index}`}
                            type="text"
-                           value={formatCurrency(sizeItem.price)}
+                           value={sizeItem.price}
                            onChange={(e) => handleSizeChange(index, "price", e.target.value)}
                            required
-                           className="text-sm rounded-l-none"
-                           placeholder="e.g., 100.000"
+                           className="text-sm"
+                           placeholder="e.g., 10000"
                          />
                     </div>
                   </div>
-                  <div className="grid gap-1.5 w-24">
+                  <div className="grid gap-1.5 flex-1 min-w-[100px]">
                     <Label htmlFor={`qty-${index}`} className="text-xs">Qty</Label>
                     <Input
                       id={`qty-${index}`}
-                      type="number"
-                      value={sizeItem.qty || ""}
+                      type="text"
+                      value={sizeItem.qty}
                       onChange={(e) => handleSizeChange(index, "qty", e.target.value)}
                       required
-                      min="0"
                       className="text-sm"
                       placeholder="e.g., 10"
                     />
                   </div>
-                  {sizes.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="text-red-500 hover:bg-red-100 self-center mt-4"
-                      onClick={() => removeSizeField(index)}
-                      aria-label="Remove size"
-                    >
+                  <div className="flex items-center gap-2">
+                    <Button type="button" variant="ghost" size="icon" onClick={() => removeSizeField(index)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
-                  )}
+                  </div>
                 </div>
               ))}
-              <Button type="button" variant="outline" size="sm" onClick={addSizeField} className="mt-2 w-fit">
-                <PlusCircle className="mr-2 h-4 w-4" /> Add Size
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="ghost" size="icon" onClick={addSizeField}>
+                  <PlusCircle className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
-             <div className="grid gap-2">
+            <div className="grid gap-2">
               <Label htmlFor="image">Product Image</Label>
-              <Input id="image" type="file" onChange={handleImageChange} accept="image/*" />
-               {imagePreview && (
-                <div className="mt-2">
-                  <img src={imagePreview} alt="Image Preview" className="h-32 w-32 object-cover rounded-md border" />
-                </div>
-              )}
+              <Input
+                id="image"
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+              />
             </div>
 
-            <div className="flex items-center space-x-2">
+            <div className="grid gap-2">
+              <Label htmlFor="isEnabled">Is Enabled</Label>
               <Checkbox
                 id="isEnabled"
                 checked={isEnabled}
-                onCheckedChange={(checked) => setIsEnabled(Boolean(checked))}
+                onCheckedChange={(value) => setIsEnabled(Boolean(value))}
               />
-              <Label htmlFor="isEnabled" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                Product Enabled
-              </Label>
             </div>
-
-            {error && (
-                <p className="text-sm font-medium text-red-600 bg-red-50 p-3 rounded-md border border-red-200">
-                    Error: {error}
-                 </p>
-             )}
-
           </CardContent>
-          <CardFooter>
+          <CardFooter className="flex justify-end">
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Adding Product..." : "Add Product"}
+              {isLoading ? "Adding..." : "Add Product"}
             </Button>
           </CardFooter>
         </Card>

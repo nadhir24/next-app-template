@@ -11,17 +11,23 @@ import React, {
 } from "react";
 import axios from "axios";
 import { useAuth } from "./AuthContext"; // Import useAuth
-import { toast } from "sonner"; // Atau react-toastify
+import { toast, Toaster } from "sonner"; // Atau react-toastify
 
 // Definisikan tipe CartItem seperti di HoverCartModal atau lebih lengkap
 export interface CartItem {
   id: number;
   userId: number | null;
   guestId: string | null;
-  quantity: number;
+  quantity: number; // Ini adalah quantity di cart, BUKAN stok
   createdAt: string;
   catalog?: { id: number; name: string; image: string | null } | null;
-  size?: { id: number; size: string; price: string } | null;
+  size?: {
+    id: number;
+    size: string;
+    price: string;
+    qty?: number; // Ini adalah stok asli dari produk size
+  } | null;
+  user?: { id: number; email: string } | null; // Pastikan user ada jika dibutuhkan
 }
 
 interface CartContextType {
@@ -54,12 +60,35 @@ const parseTotal = (totalString: any): number => {
 
 const storeCartData = (items: CartItem[], count: number, total: number) => {
   try {
+    // Jika items kosong, paksa count = 0
+    if (!items.length && count > 0) {
+      count = 0;
+      total = 0;
+      console.warn(
+        "Inconsistent cart data detected, resetting count and total"
+      );
+    }
+
     localStorage.setItem("cart_items", JSON.stringify(items));
     localStorage.setItem("cart_count", count.toString());
     localStorage.setItem("cart_total", total.toString());
   } catch (err) {
     console.warn("[CartContext] Failed to store cart data in localStorage");
   }
+};
+
+// Format price function to ensure consistency
+const formatPrice = (price: string | number | undefined): string => {
+  if (!price) return "Rp0";
+  if (typeof price === "string") {
+    // If already formatted with Rp, return as is
+    if (price.includes("Rp")) return price;
+
+    // Otherwise, try to parse it and format
+    const numericValue = parseInt(price.replace(/\D/g, "") || "0");
+    return `Rp${new Intl.NumberFormat("id-ID").format(numericValue)}`;
+  }
+  return `Rp${new Intl.NumberFormat("id-ID").format(price)}`;
 };
 
 export function CartProvider({ children }: { children: ReactNode }) {
@@ -119,6 +148,60 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setHasInitialized(true);
   }, [isLoggedIn]); // Only depends on login state
 
+  // Separate effect to listen for create_guest_session events
+  useEffect(() => {
+    const handleCreateGuestSession = (event: CustomEvent) => {
+      console.log(
+        "[CartContext] Received create_guest_session event:",
+        event.detail
+      );
+
+      // Check if we already have a guest ID
+      if (localStorage.getItem("guestId")) {
+        console.log("[CartContext] Guest ID already exists, skipping creation");
+        return;
+      }
+
+      // Create a new guest session
+      const createGuestSession = async () => {
+        try {
+          const response = await axios.get(
+            `${process.env.NEXT_PUBLIC_API_URL}/cart/guest-session`
+          );
+          if (response.data.guestId) {
+            console.log(
+              "[CartContext] Created new guest ID after logout:",
+              response.data.guestId
+            );
+            localStorage.setItem("guestId", response.data.guestId);
+            setGuestId(response.data.guestId);
+            // Notify other components that guest ID has changed
+            window.dispatchEvent(new Event("guestIdChange"));
+          }
+        } catch (err) {
+          console.error(
+            "[CartContext] Error creating guest session after logout:",
+            err
+          );
+        }
+      };
+
+      createGuestSession();
+    };
+
+    window.addEventListener(
+      "create_guest_session",
+      handleCreateGuestSession as EventListener
+    );
+
+    return () => {
+      window.removeEventListener(
+        "create_guest_session",
+        handleCreateGuestSession as EventListener
+      );
+    };
+  }, []);
+
   // Fetch cart implementation
   const fetchCartImpl = useCallback(async () => {
     if (!currentIdentifier) {
@@ -154,14 +237,46 @@ export function CartProvider({ children }: { children: ReactNode }) {
       ]);
 
       const itemsData = Array.isArray(itemsRes.data) ? itemsRes.data : [];
+      console.log(
+        "[CartContext] Raw items data from API:",
+        JSON.stringify(itemsData)
+      ); // Log data mentah
+
       const countData = countRes.data.count || 0;
       const totalDataNumber = parseTotal(totalRes.data);
 
+      // Format all prices consistently when loading data
+      const formattedItems = itemsData.map((item: any) => {
+        // Log setiap item sebelum format
+        console.log(
+          `[CartContext] Processing item from API: ID=${item.id}, Size Data=`,
+          item.size
+        );
+        return {
+          ...item,
+          size: item.size
+            ? {
+                ...item.size,
+                price: formatPrice(item.size.price),
+                // Pastikan qty tetap ada jika memang ada dari API
+                qty:
+                  item.size.qty !== undefined
+                    ? Number(item.size.qty)
+                    : undefined,
+              }
+            : null,
+        };
+      });
+      console.log(
+        "[CartContext] Formatted items before storing:",
+        JSON.stringify(formattedItems)
+      );
+
       // Update localStorage cache
-      storeCartData(itemsData, countData, totalDataNumber);
+      storeCartData(formattedItems, countData, totalDataNumber);
 
       // Update state
-      setCartItems(itemsData);
+      setCartItems(formattedItems);
       setCartCount(countData);
       setCartTotal(totalDataNumber);
     } catch (error) {
@@ -172,7 +287,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const storedTotal = localStorage.getItem("cart_total");
 
         if (storedItems && storedCount && storedTotal) {
-          setCartItems(JSON.parse(storedItems));
+          const storedItemsData = JSON.parse(storedItems);
+          const formattedStoredItems = storedItemsData.map((item: any) => ({
+            ...item,
+            size: item.size
+              ? {
+                  ...item.size,
+                  price: formatPrice(item.size.price),
+                }
+              : null,
+          }));
+          setCartItems(formattedStoredItems);
           setCartCount(parseInt(storedCount, 10));
           setCartTotal(parseInt(storedTotal, 10));
         } else {
@@ -246,6 +371,37 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [user?.id, guestId, fetchCartImpl]
   ); // Added fetchCartImpl to dependencies
 
+  // Fungsi utilitas untuk menampilkan error (lebih sederhana)
+  const showErrorMessage = (message: string) => {
+    // Cek jika pesan berisi "Insufficient stock", format menjadi lebih user-friendly
+    if (message.includes("Insufficient stock")) {
+      const errorParts =
+        /Insufficient stock for (.*?) \((.*?)\). Available: (\d+)/.exec(
+          message
+        );
+      if (errorParts) {
+        const [_, productName, size, available] = errorParts;
+        const friendlyMessage = `Stok ${productName} (${size}) tidak cukup. Tersedia: ${available}`;
+
+        console.log("[CartContext] Showing friendly toast:", friendlyMessage);
+        toast.error(friendlyMessage, {
+          duration: 4000,
+          position: "top-center",
+          style: { fontWeight: "500" },
+        });
+        return; // Keluar dari fungsi setelah menampilkan pesan yang diformat
+      }
+    }
+
+    // Untuk pesan error lainnya
+    console.log("[CartContext] Showing toast:", message);
+    toast.error(message, {
+      duration: 4000,
+      position: "top-center",
+      style: { fontWeight: "500" },
+    });
+  };
+
   // Update cart item function
   const updateCartItem = useCallback(
     async (cartId: number, quantity: number) => {
@@ -266,18 +422,38 @@ export function CartProvider({ children }: { children: ReactNode }) {
           await fetchCartImpl(); // Refresh context state
           return Promise.resolve();
         } else {
-          toast.error(response.data.message || "Gagal memperbarui.");
-          return Promise.reject(
-            new Error(response.data.message || "Failed to update")
-          );
+          // Tangkap secara eksplisit pesan insufficient stock
+          const errorMessage = response.data.message || "Gagal memperbarui.";
+          console.log("[CartContext] Error from API:", errorMessage);
+
+          // Tampilkan hanya satu toast
+          showErrorMessage(errorMessage);
+
+          return Promise.reject(new Error(errorMessage));
         }
-      } catch (error) {
-        toast.error("Gagal memperbarui keranjang.");
-        return Promise.reject(error);
+      } catch (error: any) {
+        // Extract error message
+        let errorMessage = "Gagal memperbarui keranjang.";
+
+        // Check if error has response data with message
+        if (error.response?.data?.message) {
+          errorMessage = error.response.data.message;
+        }
+        // Check if error already has a message property
+        else if (error.message) {
+          errorMessage = error.message;
+        }
+
+        console.log("[CartContext] Error updating cart:", errorMessage);
+
+        // Tampilkan toast error
+        showErrorMessage(errorMessage);
+
+        return Promise.reject(new Error(errorMessage));
       }
     },
     [user?.id, guestId, fetchCartImpl]
-  ); // Added guestId dependency
+  );
 
   // Remove from cart function
   const removeFromCart = useCallback(
@@ -339,6 +515,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("FORCE_CART_RESET" as any, handleForceReset);
     };
   }, [clearCart]);
+
+  // Di CartProvider setelah useEffect pertama
+  useEffect(() => {
+    // Force reset localStorage on initial load (temporary fix)
+    localStorage.setItem("cart_items", "[]");
+    localStorage.setItem("cart_count", "0");
+    localStorage.setItem("cart_total", "0");
+
+    // Existing code...
+  }, []); // Empty dependency array = run once on mount
 
   // Context value memoized
   const contextValue = useMemo(

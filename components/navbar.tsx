@@ -154,11 +154,7 @@ export default function Navy() {
               <NavbarMenuItem key={`${item}-${index}`}>
                 <Link
                   className={
-                    index === 2
-                      ? "text-primary"
-                      : index === siteConfig.navMenuItems.length - 1
-                        ? "text-yellow"
-                        : "text-white"
+                    `transition-colors duration-200 text-base font-medium ` 
                   }
                   href={item.href}
                 >

@@ -29,6 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { jwtDecode } from "jwt-decode";
 
 interface User {
   id: number;
@@ -43,7 +44,8 @@ interface User {
 
 const ROLES = {
   ADMIN: { id: 1, name: "Admin" },
-  USER: { id: 2, name: "User" }
+  GUEST: { id: 2, name: "Guest" },
+  USER: { id: 3, name: "User" },
 } as const;
 
 export default function UsersPage() {
@@ -54,65 +56,66 @@ export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
   const router = useRouter();
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
   const fetchUsers = async (page: number, search: string = "") => {
     try {
       setIsLoading(true);
-      
+
       // Build query parameters
       const params = new URLSearchParams({
         page: String(page),
-        limit: '10'
+        limit: "10",
       });
-      
+
       // Only add search param if it's not empty
       if (search.trim()) {
-        params.append('search', search.trim());
+        params.append("search", search.trim());
       }
-      
+
       // Get the token
       const token = localStorage.getItem("token");
       if (!token) {
         throw new Error("Authentication token not found");
       }
-      
+
       // Log the API URL being used
       const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/users?${params.toString()}`;
-      console.log('Fetching from:', apiUrl);
-      
+      console.log("Fetching from:", apiUrl);
+
       const response = await fetch(apiUrl, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
         },
         // Modify these options for better compatibility
-        mode: 'cors',
-        credentials: 'same-origin',
+        mode: "cors",
+        credentials: "same-origin",
       });
 
-      console.log('Response status:', response.status);
-      
+      console.log("Response status:", response.status);
+
       if (!response.ok) {
-        let errorMessage = 'Failed to fetch users';
+        let errorMessage = "Failed to fetch users";
         try {
           const errorData = await response.json();
           errorMessage = errorData.message || errorMessage;
         } catch (e) {
           // If response is not JSON, try to get text
           try {
-            errorMessage = await response.text() || errorMessage;
+            errorMessage = (await response.text()) || errorMessage;
           } catch (textError) {
-            console.error('Could not parse error response as text:', textError);
+            console.error("Could not parse error response as text:", textError);
           }
         }
-        console.error('Error response:', errorMessage);
+        console.error("Error response:", errorMessage);
         throw new Error(errorMessage);
       }
 
       const data = await response.json();
-      console.log('Raw API response:', data);
+      console.log("Raw API response:", data);
 
       // Handle both formats - direct array or users object with pagination
       let usersArray;
@@ -127,7 +130,7 @@ export default function UsersPage() {
           currentPage: 1,
           itemsPerPage: data.length,
           hasNextPage: false,
-          hasPreviousPage: false
+          hasPreviousPage: false,
         };
       } else if (data && data.users && Array.isArray(data.users)) {
         // Handle object with users array and pagination
@@ -138,10 +141,10 @@ export default function UsersPage() {
           currentPage: 1,
           itemsPerPage: data.users.length,
           hasNextPage: false,
-          hasPreviousPage: false
+          hasPreviousPage: false,
         };
       } else {
-        console.error('Invalid data format received:', data);
+        console.error("Invalid data format received:", data);
         throw new Error("Invalid data format received from API");
       }
 
@@ -153,20 +156,21 @@ export default function UsersPage() {
         photoProfile: user.photoProfile || null,
         userRoles: user.userRoles || [],
         createdAt: user.createdAt,
-        roleName: user.roleName || 'No Role',
-        roleId: user.roleId
+        roleName: user.roleName || "No Role",
+        roleId: user.roleId,
       }));
 
-      console.log('Formatted users:', formattedUsers);
-      
+      console.log("Formatted users:", formattedUsers);
+
       setUsers(formattedUsers);
       setTotalPages(paginationData.totalPages);
       setCurrentPage(paginationData.currentPage);
     } catch (error) {
-      console.error('Error in fetchUsers:', error);
+      console.error("Error in fetchUsers:", error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to load users data",
+        description:
+          error instanceof Error ? error.message : "Failed to load users data",
         variant: "destructive",
       });
       setUsers([]);
@@ -181,7 +185,7 @@ export default function UsersPage() {
   useEffect(() => {
     if (searchQuery.length === 0 || searchQuery.length >= 2) {
       const timeoutId = setTimeout(() => {
-        console.log('Triggering search with query:', searchQuery);
+        console.log("Triggering search with query:", searchQuery);
         fetchUsers(1, searchQuery);
       }, 500);
 
@@ -203,7 +207,19 @@ export default function UsersPage() {
     }
   }, [currentPage]);
 
- 
+  // Add function to get current user's ID
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const decoded = jwtDecode<{ id: number }>(token);
+        setCurrentUserId(decoded.id);
+        console.log("Current user ID:", decoded.id);
+      } catch (error) {
+        console.error("Error decoding token:", error);
+      }
+    }
+  }, []);
 
   return (
     <div className="container mx-auto py-10">
@@ -255,11 +271,13 @@ export default function UsersPage() {
                   </TableCell>
                 </TableRow>
               ))
-            ) : (!users || users.length === 0) ? (
+            ) : !users || users.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="h-24 text-center">
                   <div className="flex flex-col items-center justify-center gap-2">
-                    <p className="text-sm text-muted-foreground">No users found</p>
+                    <p className="text-sm text-muted-foreground">
+                      No users found
+                    </p>
                     {searchQuery && (
                       <Button
                         variant="outline"
@@ -278,7 +296,11 @@ export default function UsersPage() {
                   <TableCell className="flex items-center gap-3">
                     <Avatar>
                       <AvatarImage
-                        src={user.photoProfile ? `${process.env.NEXT_PUBLIC_API_URL}/uploads/users/${user.photoProfile}` : undefined}
+                        src={
+                          user.photoProfile
+                            ? `${process.env.NEXT_PUBLIC_API_URL}/uploads/users/${user.photoProfile}`
+                            : undefined
+                        }
                         alt={user.fullName}
                       />
                       <AvatarFallback>{user.fullName.charAt(0)}</AvatarFallback>
@@ -317,61 +339,143 @@ export default function UsersPage() {
                           className="p-0"
                         >
                           <Select
-                            value={String(user.userRoles[0]?.roleId || '')}
+                            value={String(user.userRoles[0]?.roleId || "")}
                             onValueChange={async (value) => {
                               try {
                                 const token = localStorage.getItem("token");
                                 if (!token) {
                                   toast({
                                     title: "Error",
-                                    description: "Authentication token not found",
+                                    description:
+                                      "Authentication token not found",
                                     variant: "destructive",
                                   });
                                   return;
                                 }
 
                                 const newRoleId = parseInt(value);
+                                const isChangingOwnRole =
+                                  user.id === currentUserId;
+                                const isChangingFromAdminToUser =
+                                  isChangingOwnRole &&
+                                  user.userRoles[0]?.roleId === 1 &&
+                                  newRoleId !== 1;
 
-                                const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user-role/update`, {
-                                  method: 'PUT',
-                                  headers: {
-                                    'Content-Type': 'application/json',
-                                    'Authorization': `Bearer ${token}`
-                                  },
-                                  body: JSON.stringify({
-                                    userId: user.id,
-                                    newRoleId
-                                  })
+                                console.log("Role change details:", {
+                                  userId: user.id,
+                                  currentUserId,
+                                  newRoleId,
+                                  isChangingOwnRole,
+                                  isChangingFromAdminToUser,
                                 });
-                                
+
+                                const response = await fetch(
+                                  `${process.env.NEXT_PUBLIC_API_URL}/user-role/update`,
+                                  {
+                                    method: "PUT",
+                                    headers: {
+                                      "Content-Type": "application/json",
+                                      Authorization: `Bearer ${token}`,
+                                    },
+                                    body: JSON.stringify({
+                                      userId: user.id,
+                                      newRoleId,
+                                    }),
+                                  }
+                                );
+
                                 if (!response.ok) {
-                                  throw new Error('Failed to update role');
+                                  throw new Error("Failed to update role");
                                 }
-                                
+
+                                // Parse response to get new token
+                                const responseData = await response.json();
+                                console.log(
+                                  "Role update response:",
+                                  responseData
+                                );
+
+                                // Update token in localStorage if it's the current user
+                                if (isChangingOwnRole && responseData.token) {
+                                  console.log(
+                                    "Updating token in localStorage with new role information"
+                                  );
+                                  localStorage.setItem(
+                                    "token",
+                                    responseData.token
+                                  );
+
+                                  // Also update user object if needed
+                                  const currentUser =
+                                    localStorage.getItem("user");
+                                  if (currentUser) {
+                                    try {
+                                      const userObj = JSON.parse(currentUser);
+                                      userObj.roleId = [
+                                        { userId: user.id, roleId: newRoleId },
+                                      ];
+                                      localStorage.setItem(
+                                        "user",
+                                        JSON.stringify(userObj)
+                                      );
+                                    } catch (e) {
+                                      console.error(
+                                        "Error updating user in localStorage:",
+                                        e
+                                      );
+                                    }
+                                  }
+                                }
+
                                 toast({
                                   title: "Success",
-                                  description: `Role updated to ${ROLES[newRoleId === 1 ? 'ADMIN' : 'USER'].name}`
+                                  description: `Role updated to ${
+                                    newRoleId === 1
+                                      ? "Admin"
+                                      : newRoleId === 3
+                                        ? "User"
+                                        : "Guest"
+                                  }`,
                                 });
-                                
+
+                                // If user changed their own role from admin to regular user, redirect to homepage
+                                if (isChangingFromAdminToUser) {
+                                  toast({
+                                    title: "Role Changed",
+                                    description:
+                                      "You've changed your role from Admin to User. Redirecting to homepage...",
+                                  });
+
+                                  // Short delay before redirect
+                                  setTimeout(() => {
+                                    window.location.href = "/";
+                                  }, 1500);
+                                  return;
+                                }
+
                                 fetchUsers(currentPage, searchQuery);
                               } catch (error) {
                                 toast({
                                   title: "Error",
                                   description: "Failed to update role",
-                                  variant: "destructive"
+                                  variant: "destructive",
                                 });
-                                console.error('Error updating role:', error);
+                                console.error("Error updating role:", error);
                               }
                             }}
                           >
                             <SelectTrigger className="w-[180px]">
                               <SelectValue placeholder="Select role">
-                                {user.roleName === 'admin' ? 'Admin' : 'User'}
+                                {user.roleName === "admin" ? "Admin" : "User"}
                               </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value={String(ROLES.USER.id)}>User</SelectItem>
-                              <SelectItem value={String(ROLES.ADMIN.id)}>Admin</SelectItem>
+                              <SelectItem value={String(ROLES.USER.id)}>
+                                User
+                              </SelectItem>
+                              <SelectItem value={String(ROLES.ADMIN.id)}>
+                                Admin
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                         </DropdownMenuItem>
@@ -379,51 +483,69 @@ export default function UsersPage() {
                           onClick={() => {
                             toast({
                               title: "Delete User",
-                              description: "Are you sure you want to delete this user?",
+                              description:
+                                "Are you sure you want to delete this user?",
                               action: (
                                 <Button
                                   variant="destructive"
                                   onClick={async () => {
                                     try {
-                                      const token = localStorage.getItem("token");
+                                      const token =
+                                        localStorage.getItem("token");
                                       if (!token) {
                                         toast({
                                           title: "Error",
-                                          description: "Authentication token not found",
+                                          description:
+                                            "Authentication token not found",
                                           variant: "destructive",
                                         });
                                         return;
                                       }
 
-                                      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/delete/${user.id}`, {
-                                        method: 'DELETE',
-                                        headers: {
-                                          'Authorization': `Bearer ${token}`,
-                                          'Content-Type': 'application/json'
+                                      const response = await fetch(
+                                        `${process.env.NEXT_PUBLIC_API_URL}/users/delete/${user.id}`,
+                                        {
+                                          method: "DELETE",
+                                          headers: {
+                                            Authorization: `Bearer ${token}`,
+                                            "Content-Type": "application/json",
+                                          },
                                         }
-                                      });
-                                      
+                                      );
+
                                       if (!response.ok) {
-                                        const errorData = await response.json().catch(() => null);
-                                        throw new Error(errorData?.message || 'Failed to delete user');
+                                        const errorData = await response
+                                          .json()
+                                          .catch(() => null);
+                                        throw new Error(
+                                          errorData?.message ||
+                                            "Failed to delete user"
+                                        );
                                       }
-                                      
+
                                       toast({
                                         title: "Success",
-                                        description: "User deleted successfully",
-                                        variant: "default"
+                                        description:
+                                          "User deleted successfully",
+                                        variant: "default",
                                       });
-                                      
+
                                       // Close all toasts before fetching new data
                                       setTimeout(() => {
                                         fetchUsers(currentPage, searchQuery);
                                       }, 500);
                                     } catch (error) {
-                                      console.error('Error deleting user:', error);
+                                      console.error(
+                                        "Error deleting user:",
+                                        error
+                                      );
                                       toast({
                                         title: "Error",
-                                        description: error instanceof Error ? error.message : "Failed to delete user",
-                                        variant: "destructive"
+                                        description:
+                                          error instanceof Error
+                                            ? error.message
+                                            : "Failed to delete user",
+                                        variant: "destructive",
                                       });
                                     }
                                   }}
@@ -462,7 +584,9 @@ export default function UsersPage() {
         </span>
         <Button
           variant="outline"
-          onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+          onClick={() =>
+            setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+          }
           disabled={currentPage === totalPages || isLoading}
           className="flex items-center gap-2"
         >

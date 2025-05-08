@@ -18,7 +18,7 @@ import { Divider } from "@heroui/divider";
 import Image from "next/image";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
-import { Toaster } from "@/components/ui/toaster"
+import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
   title: {
@@ -49,10 +49,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         {process.env.NEXT_PUBLIC_API_URL && (
-          <link 
-            rel="preconnect" 
-            href={process.env.NEXT_PUBLIC_API_URL} 
-          />
+          <link rel="preconnect" href={process.env.NEXT_PUBLIC_API_URL} />
         )}
       </head>
       <body
@@ -77,63 +74,104 @@ export default function RootLayout({
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
                       <div>
                         <h3 className="text-xl font-bold mb-6">Tentang Kami</h3>
-                        <p className="text-gray-100">Rano cake adalah produsen makanan ringan berkualitas baik.</p>
+                        <p className="text-gray-100">
+                          Rano cake adalah produsen makanan ringan berkualitas
+                          baik.
+                        </p>
                       </div>
                       <div>
                         <h3 className="text-xl font-bold mb-6">Kontak</h3>
-                        <p className="text-gray-100">Email: info@ranocake.com</p>
-                        <p className="text-gray-100">Telepon: (021) 123-4567</p>
+                        <p className="text-gray-100">
+                          Email: info@ranocake.com
+                        </p>
+                        <Link
+                          href={siteConfig.links.whatsapp}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Hubungi via WhatsApp"
+                        >
+                          <WhatsappIcon
+                            className="text-white hover:text-gray-300 transition-colors"
+                            size={45}
+                          />
+                        </Link>
                       </div>
                       <div>
-                        <h3 className="text-xl font-bold mb-6">Support Pembayaran</h3>
-                        <div className="flex flex-col space-y-6">
-                          <div className="grid grid-cols-3 gap-4 items-center">
-                            <Link href={siteConfig.links.whatsapp} target="_blank" rel="noopener noreferrer" title="Hubungi via WhatsApp">
-                              <WhatsappIcon className="text-white hover:text-gray-300 transition-colors" size={35} />
-                            </Link>
+                        <h3 className="text-xl font-bold mb-6">
+                          Support Pembayaran
+                        </h3>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3 gap-4 items-center">
+                          <div className="flex justify-center">
                             <Image
                               src="/GoPay.svg"
                               alt="GoPay"
-                              width={80}
-                              height={80}
-                              className="hover:opacity-80 transition-opacity object-contain h-auto w-auto"
+                              width={70}
+                              height={70}
+                              className="hover:opacity-80 transition-opacity object-contain h-auto w-auto max-h-12"
                             />
+                          </div>
+                          <div className="flex justify-center">
                             <Image
                               src="/QRIS.svg"
                               alt="QRIS"
-                              width={80}
-                              height={80}
-                              className="hover:opacity-80 transition-opacity object-contain h-auto w-auto"
+                              width={11}
+                              height={11}
+                              className="hover:opacity-80 transition-opacity object-contain h-auto w-auto max-h-10"
                             />
                           </div>
-                          <div className="grid grid-cols-3 gap-4 items-center">
+                          <div className="flex justify-center">
                             <Image
-                              src="/jcb.svg"
-                              alt="jcb"
-                              width={60}
-                              height={60}
-                              className="hover:opacity-80 transition-opacity object-contain h-auto w-auto"
+                              src="/bri.svg"
+                              alt="BRI"
+                              width={70}
+                              height={70}
+                              className="hover:opacity-80 transition-opacity object-contain h-auto w-auto max-h-10"
                             />
+                          </div>
+                          <div className="flex justify-center">
                             <Image
-                              src="/visa.svg"
-                              alt="visa"
-                              width={60}
-                              height={60}
-                              className="hover:opacity-80 transition-opacity object-contain h-auto w-auto"
+                              src="/cimb.svg"
+                              alt="CIMB"
+                              width={70}
+                              height={70}
+                              className="hover:opacity-80 transition-opacity object-contain h-auto w-auto max-h-10"
                             />
+                          </div>
+                          <div className="flex justify-center">
                             <Image
-                              src="/msc.svg"
-                              alt="msc"
-                              width={60}
-                              height={60}
-                              className="hover:opacity-80 transition-opacity object-contain h-auto w-auto"
+                              src="/danamon.svg"
+                              alt="Danamon"
+                              width={70}
+                              height={70}
+                              className="hover:opacity-80 transition-opacity object-contain h-auto w-auto max-h-10"
+                            />
+                          </div>
+                          <div className="flex justify-center">
+                            <Image
+                              src="/mandiri.svg"
+                              alt="Mandiri"
+                              width={70}
+                              height={70}
+                              className="hover:opacity-80 transition-opacity object-contain h-auto w-auto max-h-10"
+                            />
+                          </div>
+                          <div className="flex justify-center sm:col-span-1 md:col-span-2 lg:col-span-1">
+                            <Image
+                              src="/permata.svg"
+                              alt="Permata"
+                              width={70}
+                              height={70}
+                              className="hover:opacity-80 transition-opacity object-contain h-auto w-auto max-h-10"
                             />
                           </div>
                         </div>
                       </div>
                     </div>
                     <div className="text-center mt-12">
-                      <p className="text-gray-100">&copy; {new Date().getFullYear()} Rano Cake. All rights reserved.</p>
+                      <p className="text-gray-100">
+                        &copy; {new Date().getFullYear()} Rano Cake. All rights
+                        reserved.
+                      </p>
                     </div>
                   </div>
                 </footer>

@@ -95,16 +95,16 @@ export default function ProductsPage() {
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(price);
   };
 
   const handleDelete = async (productId: number) => {
-    console.log('Handling delete for product:', productId);
+    console.log("Handling delete for product:", productId);
 
     setProductToDelete(productId);
 
@@ -143,23 +143,23 @@ export default function ProductsPage() {
   };
 
   const confirmDelete = async (id: number) => {
-    console.log('Starting delete confirmation for ID:', id);
+    console.log("Starting delete confirmation for ID:", id);
 
-    if (!id || typeof id !== 'number' || isNaN(id)) {
+    if (!id || typeof id !== "number" || isNaN(id)) {
       console.error("Invalid product ID provided to confirmDelete:", id);
       toast({
         title: "Error",
         description: "Invalid product ID provided.",
-        variant: "destructive"
+        variant: "destructive",
       });
       setProductToDelete(null);
       return;
     }
 
-    console.log('Delete confirmed, proceeding...');
+    console.log("Delete confirmed, proceeding...");
     try {
       const token = localStorage.getItem("token");
-      console.log('Token found:', token ? 'Yes' : 'No');
+      console.log("Token found:", token ? "Yes" : "No");
 
       if (!token) {
         toast({
@@ -170,40 +170,86 @@ export default function ProductsPage() {
         });
       } else {
         const deleteUrl = `${process.env.NEXT_PUBLIC_API_URL}/catalog/${id}`;
-        console.log('Sending DELETE request to:', deleteUrl);
+        console.log("Sending DELETE request to:", deleteUrl);
 
         const response = await fetch(deleteUrl, {
-          method: 'DELETE',
+          method: "DELETE",
           headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         });
 
-        console.log('Delete response:', {
+        console.log("Delete response:", {
           status: response.status,
           statusText: response.statusText,
-          headers: Object.fromEntries(response.headers.entries())
+          headers: Object.fromEntries(response.headers.entries()),
         });
 
         let responseData = null;
         if (!response.ok) {
-            try {
-                responseData = await response.json();
-                console.log('Error data:', responseData);
-                throw new Error(responseData?.message || `Failed to delete product (status: ${response.status})`);
-            } catch (parseError) {
-                console.error("Failed to parse error response:", parseError);
-                throw new Error(`Failed to delete product and parse error response (status: ${response.status})`);
+          try {
+            responseData = await response.json();
+            console.log("Error data:", responseData);
+
+            // Cek apakah error karena produk ada di keranjang
+            if (
+              response.status === 409 &&
+              responseData?.message?.includes("cart")
+            ) {
+              // Tampilkan dialog untuk konfirmasi force delete
+              const forceToastId = toast({
+                title: "Product In Cart",
+                description:
+                  "This product can't be deleted because it's in customer carts. Do you want to force delete it? This will remove the product from all carts.",
+                variant: "destructive",
+                duration: 10000,
+                action: (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        dismiss(forceToastId.id);
+                        setProductToDelete(null);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={async () => {
+                        dismiss(forceToastId.id);
+                        await forceDelete(id);
+                      }}
+                    >
+                      Force Delete
+                    </Button>
+                  </div>
+                ),
+              });
+              return;
             }
+
+            throw new Error(
+              responseData?.message ||
+                `Failed to delete product (status: ${response.status})`
+            );
+          } catch (parseError) {
+            console.error("Failed to parse error response:", parseError);
+            throw new Error(
+              `Failed to delete product and parse error response (status: ${response.status})`
+            );
+          }
         } else {
-             try {
-                responseData = await response.json();
-                console.log('Success response data (if any):', responseData);
-             } catch (parseError) {
-                 console.log("No JSON body in successful DELETE response.");
-                 responseData = null;
-             }
+          try {
+            responseData = await response.json();
+            console.log("Success response data (if any):", responseData);
+          } catch (parseError) {
+            console.log("No JSON body in successful DELETE response.");
+            responseData = null;
+          }
         }
 
         toast({
@@ -213,20 +259,87 @@ export default function ProductsPage() {
           duration: 3000,
         });
 
-        console.log('Refreshing product list...');
+        console.log("Refreshing product list...");
         await fetchProducts(currentPage);
       }
     } catch (error) {
-      console.error('Delete error details:', error);
+      console.error("Delete error details:", error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to delete product",
+        description:
+          error instanceof Error ? error.message : "Failed to delete product",
         variant: "destructive",
         duration: 3000,
       });
     } finally {
       setProductToDelete(null);
-      console.log('Delete process finished, resetting productToDelete state.');
+      console.log("Delete process finished, resetting productToDelete state.");
+    }
+  };
+
+  // Tambahkan fungsi baru untuk force delete
+  const forceDelete = async (id: number) => {
+    console.log("Starting force delete for ID:", id);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast({
+          title: "Error",
+          description: "Authentication token not found",
+          variant: "destructive",
+          duration: 3000,
+        });
+        return;
+      }
+
+      const forceDeleteUrl = `${process.env.NEXT_PUBLIC_API_URL}/catalog/${id}/force`;
+      console.log("Sending force DELETE request to:", forceDeleteUrl);
+
+      const response = await fetch(forceDeleteUrl, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      console.log("Force delete response:", {
+        status: response.status,
+        statusText: response.statusText,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData?.message ||
+            `Failed to force delete product (status: ${response.status})`
+        );
+      }
+
+      const responseData = await response.json();
+      console.log("Force delete successful:", responseData);
+
+      toast({
+        title: "Success",
+        description: `Product deleted successfully. ${responseData.count || 0} items were removed from carts.`,
+        variant: "default",
+        duration: 3000,
+      });
+
+      await fetchProducts(currentPage);
+    } catch (error) {
+      console.error("Force delete error:", error);
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to force delete product",
+        variant: "destructive",
+        duration: 5000,
+      });
+    } finally {
+      setProductToDelete(null);
     }
   };
 
@@ -234,7 +347,10 @@ export default function ProductsPage() {
     <div className="container mx-auto py-10">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Products</h1>
-        <Button onClick={() => router.push("/admin/dashboard/products/add")} disabled={isLoading}>
+        <Button
+          onClick={() => router.push("/admin/dashboard/products/add")}
+          disabled={isLoading}
+        >
           {isLoading ? "Loading..." : "Add Product"}
         </Button>
       </div>
@@ -291,16 +407,20 @@ export default function ProductsPage() {
                     <TableCell>{product.category}</TableCell>
                     <TableCell>{formatPrice(minPrice)}</TableCell>
                     <TableCell>
-                      <span className={`font-bold ${isAvailable ? "text-green-600" : "text-red-600"}`}>
+                      <span
+                        className={`font-bold ${isAvailable ? "text-green-600" : "text-red-600"}`}
+                      >
                         {isAvailable ? "Available" : "Out of Stock"}
                       </span>
                     </TableCell>
                     <TableCell>
-                      <DropdownMenu onOpenChange={(isOpen) => {
-                        if (!isOpen && productToDelete === product.id) {
-                          setProductToDelete(null);
-                        }
-                      }}>
+                      <DropdownMenu
+                        onOpenChange={(isOpen) => {
+                          if (!isOpen && productToDelete === product.id) {
+                            setProductToDelete(null);
+                          }
+                        }}
+                      >
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" className="h-8 w-8 p-0">
                             <MoreHorizontal className="h-4 w-4" />
@@ -310,11 +430,14 @@ export default function ProductsPage() {
                           <DropdownMenuItem
                             onClick={() => {
                               setEditingId(product.id);
-                              router.push(`/admin/dashboard/products/edit/${product.id}`);
+                              router.push(
+                                `/admin/dashboard/products/edit/${product.id}`
+                              );
                             }}
+                            textValue="Edit"
                           >
-                            <Button 
-                              variant="ghost" 
+                            <Button
+                              variant="ghost"
                               className="w-full justify-start"
                               disabled={editingId === product.id}
                             >
@@ -335,6 +458,7 @@ export default function ProductsPage() {
                             onClick={() => handleDelete(product.id)}
                             className="text-red-600 focus:bg-red-100 focus:text-red-700"
                             disabled={productToDelete === product.id}
+                            textValue="Delete"
                           >
                             {productToDelete === product.id ? (
                               <>
@@ -364,27 +488,37 @@ export default function ProductsPage() {
           <Pagination>
             <PaginationContent>
               <PaginationItem>
-                <PaginationPrevious 
+                <PaginationPrevious
                   onClick={() => handlePageChange(currentPage - 1)}
-                  className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  className={
+                    currentPage === 1
+                      ? "pointer-events-none opacity-50"
+                      : "cursor-pointer"
+                  }
                 />
               </PaginationItem>
-              
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <PaginationItem key={page}>
-                  <PaginationLink
-                    onClick={() => handlePageChange(page)}
-                    isActive={currentPage === page}
-                  >
-                    {page}
-                  </PaginationLink>
-                </PaginationItem>
-              ))}
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                (page) => (
+                  <PaginationItem key={page}>
+                    <PaginationLink
+                      onClick={() => handlePageChange(page)}
+                      isActive={currentPage === page}
+                    >
+                      {page}
+                    </PaginationLink>
+                  </PaginationItem>
+                )
+              )}
 
               <PaginationItem>
                 <PaginationNext
                   onClick={() => handlePageChange(currentPage + 1)}
-                  className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  className={
+                    currentPage === totalPages
+                      ? "pointer-events-none opacity-50"
+                      : "cursor-pointer"
+                  }
                 />
               </PaginationItem>
             </PaginationContent>
