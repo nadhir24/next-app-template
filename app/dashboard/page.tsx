@@ -44,7 +44,10 @@ interface Invoice {
   midtransOrderId: string;
   status: string;
   totalAmount: number;
+<<<<<<< HEAD
   amount?: number;
+=======
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
   createdAt: string;
   items: Array<{
     id: number;
@@ -53,11 +56,14 @@ interface Invoice {
     price: number;
   }>;
   midtransInvoicePdfUrl?: string;
+<<<<<<< HEAD
   shippingAddress?: string;
   shippingDistrict?: string;
   shippingCity?: string;
   shippingProvince?: string;
   shippingPostalCode?: string;
+=======
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
 }
 
 export default function DashboardPage() {
@@ -119,6 +125,7 @@ export default function DashboardPage() {
     }
 
     if (user) {
+<<<<<<< HEAD
       console.log("User object structure:", JSON.stringify(user, null, 2));
       
       // Ensure user has userProfile object
@@ -129,6 +136,8 @@ export default function DashboardPage() {
         };
       }
       
+=======
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
       const userAddress = getUserPrimaryAddress(user);
       console.log("Setting form data with user address:", userAddress);
       setFormData({
@@ -136,11 +145,19 @@ export default function DashboardPage() {
         phoneNumber: user.phoneNumber || "",
         userProfile: {
           address: {
+<<<<<<< HEAD
             label: userAddress?.label || "Rumah",
             street: userAddress?.street || "",
             city: userAddress?.city || "",
             state: userAddress?.state || "",
             postalCode: userAddress?.postalCode || "12345",
+=======
+            label: userAddress?.label || "",
+            street: userAddress?.street || "",
+            city: userAddress?.city || "",
+            state: userAddress?.state || "",
+            postalCode: userAddress?.postalCode || "",
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
             country: userAddress?.country || "Indonesia",
           },
         },
@@ -157,6 +174,7 @@ export default function DashboardPage() {
 
   const getUserPrimaryAddress = (userData: any) => {
     console.log("Getting primary address from:", userData);
+<<<<<<< HEAD
     
     // First try to find default address from addresses array
     if (userData.userProfile?.addresses && Array.isArray(userData.userProfile.addresses) && userData.userProfile.addresses.length > 0) {
@@ -181,6 +199,14 @@ export default function DashboardPage() {
       postalCode: "",
       country: "Indonesia"
     };
+=======
+    const address =
+      userData.userProfile?.addresses?.find((addr: any) => addr.isDefault) ||
+      userData.userProfile?.address ||
+      {};
+    console.log("Found address:", address);
+    return address;
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
   };
 
   const fetchInvoices = async () => {
@@ -211,6 +237,7 @@ export default function DashboardPage() {
 
       const data = await res.json();
       console.log("Invoices fetched:", data);
+<<<<<<< HEAD
       
       // Make sure items are always properly mapped even if structure changes
       const processedInvoices = data.data.map((invoice: any) => {
@@ -246,6 +273,9 @@ export default function DashboardPage() {
       });
       
       setInvoices(processedInvoices || []);
+=======
+      setInvoices(data.data || []);
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
       setPagination(data.pagination || {});
     } catch (err) {
       console.error("Error fetching invoices:", err);
@@ -383,17 +413,34 @@ export default function DashboardPage() {
       // Update user address
       const address = formData.userProfile?.address;
       console.log("Address to update:", address);
+<<<<<<< HEAD
+=======
+      if (!address?.postalCode) {
+        console.log("Missing postal code");
+        toast.error("Kode Pos tidak boleh kosong.");
+        return;
+      }
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
 
       console.log("Updating address for user ID:", userId);
       const addressResponse = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/users/${userId}/addresses`,
         {
+<<<<<<< HEAD
           label: address?.label,
           street: address?.street,
           city: address?.city,
           state: address?.state,
           postalCode: address?.postalCode || "12345",
           country: address?.country || "Indonesia",
+=======
+          label: address.label,
+          street: address.street,
+          city: address.city,
+          state: address.state,
+          postalCode: address.postalCode,
+          country: address.country || "Indonesia",
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
           isDefault: true,
         },
         {
@@ -443,6 +490,7 @@ export default function DashboardPage() {
   };
 
   // Format currency and date
+<<<<<<< HEAD
   const formatCurrency = (amount: number | undefined | null) => {
     // Ensure amount is a valid number
     const numAmount = typeof amount === 'number' && !isNaN(amount) ? amount : 0;
@@ -457,6 +505,13 @@ export default function DashboardPage() {
       maximumFractionDigits: 0,
     }).format(numAmount);
   };
+=======
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+    }).format(amount);
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
 
   const formatDate = (dateString: string) =>
     new Date(dateString).toLocaleDateString("id-ID", {
@@ -502,6 +557,7 @@ export default function DashboardPage() {
                 </CardDescription>
               </div>
 
+<<<<<<< HEAD
               {!isEditing && (
                 <Button
                   type="button"
@@ -511,6 +567,15 @@ export default function DashboardPage() {
                   Edit Profile
                 </Button>
               )}
+=======
+              <Button
+                type="button"
+                onClick={() => setIsEditing(true)}
+                size="sm"
+              >
+                Edit Profile
+              </Button>
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -711,9 +776,12 @@ export default function DashboardPage() {
                           Tanggal
                         </th>
                         <th className="px-6 py-3 text-left text-sm font-semibold">
+<<<<<<< HEAD
                           Alamat
                         </th>
                         <th className="px-6 py-3 text-left text-sm font-semibold">
+=======
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                           Produk
                         </th>
                         <th className="px-6 py-3 text-left text-sm font-semibold">
@@ -737,6 +805,7 @@ export default function DashboardPage() {
                             {formatDate(invoice.createdAt)}
                           </td>
                           <td className="px-6 py-4">
+<<<<<<< HEAD
                               <div className="text-sm">
                                 <p className="font-medium">{invoice.shippingAddress}</p>
                                 <p className="text-gray-500">
@@ -753,6 +822,8 @@ export default function DashboardPage() {
                            
                           </td>
                           <td className="px-6 py-4">
+=======
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                             {invoice.items.map((item) => (
                               <div key={item.id}>
                                 {item.productName} x{item.quantity}
@@ -760,15 +831,20 @@ export default function DashboardPage() {
                             ))}
                           </td>
                           <td className="px-6 py-4">
+<<<<<<< HEAD
                             {invoice.totalAmount === 0 && Array.isArray(invoice.items) && invoice.items.length > 0 ? (
                               formatCurrency(invoice.items.reduce((sum, item) => sum + (item.price * item.quantity), 0))
                             ) : (
                               formatCurrency(invoice.totalAmount || invoice.amount)
                             )}
+=======
+                            {formatCurrency(invoice.totalAmount)}
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                           </td>
                           <td className="px-6 py-4">
                             <span
                               className={`inline-block px-2 py-1 rounded-full text-sm ${
+<<<<<<< HEAD
                                 invoice.status === "PROCESSING"
                                   ? "bg-blue-100 text-blue-700"
                                   : invoice.status === "SHIPPED"
@@ -780,6 +856,17 @@ export default function DashboardPage() {
                                   : invoice.status === "PENDING"
                                   ? "bg-yellow-100 text-yellow-800"
                                   : "bg-gray-100 text-gray-700"
+=======
+                                ["SETTLEMENT", "DELIVERED"].includes(
+                                  invoice.status
+                                )
+                                  ? "bg-green-100 text-green-800"
+                                  : ["PENDING", "PROCESSING"].includes(
+                                        invoice.status
+                                      )
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : "bg-red-100 text-red-800"
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                               }`}
                             >
                               {invoice.status}

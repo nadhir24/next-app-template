@@ -95,16 +95,26 @@ export default function ProductsPage() {
   };
 
   const formatPrice = (price: number) => {
+<<<<<<< HEAD
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
       currency: "IDR",
+=======
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(price);
   };
 
   const handleDelete = async (productId: number) => {
+<<<<<<< HEAD
     console.log("Handling delete for product:", productId);
+=======
+    console.log('Handling delete for product:', productId);
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
 
     setProductToDelete(productId);
 
@@ -143,23 +153,40 @@ export default function ProductsPage() {
   };
 
   const confirmDelete = async (id: number) => {
+<<<<<<< HEAD
     console.log("Starting delete confirmation for ID:", id);
 
     if (!id || typeof id !== "number" || isNaN(id)) {
+=======
+    console.log('Starting delete confirmation for ID:', id);
+
+    if (!id || typeof id !== 'number' || isNaN(id)) {
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
       console.error("Invalid product ID provided to confirmDelete:", id);
       toast({
         title: "Error",
         description: "Invalid product ID provided.",
+<<<<<<< HEAD
         variant: "destructive",
+=======
+        variant: "destructive"
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
       });
       setProductToDelete(null);
       return;
     }
 
+<<<<<<< HEAD
     console.log("Delete confirmed, proceeding...");
     try {
       const token = localStorage.getItem("token");
       console.log("Token found:", token ? "Yes" : "No");
+=======
+    console.log('Delete confirmed, proceeding...');
+    try {
+      const token = localStorage.getItem("token");
+      console.log('Token found:', token ? 'Yes' : 'No');
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
 
       if (!token) {
         toast({
@@ -170,6 +197,7 @@ export default function ProductsPage() {
         });
       } else {
         const deleteUrl = `${process.env.NEXT_PUBLIC_API_URL}/catalog/${id}`;
+<<<<<<< HEAD
         console.log("Sending DELETE request to:", deleteUrl);
 
         const response = await fetch(deleteUrl, {
@@ -184,10 +212,27 @@ export default function ProductsPage() {
           status: response.status,
           statusText: response.statusText,
           headers: Object.fromEntries(response.headers.entries()),
+=======
+        console.log('Sending DELETE request to:', deleteUrl);
+
+        const response = await fetch(deleteUrl, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        console.log('Delete response:', {
+          status: response.status,
+          statusText: response.statusText,
+          headers: Object.fromEntries(response.headers.entries())
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
         });
 
         let responseData = null;
         if (!response.ok) {
+<<<<<<< HEAD
           try {
             responseData = await response.json();
             console.log("Error data:", responseData);
@@ -250,6 +295,24 @@ export default function ProductsPage() {
             console.log("No JSON body in successful DELETE response.");
             responseData = null;
           }
+=======
+            try {
+                responseData = await response.json();
+                console.log('Error data:', responseData);
+                throw new Error(responseData?.message || `Failed to delete product (status: ${response.status})`);
+            } catch (parseError) {
+                console.error("Failed to parse error response:", parseError);
+                throw new Error(`Failed to delete product and parse error response (status: ${response.status})`);
+            }
+        } else {
+             try {
+                responseData = await response.json();
+                console.log('Success response data (if any):', responseData);
+             } catch (parseError) {
+                 console.log("No JSON body in successful DELETE response.");
+                 responseData = null;
+             }
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
         }
 
         toast({
@@ -259,6 +322,7 @@ export default function ProductsPage() {
           duration: 3000,
         });
 
+<<<<<<< HEAD
         console.log("Refreshing product list...");
         await fetchProducts(currentPage);
       }
@@ -268,11 +332,22 @@ export default function ProductsPage() {
         title: "Error",
         description:
           error instanceof Error ? error.message : "Failed to delete product",
+=======
+        console.log('Refreshing product list...');
+        await fetchProducts(currentPage);
+      }
+    } catch (error) {
+      console.error('Delete error details:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete product",
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
         variant: "destructive",
         duration: 3000,
       });
     } finally {
       setProductToDelete(null);
+<<<<<<< HEAD
       console.log("Delete process finished, resetting productToDelete state.");
     }
   };
@@ -340,6 +415,9 @@ export default function ProductsPage() {
       });
     } finally {
       setProductToDelete(null);
+=======
+      console.log('Delete process finished, resetting productToDelete state.');
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
     }
   };
 
@@ -347,10 +425,14 @@ export default function ProductsPage() {
     <div className="container mx-auto py-10">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Products</h1>
+<<<<<<< HEAD
         <Button
           onClick={() => router.push("/admin/dashboard/products/add")}
           disabled={isLoading}
         >
+=======
+        <Button onClick={() => router.push("/admin/dashboard/products/add")} disabled={isLoading}>
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
           {isLoading ? "Loading..." : "Add Product"}
         </Button>
       </div>
@@ -407,13 +489,18 @@ export default function ProductsPage() {
                     <TableCell>{product.category}</TableCell>
                     <TableCell>{formatPrice(minPrice)}</TableCell>
                     <TableCell>
+<<<<<<< HEAD
                       <span
                         className={`font-bold ${isAvailable ? "text-green-600" : "text-red-600"}`}
                       >
+=======
+                      <span className={`font-bold ${isAvailable ? "text-green-600" : "text-red-600"}`}>
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                         {isAvailable ? "Available" : "Out of Stock"}
                       </span>
                     </TableCell>
                     <TableCell>
+<<<<<<< HEAD
                       <DropdownMenu
                         onOpenChange={(isOpen) => {
                           if (!isOpen && productToDelete === product.id) {
@@ -421,6 +508,13 @@ export default function ProductsPage() {
                           }
                         }}
                       >
+=======
+                      <DropdownMenu onOpenChange={(isOpen) => {
+                        if (!isOpen && productToDelete === product.id) {
+                          setProductToDelete(null);
+                        }
+                      }}>
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" className="h-8 w-8 p-0">
                             <MoreHorizontal className="h-4 w-4" />
@@ -430,6 +524,7 @@ export default function ProductsPage() {
                           <DropdownMenuItem
                             onClick={() => {
                               setEditingId(product.id);
+<<<<<<< HEAD
                               router.push(
                                 `/admin/dashboard/products/edit/${product.id}`
                               );
@@ -438,6 +533,13 @@ export default function ProductsPage() {
                           >
                             <Button
                               variant="ghost"
+=======
+                              router.push(`/admin/dashboard/products/edit/${product.id}`);
+                            }}
+                          >
+                            <Button 
+                              variant="ghost" 
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                               className="w-full justify-start"
                               disabled={editingId === product.id}
                             >
@@ -458,7 +560,10 @@ export default function ProductsPage() {
                             onClick={() => handleDelete(product.id)}
                             className="text-red-600 focus:bg-red-100 focus:text-red-700"
                             disabled={productToDelete === product.id}
+<<<<<<< HEAD
                             textValue="Delete"
+=======
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                           >
                             {productToDelete === product.id ? (
                               <>
@@ -488,6 +593,7 @@ export default function ProductsPage() {
           <Pagination>
             <PaginationContent>
               <PaginationItem>
+<<<<<<< HEAD
                 <PaginationPrevious
                   onClick={() => handlePageChange(currentPage - 1)}
                   className={
@@ -510,15 +616,37 @@ export default function ProductsPage() {
                   </PaginationItem>
                 )
               )}
+=======
+                <PaginationPrevious 
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+              
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <PaginationItem key={page}>
+                  <PaginationLink
+                    onClick={() => handlePageChange(page)}
+                    isActive={currentPage === page}
+                  >
+                    {page}
+                  </PaginationLink>
+                </PaginationItem>
+              ))}
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
 
               <PaginationItem>
                 <PaginationNext
                   onClick={() => handlePageChange(currentPage + 1)}
+<<<<<<< HEAD
                   className={
                     currentPage === totalPages
                       ? "pointer-events-none opacity-50"
                       : "cursor-pointer"
                   }
+=======
+                  className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                 />
               </PaginationItem>
             </PaginationContent>

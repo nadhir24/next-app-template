@@ -237,16 +237,27 @@ export default function SuksesPage() {
 
   // Tambahkan fungsi untuk mengarahkan ke halaman yang sesuai
   const navigateToOrderDetails = () => {
+<<<<<<< HEAD
+=======
+    if (!orderDetail?.id) return;
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
 
     // Aktifkan state loading untuk memberikan feedback visual
     setIsNavigating(true);
 
     if (loginStatus === "LOGGED_IN") {
       // Jika user sudah login, arahkan ke dashboard
+<<<<<<< HEAD
       window.location.href = `/dashboard/invoice`;
     } else {
       // Jika user adalah guest, arahkan ke halaman invoice detail
       window.location.href = `/invoice`;
+=======
+      window.location.href = `/dashboard/invoice/${orderDetail.id}`;
+    } else {
+      // Jika user adalah guest, arahkan ke halaman invoice detail
+      window.location.href = `/invoice/${orderDetail.id}`;
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
     }
   };
 
@@ -334,6 +345,10 @@ export default function SuksesPage() {
           )}
         </CardContent>
         <CardFooter className="flex flex-col space-y-2">
+<<<<<<< HEAD
+=======
+          {/* Tampilkan error message */}
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
           {errorInvoice && (
             <div className="space-y-2">
               <p className="text-sm text-red-600">
@@ -374,6 +389,7 @@ export default function SuksesPage() {
               </div>
             </div>
           )}
+<<<<<<< HEAD
           {isBrowser && orderDetail?.status === "SETTLEMENT" && (
             <Tombol
               className="w-full"
@@ -395,6 +411,35 @@ export default function SuksesPage() {
               )}
             </Tombol>
           )}
+=======
+
+          {/* Tombol navigasi jika status settlement atau ada PDF URL */}
+          {isBrowser &&
+            (orderDetail?.status === "settlement" ||
+              orderDetail?.midtransInvoicePdfUrl) && (
+              <Tombol
+                className="w-full"
+                variant="ghost"
+                onPress={navigateToOrderDetails}
+                isDisabled={isNavigating}
+              >
+                {isNavigating ? (
+                  <>
+                    <div className="w-4 h-4 mr-2 border-2 border-t-transparent border-gray-600 rounded-full animate-spin"></div>
+                    {loginStatus === "LOGGED_IN"
+                      ? "Mengarahkan ke Dashboard..."
+                      : "Mengarahkan ke Detail Pesanan..."}
+                  </>
+                ) : loginStatus === "LOGGED_IN" ? (
+                  "Lihat di Dashboard"
+                ) : (
+                  "Lihat Detail Pesanan"
+                )}
+              </Tombol>
+            )}
+
+          {/* Tombol lanjutkan belanja */}
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
           <Tombol
             variant="ghost"
             className="w-full"

@@ -11,13 +11,18 @@ import React, {
 } from "react";
 import axios from "axios";
 import { useAuth } from "./AuthContext"; // Import useAuth
+<<<<<<< HEAD
 import { toast, Toaster } from "sonner"; // Atau react-toastify
+=======
+import { toast } from "sonner"; // Atau react-toastify
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
 
 // Definisikan tipe CartItem seperti di HoverCartModal atau lebih lengkap
 export interface CartItem {
   id: number;
   userId: number | null;
   guestId: string | null;
+<<<<<<< HEAD
   quantity: number; // Ini adalah quantity di cart, BUKAN stok
   createdAt: string;
   catalog?: { id: number; name: string; image: string | null } | null;
@@ -28,6 +33,12 @@ export interface CartItem {
     qty?: number; // Ini adalah stok asli dari produk size
   } | null;
   user?: { id: number; email: string } | null; // Pastikan user ada jika dibutuhkan
+=======
+  quantity: number;
+  createdAt: string;
+  catalog?: { id: number; name: string; image: string | null } | null;
+  size?: { id: number; size: string; price: string } | null;
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
 }
 
 interface CartContextType {
@@ -60,6 +71,7 @@ const parseTotal = (totalString: any): number => {
 
 const storeCartData = (items: CartItem[], count: number, total: number) => {
   try {
+<<<<<<< HEAD
     // Jika items kosong, paksa count = 0
     if (!items.length && count > 0) {
       count = 0;
@@ -69,6 +81,8 @@ const storeCartData = (items: CartItem[], count: number, total: number) => {
       );
     }
 
+=======
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
     localStorage.setItem("cart_items", JSON.stringify(items));
     localStorage.setItem("cart_count", count.toString());
     localStorage.setItem("cart_total", total.toString());
@@ -77,6 +91,7 @@ const storeCartData = (items: CartItem[], count: number, total: number) => {
   }
 };
 
+<<<<<<< HEAD
 // Format price function to ensure consistency
 const formatPrice = (price: string | number | undefined): string => {
   if (!price) return "Rp0";
@@ -91,6 +106,8 @@ const formatPrice = (price: string | number | undefined): string => {
   return `Rp${new Intl.NumberFormat("id-ID").format(price)}`;
 };
 
+=======
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
 export function CartProvider({ children }: { children: ReactNode }) {
   const { user, isLoggedIn } = useAuth();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -148,6 +165,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setHasInitialized(true);
   }, [isLoggedIn]); // Only depends on login state
 
+<<<<<<< HEAD
   // Separate effect to listen for create_guest_session events
   useEffect(() => {
     const handleCreateGuestSession = (event: CustomEvent) => {
@@ -202,6 +220,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+=======
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
   // Fetch cart implementation
   const fetchCartImpl = useCallback(async () => {
     if (!currentIdentifier) {
@@ -237,6 +257,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       ]);
 
       const itemsData = Array.isArray(itemsRes.data) ? itemsRes.data : [];
+<<<<<<< HEAD
       console.log(
         "[CartContext] Raw items data from API:",
         JSON.stringify(itemsData)
@@ -277,6 +298,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       // Update state
       setCartItems(formattedItems);
+=======
+      const countData = countRes.data.count || 0;
+      const totalDataNumber = parseTotal(totalRes.data);
+
+      // Update localStorage cache
+      storeCartData(itemsData, countData, totalDataNumber);
+
+      // Update state
+      setCartItems(itemsData);
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
       setCartCount(countData);
       setCartTotal(totalDataNumber);
     } catch (error) {
@@ -287,6 +318,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const storedTotal = localStorage.getItem("cart_total");
 
         if (storedItems && storedCount && storedTotal) {
+<<<<<<< HEAD
           const storedItemsData = JSON.parse(storedItems);
           const formattedStoredItems = storedItemsData.map((item: any) => ({
             ...item,
@@ -298,6 +330,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
               : null,
           }));
           setCartItems(formattedStoredItems);
+=======
+          setCartItems(JSON.parse(storedItems));
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
           setCartCount(parseInt(storedCount, 10));
           setCartTotal(parseInt(storedTotal, 10));
         } else {
@@ -371,6 +406,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [user?.id, guestId, fetchCartImpl]
   ); // Added fetchCartImpl to dependencies
 
+<<<<<<< HEAD
   // Fungsi utilitas untuk menampilkan error (lebih sederhana)
   const showErrorMessage = (message: string) => {
     // Cek jika pesan berisi "Insufficient stock", format menjadi lebih user-friendly
@@ -402,6 +438,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   };
 
+=======
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
   // Update cart item function
   const updateCartItem = useCallback(
     async (cartId: number, quantity: number) => {
@@ -422,6 +460,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           await fetchCartImpl(); // Refresh context state
           return Promise.resolve();
         } else {
+<<<<<<< HEAD
           // Tangkap secara eksplisit pesan insufficient stock
           const errorMessage = response.data.message || "Gagal memperbarui.";
           console.log("[CartContext] Error from API:", errorMessage);
@@ -454,6 +493,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
     },
     [user?.id, guestId, fetchCartImpl]
   );
+=======
+          toast.error(response.data.message || "Gagal memperbarui.");
+          return Promise.reject(
+            new Error(response.data.message || "Failed to update")
+          );
+        }
+      } catch (error) {
+        toast.error("Gagal memperbarui keranjang.");
+        return Promise.reject(error);
+      }
+    },
+    [user?.id, guestId, fetchCartImpl]
+  ); // Added guestId dependency
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
 
   // Remove from cart function
   const removeFromCart = useCallback(
@@ -516,6 +569,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     };
   }, [clearCart]);
 
+<<<<<<< HEAD
   // Di CartProvider setelah useEffect pertama
   useEffect(() => {
     // Force reset localStorage on initial load (temporary fix)
@@ -526,6 +580,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     // Existing code...
   }, []); // Empty dependency array = run once on mount
 
+=======
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
   // Context value memoized
   const contextValue = useMemo(
     () => ({

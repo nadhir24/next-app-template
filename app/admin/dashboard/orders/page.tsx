@@ -111,6 +111,7 @@ export default function OrdersPage() {
   // Debounce timeout reference
   const debounceTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
+<<<<<<< HEAD
   const fetchOrders = useCallback(
     async (resetPage = false, isDebouncedSearch = false) => {
       // Added isDebouncedSearch flag to potentially differentiate calls if needed
@@ -203,12 +204,105 @@ export default function OrdersPage() {
     },
     [currentPage, searchQuery, statusFilter, startDate, endDate, toast]
   );
+=======
+  const fetchOrders = useCallback(async (resetPage = false, isDebouncedSearch = false) => {
+    // Added isDebouncedSearch flag to potentially differentiate calls if needed
+    try {
+      if (resetPage) {
+        setCurrentPage(1);
+      }
+
+      const page = resetPage ? 1 : currentPage;
+      setLoading(true);
+
+      // Build query parameters
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: "10",
+      });
+
+      // Add search query if present
+      if (searchQuery) {
+        params.append("search", searchQuery);
+      }
+
+      // Add status filter if not 'all'
+      if (statusFilter !== "all") {
+        params.append("status", statusFilter);
+      }
+
+      // Add date range if both start and end dates are set
+      if (startDate && endDate) {
+        params.append("startDate", startDate);
+        params.append("endDate", endDate);
+      }
+
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Authentication token not found");
+
+      console.log(
+        `[Admin Orders] Fetching from: /payment/invoice/admin?${params.toString()}`
+      );
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/payment/invoice/admin?${params.toString()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      console.log(`[Admin Orders] Fetch response status: ${response.status}`);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("[Admin Orders] Fetch error response:", errorData);
+        throw new Error(errorData.message || "Failed to fetch orders");
+      }
+
+      const data = await response.json();
+      console.log("[Admin Orders] Fetched data:", data);
+
+      // Directly use the structure returned by the updated backend
+      const fetchedOrders = data.data || [];
+      const paginationData = data.pagination || {};
+
+      setOrders(fetchedOrders);
+      setTotalPages(paginationData.totalPages || 1); // Use totalPages from backend response
+
+      // Optional: Update currentPage based on response if backend enforces it
+      // setCurrentPage(paginationData.currentPage || 1);
+
+      // Only reset page visually if explicitly requested and not part of debounced search
+      if (resetPage && !isDebouncedSearch) {
+        setCurrentPage(1);
+      }
+    } catch (error) {
+      console.error("[Admin Orders] Error in fetchOrders:", error);
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error ? error.message : "Failed to load orders data",
+        variant: "destructive",
+      });
+      setOrders([]);
+      setTotalPages(1);
+    } finally {
+      setLoading(false);
+    }
+  // Include dependencies for useCallback
+  }, [currentPage, searchQuery, statusFilter, startDate, endDate, toast]);
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
 
   // Effect for fetching orders when page changes
   useEffect(() => {
     // Avoid fetching if searchQuery is being debounced
     if (!debounceTimeoutRef.current) {
+<<<<<<< HEAD
       fetchOrders();
+=======
+        fetchOrders();
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage]); // Only trigger on currentPage change
@@ -220,6 +314,7 @@ export default function OrdersPage() {
       clearTimeout(debounceTimeoutRef.current);
     }
 
+<<<<<<< HEAD
     // Skip immediate search on component mount
     if (document.readyState !== "loading") {
       // Set a new timeout to fetch orders after 500ms of inactivity
@@ -234,6 +329,14 @@ export default function OrdersPage() {
         debounceTimeoutRef.current = null; // Clear ref after execution
       }, 500); // 500ms debounce delay
     }
+=======
+    // Set a new timeout to fetch orders after 500ms of inactivity
+    debounceTimeoutRef.current = setTimeout(() => {
+      console.log("[Admin Orders] Debounced search triggered");
+      fetchOrders(true, true); // Reset page to 1 for new search/filter, indicate it's debounced
+      debounceTimeoutRef.current = null; // Clear ref after execution
+    }, 500); // 500ms debounce delay
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
 
     // Cleanup function to clear timeout if component unmounts or dependencies change again
     return () => {
@@ -241,15 +344,27 @@ export default function OrdersPage() {
         clearTimeout(debounceTimeoutRef.current);
       }
     };
+<<<<<<< HEAD
     // Trigger debounce on changes to search, filter, or dates
+=======
+  // Trigger debounce on changes to search, filter, or dates
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
   }, [searchQuery, statusFilter, startDate, endDate, fetchOrders]);
 
   // Handle manual search button click (optional, could be removed)
 
+<<<<<<< HEAD
   const handleClearFilters = () => {
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current); // Clear debounce
       debounceTimeoutRef.current = null;
+=======
+
+  const handleClearFilters = () => {
+    if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current); // Clear debounce
+        debounceTimeoutRef.current = null;
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
     }
     setSearchQuery("");
     setStatusFilter("all");
@@ -259,6 +374,7 @@ export default function OrdersPage() {
   };
 
   const updateOrderStatus = async (
+<<<<<<< HEAD
     orderId: number,
     newStatus: FulfillmentStatus
   ) => {
@@ -266,6 +382,15 @@ export default function OrdersPage() {
     if (!orderToUpdate) {
       console.error(
         `[Admin Orders] Order with ID ${orderId} not found in state.`
+=======
+    invoiceId: string,
+    newStatus: FulfillmentStatus
+  ) => {
+    const orderToUpdate = orders.find((o) => o.midtransOrderId === invoiceId);
+    if (!orderToUpdate) {
+      console.error(
+        `[Admin Orders] Order with midtransOrderId ${invoiceId} not found in state.`
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
       );
       toast({
         title: "Error",
@@ -274,14 +399,21 @@ export default function OrdersPage() {
       });
       return;
     }
+<<<<<<< HEAD
     setUpdateLoading(orderToUpdate.id);
     console.log(
       `[Admin Orders] Updating status for order ID ${orderId} to ${newStatus}`
+=======
+    setUpdateLoading(orderToUpdate.id); // Use internal ID for loading state if needed, or midtransOrderId
+    console.log(
+      `[Admin Orders] Updating status for ${invoiceId} to ${newStatus}`
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
     );
     try {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Authentication token not found");
 
+<<<<<<< HEAD
       const endpoint = `${process.env.NEXT_PUBLIC_API_URL}/admin/orders/${orderId}/status`;
       console.log(`[Admin Orders] Using endpoint: ${endpoint}`);
 
@@ -295,22 +427,53 @@ export default function OrdersPage() {
       });
 
       console.log(`[Admin Orders] Update response status: ${response.status}`);
+=======
+      const response = await fetch(
+        // Corrected endpoint using invoiceId (which should be midtransOrderId)
+        `${process.env.NEXT_PUBLIC_API_URL}/payment/invoice/admin/${invoiceId}/status`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          // Backend expects { status: NEW_STATUS }
+          body: JSON.stringify({ status: newStatus }),
+        }
+      );
+      console.log(
+        `[Admin Orders] Update response status for ${invoiceId}: ${response.status}`
+      );
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error("[Admin Orders] Update error response:", errorData);
+<<<<<<< HEAD
         throw new Error(
           errorData.message ||
             `Failed to update order status (HTTP ${response.status})`
         );
+=======
+        throw new Error(errorData.message || "Failed to update order status");
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
       }
 
       const updatedData = await response.json();
       console.log("[Admin Orders] Update success response:", updatedData);
 
+<<<<<<< HEAD
       setOrders(
         orders.map((order) =>
           order.id === orderId ? { ...order, status: newStatus } : order
+=======
+      // Update local state optimistically or based on response
+      setOrders(
+        orders.map((order) =>
+          order.midtransOrderId === invoiceId
+            ? { ...order, status: newStatus }
+            : order
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
         )
       );
 
@@ -373,6 +536,7 @@ export default function OrdersPage() {
         </CardHeader>
         <CardContent>
           {/* Search and Filter Section */}
+<<<<<<< HEAD
           <div className="flex flex-wrap items-end gap-4 mb-6">
             <div className="flex-1 min-w-[200px]">
               <label
@@ -398,13 +562,44 @@ export default function OrdersPage() {
               >
                 Status
               </label>
+=======
+          <div className="flex flex-col md:flex-row gap-4 mb-6">
+            <div className="flex-1">
+              <div className="space-y-1">
+                <label
+                  htmlFor="searchQuery"
+                  className="text-sm font-medium text-gray-700"
+                >
+                  Search
+                </label>
+                <Input
+                  id="searchQuery"
+                  type="text"
+                  placeholder="Search by order ID, customer name, or item name"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)} // Update state directly, debounce handles the fetch
+                  // onKeyDown removed - search triggers automatically
+                  className="w-full"
+                />
+              </div>
+            </div>
+            <Button variant="outline" onClick={handleClearFilters}>
+                Clear
+              </Button>
+            <div className="w-full md:w-[180px]">
+              {/* Status Select - Triggers debounce via useEffect */}
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
               <Select
                 value={statusFilter}
                 onValueChange={(value) => {
                   setStatusFilter(value as FulfillmentStatus | "all");
                 }}
               >
+<<<<<<< HEAD
                 <SelectTrigger id="statusFilter">
+=======
+                <SelectTrigger>
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -419,6 +614,7 @@ export default function OrdersPage() {
             </div>
 
             <div className="w-full md:w-[180px]">
+<<<<<<< HEAD
               <label
                 htmlFor="startDate"
                 className="block text-sm font-medium text-gray-700 mb-1"
@@ -455,6 +651,47 @@ export default function OrdersPage() {
             >
               Clear Filters
             </Button>
+=======
+              {/* Start Date Input - Triggers debounce via useEffect */}
+              <div className="space-y-1">
+                <label
+                  htmlFor="startDate"
+                  className="text-sm font-medium text-gray-700"
+                >
+                  Start Date
+                </label>
+                <Input
+                  id="startDate"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="w-full md:w-[180px]">
+              {/* End Date Input - Triggers debounce via useEffect */}
+              <div className="space-y-1">
+                <label
+                  htmlFor="endDate"
+                  className="text-sm font-medium text-gray-700"
+                >
+                  End Date
+                </label>
+                <Input
+                  id="endDate"
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 self-end">
+              {/* Keep Search button for explicit trigger if desired */}
+          
+            </div>
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
           </div>
 
           {/* Add wrapper for horizontal scroll */}
@@ -587,7 +824,11 @@ export default function OrdersPage() {
                             <DropdownMenuItem
                               onClick={() =>
                                 updateOrderStatus(
+<<<<<<< HEAD
                                   order.id,
+=======
+                                  order.midtransOrderId,
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                                   FULFILLMENT_STATUSES.PROCESSING
                                 )
                               }
@@ -602,7 +843,11 @@ export default function OrdersPage() {
                             <DropdownMenuItem
                               onClick={() =>
                                 updateOrderStatus(
+<<<<<<< HEAD
                                   order.id,
+=======
+                                  order.midtransOrderId,
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                                   FULFILLMENT_STATUSES.SHIPPED
                                 )
                               }
@@ -616,7 +861,11 @@ export default function OrdersPage() {
                             <DropdownMenuItem
                               onClick={() =>
                                 updateOrderStatus(
+<<<<<<< HEAD
                                   order.id,
+=======
+                                  order.midtransOrderId,
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                                   FULFILLMENT_STATUSES.DELIVERED
                                 )
                               }
@@ -631,7 +880,11 @@ export default function OrdersPage() {
                             <DropdownMenuItem
                               onClick={() =>
                                 updateOrderStatus(
+<<<<<<< HEAD
                                   order.id,
+=======
+                                  order.midtransOrderId,
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                                   FULFILLMENT_STATUSES.CANCELLED
                                 )
                               }
@@ -718,4 +971,8 @@ export default function OrdersPage() {
       </Card>
     </div>
   );
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76

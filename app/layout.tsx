@@ -18,7 +18,11 @@ import { Divider } from "@heroui/divider";
 import Image from "next/image";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
+<<<<<<< HEAD
 import { Toaster } from "@/components/ui/toaster";
+=======
+import { Toaster } from "@/components/ui/toaster"
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
 
 export const metadata: Metadata = {
   title: {
@@ -49,7 +53,14 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         {process.env.NEXT_PUBLIC_API_URL && (
+<<<<<<< HEAD
           <link rel="preconnect" href={process.env.NEXT_PUBLIC_API_URL} />
+=======
+          <link 
+            rel="preconnect" 
+            href={process.env.NEXT_PUBLIC_API_URL} 
+          />
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
         )}
       </head>
       <body
@@ -74,6 +85,7 @@ export default function RootLayout({
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
                       <div>
                         <h3 className="text-xl font-bold mb-6">Tentang Kami</h3>
+<<<<<<< HEAD
                         <p className="text-gray-100">
                           Rano cake adalah produsen makanan ringan berkualitas
                           baik.
@@ -162,16 +174,72 @@ export default function RootLayout({
                               width={70}
                               height={70}
                               className="hover:opacity-80 transition-opacity object-contain h-auto w-auto max-h-10"
+=======
+                        <p className="text-gray-100">Rano cake adalah produsen makanan ringan berkualitas baik.</p>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold mb-6">Kontak</h3>
+                        <p className="text-gray-100">Email: info@ranocake.com</p>
+                        <p className="text-gray-100">Telepon: (021) 123-4567</p>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold mb-6">Support Pembayaran</h3>
+                        <div className="flex flex-col space-y-6">
+                          <div className="grid grid-cols-3 gap-4 items-center">
+                            <Link href={siteConfig.links.whatsapp} target="_blank" rel="noopener noreferrer" title="Hubungi via WhatsApp">
+                              <WhatsappIcon className="text-white hover:text-gray-300 transition-colors" size={35} />
+                            </Link>
+                            <Image
+                              src="/GoPay.svg"
+                              alt="GoPay"
+                              width={80}
+                              height={80}
+                              className="hover:opacity-80 transition-opacity object-contain h-auto w-auto"
+                            />
+                            <Image
+                              src="/QRIS.svg"
+                              alt="QRIS"
+                              width={80}
+                              height={80}
+                              className="hover:opacity-80 transition-opacity object-contain h-auto w-auto"
+                            />
+                          </div>
+                          <div className="grid grid-cols-3 gap-4 items-center">
+                            <Image
+                              src="/jcb.svg"
+                              alt="jcb"
+                              width={60}
+                              height={60}
+                              className="hover:opacity-80 transition-opacity object-contain h-auto w-auto"
+                            />
+                            <Image
+                              src="/visa.svg"
+                              alt="visa"
+                              width={60}
+                              height={60}
+                              className="hover:opacity-80 transition-opacity object-contain h-auto w-auto"
+                            />
+                            <Image
+                              src="/msc.svg"
+                              alt="msc"
+                              width={60}
+                              height={60}
+                              className="hover:opacity-80 transition-opacity object-contain h-auto w-auto"
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                             />
                           </div>
                         </div>
                       </div>
                     </div>
                     <div className="text-center mt-12">
+<<<<<<< HEAD
                       <p className="text-gray-100">
                         &copy; {new Date().getFullYear()} Rano Cake. All rights
                         reserved.
                       </p>
+=======
+                      <p className="text-gray-100">&copy; {new Date().getFullYear()} Rano Cake. All rights reserved.</p>
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                     </div>
                   </div>
                 </footer>

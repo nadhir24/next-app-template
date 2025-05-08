@@ -71,6 +71,7 @@ const AddProductPage = () => {
     setSizes(newSizes);
   };
 
+<<<<<<< HEAD
 // Formats a number string into currency format (e.g., 100000 -> 100.000)
 const formatCurrency = (value: string | number): string => {
   const numStr = String(value).replace(/\./g, ''); // Remove existing dots
@@ -78,6 +79,8 @@ const formatCurrency = (value: string | number): string => {
   return numStr.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 };
 
+=======
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
   const handleUnitChange = (index: number, unit: string) => {
       const newSizes = [...sizes];
       newSizes[index].sizeUnit = unit;
@@ -151,6 +154,7 @@ const formatCurrency = (value: string | number): string => {
       return;
     }
 
+<<<<<<< HEAD
     try {
       // Siapkan data dalam format yang diharapkan oleh API
       const requestData = {
@@ -193,6 +197,32 @@ const formatCurrency = (value: string | number): string => {
         );
       }
       
+=======
+    const formData = new FormData();
+    formData.append("name", name);
+    formData.append("category", category);
+    formData.append("description", description);
+    formData.append("isEnabled", String(isEnabled));
+
+    formData.append("sizes", JSON.stringify(sizesToSend));
+
+    if (image) {
+      formData.append("image", image);
+    }
+
+    try {
+      console.log("Submitting FormData to POST /catalog/create");
+
+      await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/catalog/create`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
       toast.success("Product added successfully!");
       router.push("/admin/dashboard/products");
     } catch (err: any) {
@@ -258,7 +288,11 @@ const formatCurrency = (value: string | number): string => {
                     <Input
                       id={`sizeValue-${index}`}
                       type="text"
+<<<<<<< HEAD
                       value={sizeItem.sizeValue ? formatCurrency(sizeItem.sizeValue) : ""}
+=======
+                      value={sizeItem.sizeValue || ""}
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                       onChange={(e) => handleSizeChange(index, "sizeValue", e.target.value)}
                       required
                       className="text-sm"
@@ -289,6 +323,7 @@ const formatCurrency = (value: string | number): string => {
                          <Input
                            id={`price-${index}`}
                            type="text"
+<<<<<<< HEAD
                            value={sizeItem.price}
                            onChange={(e) => handleSizeChange(index, "price", e.target.value)}
                            required
@@ -305,10 +340,30 @@ const formatCurrency = (value: string | number): string => {
                       value={sizeItem.qty}
                       onChange={(e) => handleSizeChange(index, "qty", e.target.value)}
                       required
+=======
+                           value={formatCurrency(sizeItem.price)}
+                           onChange={(e) => handleSizeChange(index, "price", e.target.value)}
+                           required
+                           className="text-sm rounded-l-none"
+                           placeholder="e.g., 100.000"
+                         />
+                    </div>
+                  </div>
+                  <div className="grid gap-1.5 w-24">
+                    <Label htmlFor={`qty-${index}`} className="text-xs">Qty</Label>
+                    <Input
+                      id={`qty-${index}`}
+                      type="number"
+                      value={sizeItem.qty || ""}
+                      onChange={(e) => handleSizeChange(index, "qty", e.target.value)}
+                      required
+                      min="0"
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                       className="text-sm"
                       placeholder="e.g., 10"
                     />
                   </div>
+<<<<<<< HEAD
                   <div className="flex items-center gap-2">
                     <Button type="button" variant="ghost" size="icon" onClick={() => removeSizeField(index)}>
                       <Trash2 className="h-4 w-4" />
@@ -345,6 +400,58 @@ const formatCurrency = (value: string | number): string => {
           <CardFooter className="flex justify-end">
             <Button type="submit" disabled={isLoading}>
               {isLoading ? "Adding..." : "Add Product"}
+=======
+                  {sizes.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="text-red-500 hover:bg-red-100 self-center mt-4"
+                      onClick={() => removeSizeField(index)}
+                      aria-label="Remove size"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+              <Button type="button" variant="outline" size="sm" onClick={addSizeField} className="mt-2 w-fit">
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Size
+              </Button>
+            </div>
+
+             <div className="grid gap-2">
+              <Label htmlFor="image">Product Image</Label>
+              <Input id="image" type="file" onChange={handleImageChange} accept="image/*" />
+               {imagePreview && (
+                <div className="mt-2">
+                  <img src={imagePreview} alt="Image Preview" className="h-32 w-32 object-cover rounded-md border" />
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="isEnabled"
+                checked={isEnabled}
+                onCheckedChange={(checked) => setIsEnabled(Boolean(checked))}
+              />
+              <Label htmlFor="isEnabled" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Product Enabled
+              </Label>
+            </div>
+
+            {error && (
+                <p className="text-sm font-medium text-red-600 bg-red-50 p-3 rounded-md border border-red-200">
+                    Error: {error}
+                 </p>
+             )}
+
+          </CardContent>
+          <CardFooter>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? "Adding Product..." : "Add Product"}
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
             </Button>
           </CardFooter>
         </Card>
@@ -353,4 +460,8 @@ const formatCurrency = (value: string | number): string => {
   );
 };
 
+<<<<<<< HEAD
 export default AddProductPage;
+=======
+export default AddProductPage;
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76

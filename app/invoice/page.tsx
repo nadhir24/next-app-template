@@ -40,6 +40,7 @@ export default function InvoicePage() {
   const router = useRouter();
   const { isLoggedIn } = useAuth();
 
+<<<<<<< HEAD
   // Clear invoice data when component unmounts or when login state changes
   useEffect(() => {
     return () => {
@@ -74,6 +75,8 @@ export default function InvoicePage() {
     };
   }, []);
 
+=======
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
   useEffect(() => {
     if (typeof isLoggedIn === "boolean") {
       if (isLoggedIn) {
@@ -101,8 +104,13 @@ export default function InvoicePage() {
               throw new Error("Failed to fetch invoices");
             }
   
+<<<<<<< HEAD
             const result = await response.json();
             setInvoices(result.data || []);
+=======
+            const data = await response.json();
+            setInvoices(data);
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
           } catch (error) {
             console.error("Error fetching guest invoices:", error);
             toast.error("Gagal mengambil data invoice");

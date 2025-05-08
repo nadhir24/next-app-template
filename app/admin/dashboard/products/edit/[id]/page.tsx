@@ -271,11 +271,21 @@ const EditProductPage = () => {
 
     if (image) {
       formData.append("image", image);
+<<<<<<< HEAD
     }
 
     try {
       console.log("Submitting FormData to PATCH /catalog/" + id);
       await axios.patch(
+=======
+    } else if(existingImageUrl) {
+        formData.append("existingImage", existingImageUrl);
+    }
+
+    try {
+      console.log("Submitting FormData to PUT /catalog/" + id);
+      await axios.put(
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
         `${process.env.NEXT_PUBLIC_API_URL}/catalog/${id}`,
         formData,
         {

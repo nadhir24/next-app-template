@@ -110,7 +110,10 @@ export default function CheckoutPage() {
     useState<string>("new_address");
   const [phoneSuffix, setPhoneSuffix] = useState("");
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+<<<<<<< HEAD
   const [isLoadingCart, setIsLoadingCart] = useState(true);
+=======
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
 
   const shippingMethods: ShippingMethod[] = [
     {
@@ -124,7 +127,11 @@ export default function CheckoutPage() {
       id: "gojek",
       name: "Gojek",
       description:
+<<<<<<< HEAD
         "langsung konfirmasi nomor oreder via Whatsapp jika pesanan sudah jadi akan diberi notifikasidan ongkir ditanggung pembeli",
+=======
+        "jika pesanan sudah jadi akan diberi notifikasidan ongkir ditanggung pembeli",
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
       price: null,
       estimatedDays: "Instant (1-2 jam)",
     },
@@ -199,7 +206,10 @@ export default function CheckoutPage() {
         console.warn("[Checkout] Cart is empty based on API response.");
         setCheckoutData({ items: [], subtotal: 0, shipping: 0, total: 0 });
         setTotalFromBackend(0);
+<<<<<<< HEAD
         setIsLoadingCart(false);
+=======
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
         return;
       }
 
@@ -250,11 +260,17 @@ export default function CheckoutPage() {
         shipping: shippingCost,
         total: totalValue || subtotal + shippingCost,
       });
+<<<<<<< HEAD
       setIsLoadingCart(false);
     } catch (error) {
       console.error("Error fetching cart - Full details:", error);
       toast.error("Gagal mengambil data cart");
       setIsLoadingCart(false);
+=======
+    } catch (error) {
+      console.error("Error fetching cart - Full details:", error);
+      toast.error("Gagal mengambil data cart");
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
     }
   }, [userId, selectedShippingMethod]);
 
@@ -265,6 +281,7 @@ export default function CheckoutPage() {
     console.log("🏠 Fetching saved addresses for user:", userId);
     setAddressesLoading(true);
     try {
+<<<<<<< HEAD
       // Get token from localStorage
       const token = localStorage.getItem("token");
       if (!token) {
@@ -280,6 +297,10 @@ export default function CheckoutPage() {
             "Content-Type": "application/json"
           }
         }
+=======
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/users/${userId}/addresses`
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
       );
 
       if (!response.ok) {
@@ -289,6 +310,7 @@ export default function CheckoutPage() {
       const addresses = await response.json();
       console.log("📍 Fetched addresses:", addresses);
 
+<<<<<<< HEAD
       // Filter out duplicate addresses by comparing street values
       const uniqueAddresses = addresses.reduce((acc: SavedAddress[], curr: SavedAddress) => {
         // Normalize street by removing extra spaces and lowercasing
@@ -309,6 +331,23 @@ export default function CheckoutPage() {
       }, []);
 
       console.log("📍 Filtered unique addresses:", uniqueAddresses);
+=======
+      // Filter alamat duplikat berdasarkan kombinasi street+city
+      const uniqueAddresses = addresses.reduce(
+        (acc: SavedAddress[], curr: SavedAddress) => {
+          // Cek apakah alamat dengan kombinasi street+city yang sama sudah ada
+          const isDuplicate = acc.some(
+            (addr) => addr.street === curr.street && addr.city === curr.city
+          );
+          if (!isDuplicate) {
+            acc.push(curr);
+          }
+          return acc;
+        },
+        []
+      );
+
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
       setSavedAddresses(uniqueAddresses);
     } catch (error) {
       console.error("❌ Error fetching saved addresses:", error);
@@ -418,12 +457,16 @@ export default function CheckoutPage() {
       setUserId(userIdFromStorage);
 
       // Fetch full user data untuk pre-fill nama, email, telepon
+<<<<<<< HEAD
       fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/${userIdFromStorage}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
           "Content-Type": "application/json"
         }
       })
+=======
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/${userIdFromStorage}`)
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
         .then((res) => res.json())
         .then((userData) => {
           console.log("[Checkout] Fetched user data for pre-fill:", userData);
@@ -1072,6 +1115,7 @@ export default function CheckoutPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="max-h-[300px] overflow-y-auto pr-2 space-y-4">
+<<<<<<< HEAD
                     {isLoadingCart ? (
                       // Skeleton loader while checking for items
                       <div className="space-y-4">
@@ -1091,6 +1135,10 @@ export default function CheckoutPage() {
                       </div>
                     ) : checkoutData.items.length === 0 ? (
                       // Empty cart message (only shown after loading)
+=======
+                    {checkoutData.items.length === 0 ? (
+                      // Pesan keranjang kosong alih-alih skeleton loader
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                       <div className="flex flex-col items-center justify-center py-8 text-center space-y-4">
                         <div className="text-4xl mb-2">🛒</div>
                         <h3 className="font-semibold text-gray-800">
@@ -1099,9 +1147,22 @@ export default function CheckoutPage() {
                         <p className="text-gray-500 text-sm mb-4">
                           Silahkan berbelanja untuk melanjutkan checkout
                         </p>
+<<<<<<< HEAD
                       </div>
                     ) : (
                       // Render actual items
+=======
+                        <Tombol
+                          onPress={() => router.push("/katalog")}
+                          className="bg-black hover:bg-gray-800 text-white"
+                          isLoading={false}
+                        >
+                          Lihat Katalog
+                        </Tombol>
+                      </div>
+                    ) : (
+                      // Render Item Asli
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                       checkoutData.items.map((item) => {
                         try {
                           return (
@@ -1176,6 +1237,7 @@ export default function CheckoutPage() {
                   </div>
                 </CardContent>
                 <CardFooter>
+<<<<<<< HEAD
                   {checkoutData.items.length === 0 ? (
                     // If cart is empty, only show Lihat Katalog button
                     <Tombol
@@ -1203,6 +1265,24 @@ export default function CheckoutPage() {
                       )}
                     </Tombol>
                   )}
+=======
+                  <Tombol
+                    onPress={createTransaction}
+                    className="w-full bg-black hover:bg-gray-800 text-white"
+                    size="lg"
+                    isDisabled={loading} // Menambahkan prop disabled untuk mencegah pencetan saat loading
+                  >
+                   {loading ? (
+    <>
+      <Spinner size="sm" className="mr-2" />
+      Memproses...
+    </>
+  ) : (
+    "Bayar Sekarang"
+  )}
+
+                  </Tombol>
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                 </CardFooter>
               </Card>
             </div>

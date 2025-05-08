@@ -148,7 +148,10 @@ export default function Home() {
               color="default"
               variant="ghost"
               radius="lg"
+<<<<<<< HEAD
               className=" bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+=======
+>>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
               startContent={<ShoppingCart size={20} />}
               label={isButtonLoading ? "Loading..." : "Pesan Sekarang"}
               isLoading={isButtonLoading}
