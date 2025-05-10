@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
+import Image from "next/image";
 
 // Components
 import {
@@ -138,40 +139,9 @@ export default function DashboardPage() {
       });
       setImagePreview(imageUrl);
     }
-  }, [user, isLoading]);
+  }, [user, isLoading, router, imageUrl]);
 
-  // Load order history
-  useEffect(() => {
-    fetchInvoices();
-  }, [user?.id, currentPage]);
-
-  const getUserPrimaryAddress = (userData: any) => {
-    if (
-      userData.userProfile?.addresses &&
-      Array.isArray(userData.userProfile.addresses) &&
-      userData.userProfile.addresses.length > 0
-    ) {
-      const defaultAddress =
-        userData.userProfile.addresses.find((addr: any) => addr.isDefault) ||
-        userData.userProfile.addresses[0];
-      return defaultAddress;
-    }
-
-    if (userData.userProfile?.address) {
-      return userData.userProfile.address;
-    }
-
-    return {
-      label: "",
-      street: "",
-      city: "",
-      state: "",
-      postalCode: "",
-      country: "Indonesia",
-    };
-  };
-
-  const fetchInvoices = async () => {
+  const fetchInvoices = useCallback(async () => {
     if (!user?.id) {
       return;
     }
@@ -230,6 +200,37 @@ export default function DashboardPage() {
     } finally {
       setIsLoadingInvoices(false);
     }
+  }, [user?.id, currentPage, toast]);
+
+  // Load order history
+  useEffect(() => {
+    fetchInvoices();
+  }, [fetchInvoices]);
+
+  const getUserPrimaryAddress = (userData: any) => {
+    if (
+      userData.userProfile?.addresses &&
+      Array.isArray(userData.userProfile.addresses) &&
+      userData.userProfile.addresses.length > 0
+    ) {
+      const defaultAddress =
+        userData.userProfile.addresses.find((addr: any) => addr.isDefault) ||
+        userData.userProfile.addresses[0];
+      return defaultAddress;
+    }
+
+    if (userData.userProfile?.address) {
+      return userData.userProfile.address;
+    }
+
+    return {
+      label: "",
+      street: "",
+      city: "",
+      state: "",
+      postalCode: "",
+      country: "Indonesia",
+    };
   };
 
   // Handle input change
@@ -470,9 +471,9 @@ export default function DashboardPage() {
                     {imagePreview && (
                       <div className="flex items-center space-x-3">
                         <p className="text-sm text-gray-600">Preview:</p>
-                        <img
+                        <Image
                           src={imagePreview}
-                          alt="Preview"
+                          alt="Profile Preview"
                           width={64}
                           height={64}
                           className="rounded-full object-cover border"

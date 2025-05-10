@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { jwtDecode } from "jwt-decode";
@@ -26,13 +26,8 @@ export default function UserDashboardLayout({
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
-  // Force recheck auth on any route change within dashboard
-  useEffect(() => {
-    checkUserAuthorization();
-  }, [pathname]);
-
   // Main authorization check function
-  const checkUserAuthorization = () => {
+  const checkUserAuthorization = useCallback(() => {
     setCheckingAuth(true);
 
     const token = localStorage.getItem("token");
@@ -87,7 +82,12 @@ export default function UserDashboardLayout({
     } finally {
       setCheckingAuth(false);
     }
-  };
+  }, [router, toast]);
+
+  // Force recheck auth on any route change within dashboard
+  useEffect(() => {
+    checkUserAuthorization();
+  }, [pathname, checkUserAuthorization]);
 
   // Show loading state while checking authorization
   if (checkingAuth) {

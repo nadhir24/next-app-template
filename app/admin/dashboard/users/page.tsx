@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   Table,
   TableBody,
@@ -58,7 +58,7 @@ export default function UsersPage() {
   const router = useRouter();
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
-  const fetchUsers = async (page: number, search: string = "") => {
+  const fetchUsers = useCallback(async (page: number, search: string = "") => {
     try {
       setIsLoading(true);
 
@@ -167,7 +167,7 @@ export default function UsersPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
 
   // Debounce search with minimum length
   useEffect(() => {
@@ -178,7 +178,7 @@ export default function UsersPage() {
 
       return () => clearTimeout(timeoutId);
     }
-  }, [searchQuery]);
+  }, [searchQuery, fetchUsers]);
 
   // Reset page when search changes
   useEffect(() => {
@@ -192,7 +192,7 @@ export default function UsersPage() {
     } else {
       fetchUsers(currentPage, searchQuery);
     }
-  }, [currentPage]);
+  }, [currentPage, searchQuery, fetchUsers]);
 
   // Add function to get current user's ID
   useEffect(() => {

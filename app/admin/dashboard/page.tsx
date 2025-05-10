@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/use-toast";
 import { formatCurrency } from "@/lib/utils";
@@ -39,30 +39,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        await fetchSummary();
-        setLoading(false);
-      } catch (error) {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-
-    // Add polling for summary
-    const summaryInterval = setInterval(() => {
-      fetchSummary();
-    }, 30000); // Poll every 30 seconds
-
-    return () => {
-      clearInterval(summaryInterval);
-    };
-  }, []);
-
-  const fetchSummary = async () => {
+  const fetchSummary = useCallback(async () => {
     try {
       const response = await axios.get(
         `${process.env.NEXT_PUBLIC_API_URL}/dashboard/summary`,
@@ -85,7 +62,30 @@ export default function DashboardPage() {
         });
       }
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        await fetchSummary();
+        setLoading(false);
+      } catch (error) {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+
+    // Add polling for summary
+    const summaryInterval = setInterval(() => {
+      fetchSummary();
+    }, 30000); // Poll every 30 seconds
+
+    return () => {
+      clearInterval(summaryInterval);
+    };
+  }, [fetchSummary]);
 
   if (loading) {
     return (

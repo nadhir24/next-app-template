@@ -1,6 +1,6 @@
 import { FC, ReactNode } from "react";
 import { Listbox, ListboxItem, ListboxSection } from "@heroui/listbox";
-import { ListboxWrapper } from "./ListboxWrapper.jsx";
+import { ListboxWrapper } from "./listboxWrapper.jsx";
 import { AddNoteIcon } from "./icons";
 import { CopyDocumentIcon } from "./icons";
 import { EditDocumentIcon } from "./icons";

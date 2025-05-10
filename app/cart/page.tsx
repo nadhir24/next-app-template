@@ -139,7 +139,7 @@ const CartPage = () => {
       setProcessingItems((prev) => ({ ...prev, [idToDelete]: false }));
       setItemToDelete(null);
     }
-  }, [itemToDelete, removeFromCart, displayCartItems, processingItems]);
+  }, [itemToDelete, removeFromCart, displayCartItems, processingItems, onClose]);
 
   // Loading skeleton
   if (isLoadingCart && displayCartItems.length === 0) {

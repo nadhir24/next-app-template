@@ -65,12 +65,12 @@ export default function Testimonials() {
                 <CardBody>
                   <div className="flex items-center gap-4 mb-4">
                     <div className="w-[50px] h-[50px] rounded-full overflow-hidden">
-                      {/* Use inline SVG via data URL */}
-                      <img 
+                      {/* Use Next/Image component */}
+                      <Image 
                         src={avatarPlaceholder} 
-                        alt={testimonial.name} 
-                        width="50" 
-                        height="50"
+                        alt={`${testimonial.name} - ${testimonial.role}`}
+                        width={50} 
+                        height={50}
                         className="object-cover"
                       />
                     </div>

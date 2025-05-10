@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext"; // Assuming you use AuthContext
 import { jwtDecode } from "jwt-decode";
@@ -27,13 +27,8 @@ export default function AdminLayout({
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
-  // Force recheck auth on any route change within admin
-  useEffect(() => {
-    checkAdminAuthorization();
-  }, [pathname]);
-
   // Main authorization check function
-  const checkAdminAuthorization = () => {
+  const checkAdminAuthorization = useCallback(() => {
     setCheckingAuth(true);
 
     const token = localStorage.getItem("token");
@@ -83,7 +78,12 @@ export default function AdminLayout({
     } finally {
       setCheckingAuth(false);
     }
-  };
+  }, [router, toast]);
+
+  // Force recheck auth on any route change within admin
+  useEffect(() => {
+    checkAdminAuthorization();
+  }, [pathname, checkAdminAuthorization]);
 
   // Show loading state while checking authorization
   if (checkingAuth) {

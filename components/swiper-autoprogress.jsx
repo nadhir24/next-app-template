@@ -46,12 +46,12 @@ export default function SwiperComponent() {
         className="mySwiper"
       >
         <SwiperSlide className="relative h-full">
-          <Image src={grup2} width="100%" height="100%" />
+          <Image src={grup2} width="100%" height="100%" alt="Promotional image slide 1" />
           <div className="absolute inset-0 flex items-center justify-center rounded-xl"></div>
         </SwiperSlide>
 
         <SwiperSlide>
-          <Image src={grup2} width="100%" height="100%" />
+          <Image src={grup2} width="100%" height="100%" alt="Promotional image slide 2" />
         </SwiperSlide>
        
 

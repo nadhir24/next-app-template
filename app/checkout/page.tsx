@@ -241,7 +241,7 @@ export default function CheckoutPage() {
       toast.error("Gagal mengambil data cart");
       setIsLoadingCart(false);
     }
-  }, [userId, selectedShippingMethod]);
+  }, [userId, selectedShippingMethod, shippingMethods, toast]);
 
   // Keeping the old function name for compatibility
   const fetchCheckoutData = fetchCartData;
@@ -301,64 +301,36 @@ export default function CheckoutPage() {
     }
   };
 
-  const handleAddressSelect = (addressId: string) => {
+  const handleAddressSelect = useCallback((addressId: string) => {
     if (addressId === "new_address") {
-      // Clear all fields except email (which should come from user context)
-      setShippingAddress((prev) => ({
-        ...prev,
-        firstName: "",
-        lastName: "",
-        phone: "",
+      setShippingAddress({
+        firstName: user?.fullName?.split(' ')[0] || "",
+        lastName: user?.fullName?.split(' ').slice(1).join(' ') || "",
+        email: user?.email || "",
         address: "",
         city: "",
         province: "",
         postalCode: "",
-        email: user?.email || "", // Keep email from context
-      }));
-      setSelectedAddressId("new_address");
-      return;
-    }
-
-    const selectedAddress = savedAddresses.find(
-      (addr) => addr.id === addressId
-    );
-
-    if (selectedAddress && user) {
-      // Split fullName from user context for first/last name
-      const nameParts = user.fullName ? user.fullName.split(" ") : ["", ""];
-      const firstName = nameParts[0];
-      const lastName = nameParts.slice(1).join(" ");
-
-      setShippingAddress((prev) => ({
-        ...prev,
-        // Get personal info from user context
-        firstName: firstName || "",
-        lastName: lastName || "",
-        email: user.email || "",
-        phone: user.phoneNumber || "",
-        // Get address info from selected saved address
-        address: selectedAddress.street || "",
-        city: selectedAddress.city || "",
-        province: selectedAddress.state || "",
-        postalCode: selectedAddress.postalCode || "",
-      }));
-      setSelectedAddressId(addressId);
+        phone: user?.phoneNumber || "",
+      });
+      setPhoneSuffix(user?.phoneNumber?.replace(/^\+62|^0/, "") || "");
     } else {
-      // Fallback to new address if the selected address is not found
-      setShippingAddress((prev) => ({
-        ...prev,
-        firstName: "",
-        lastName: "",
-        phone: "",
-        address: "",
-        city: "",
-        province: "",
-        postalCode: "",
-        email: user?.email || "", // Keep email from context
-      }));
-      setSelectedAddressId("new_address");
+      const selected = savedAddresses.find((addr) => addr.id === addressId);
+      if (selected) {
+        setShippingAddress({
+          firstName: selected.firstName || user?.fullName?.split(' ')[0] || "",
+          lastName: selected.lastName || user?.fullName?.split(' ').slice(1).join(' ') || "",
+          email: selected.email || user?.email || "",
+          address: selected.street || "",
+          city: selected.city || "",
+          province: selected.state || "",
+          postalCode: selected.postalCode || "",
+          phone: selected.phone || user?.phoneNumber || "",
+        });
+        setPhoneSuffix(selected.phone?.replace(/^\+62|^0/, "") || user?.phoneNumber?.replace(/^\+62|^0/, "") || "");
+      }
     }
-  };
+  }, [savedAddresses, user]);
 
   useEffect(() => {
     // Mulai dengan status loading
