@@ -46,7 +46,6 @@ export default function DashboardPage() {
         await fetchSummary();
         setLoading(false);
       } catch (error) {
-        console.error("Error fetching data:", error);
         setLoading(false);
       }
     };
@@ -64,7 +63,6 @@ export default function DashboardPage() {
   }, []);
 
   const fetchSummary = async () => {
-    console.log("🔄 Fetching summary data...");
     try {
       const response = await axios.get(
         `${process.env.NEXT_PUBLIC_API_URL}/dashboard/summary`,
@@ -75,25 +73,11 @@ export default function DashboardPage() {
         }
       );
 
-      console.log("✅ Summary data received:", {
-        status: response.status,
-        data: response.data,
-        timestamp: new Date().toISOString(),
-      });
-
       if (response.data) {
         setSummary(response.data);
-        console.log("📊 Summary state updated:", {
-          totalSales: response.data.totalSales,
-          totalUsers: response.data.totalUsers,
-          totalProducts: response.data.totalProducts,
-          recentSalesCount: response.data.recentSales?.length,
-          recentOrdersCount: response.data.recentOrders?.length,
-        });
       }
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 401) {
-        console.warn("⚠️ Unauthorized access detected");
         toast({
           title: "Error",
           description: "Session expired. Please login again.",
@@ -129,7 +113,6 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
-          
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">

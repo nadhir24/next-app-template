@@ -14,10 +14,7 @@ interface Size {
   id: number;
   size: string;
   price: string;
-<<<<<<< HEAD
   qty?: number;
-=======
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
 }
 
 interface Catalog {
@@ -37,11 +34,7 @@ const ProductDetailPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const params = useParams();
   const router = useRouter();
-<<<<<<< HEAD
   const { addToCart: contextAddToCart, cartItems } = useCart();
-=======
-  const { addToCart: contextAddToCart } = useCart();
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
 
   const categorySlug = params.categorySlug as string;
   const productSlug = Array.isArray(params.productSlug)
@@ -57,27 +50,22 @@ const ProductDetailPage = () => {
         );
         const productData = response.data;
 
-        // Sort sizes before setting state
         if (productData.sizes && productData.sizes.length > 0) {
           productData.sizes.sort((a, b) => {
-            // Basic numeric check (handles "40", "41", "10x10", "20x20" etc.)
             const aNum = parseFloat(a.size);
             const bNum = parseFloat(b.size);
             if (!isNaN(aNum) && !isNaN(bNum)) {
               return aNum - bNum;
             }
-            // Fallback to alphabetical sort (handles "S", "M", "L", etc.)
             return a.size.localeCompare(b.size);
           });
         }
 
         setProduct(productData);
         if (productData.sizes && productData.sizes.length > 0) {
-          // Select the first size (which is now the smallest)
           setSelectedSize(productData.sizes[0]);
         }
       } catch (error) {
-        console.error("Error fetching product details:", error);
         toast.error("Failed to load product details.");
       } finally {
         setIsLoading(false);
@@ -103,8 +91,6 @@ const ProductDetailPage = () => {
       return;
     }
 
-<<<<<<< HEAD
-    // Cari jumlah yang sudah ada di cart untuk produk/size ini
     const cartQty = cartItems
       .filter(
         (item) =>
@@ -121,14 +107,12 @@ const ProductDetailPage = () => {
       return;
     }
 
-=======
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
     setIsAddingToCart(true);
     try {
       await contextAddToCart(product.id, selectedSize.id, 1);
       setIsCartModalOpen(true);
     } catch (error) {
-      console.error("Add to cart failed from ProductDetailPage:", error);
+      toast.error("Gagal menambahkan ke keranjang");
     } finally {
       setIsAddingToCart(false);
     }
@@ -139,19 +123,11 @@ const ProductDetailPage = () => {
   };
 
   const navigateToCategory = (category: string) => {
-    console.log(`Navigating to category: "${category}"`);
-<<<<<<< HEAD
-
-    // Jika kategori adalah 'cake', gunakan kata kunci pencarian 'Kue'
     if (category.toLowerCase() === "cake") {
       router.push(`/katalog?search=Kue`);
     } else {
-      // Untuk kategori lain, gunakan parameter search bukan category
       router.push(`/katalog?search=${category.replace(/-/g, " ")}`);
     }
-=======
-    router.push(`/katalog?category=${category}`);
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
   };
 
   return (
@@ -193,11 +169,7 @@ const ProductDetailPage = () => {
               <Image
                 src={`${process.env.NEXT_PUBLIC_API_URL}${product.image}`}
                 alt={product.name || "Product Image"}
-<<<<<<< HEAD
                 className="object-contain rounded-lg w-full h-auto max-h-[60vh] sm:max-h-[500px]"
-=======
-                className="object-contain rounded-lg w-full h-full"
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                 width={500}
                 height={500}
                 sizes="(max-width: 768px) 100vw, 50vw"
@@ -248,13 +220,9 @@ const ProductDetailPage = () => {
                         {size.size}
                       </span>
                       <span className="ml-2 text-primary font-semibold text-sm">
-<<<<<<< HEAD
                         {size.price && size.price.includes("Rp")
                           ? size.price
                           : `Rp${new Intl.NumberFormat("id-ID").format(parseInt(size.price?.replace(/\D/g, "") || "0"))}`}
-=======
-                        {size.price}
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                       </span>
                     </Radio>
                   ))}

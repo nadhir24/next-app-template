@@ -3,11 +3,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Button } from "@heroui/button";
 import { Card, CardBody } from "@heroui/card";
 import { Link } from "@heroui/link";
-<<<<<<< HEAD
 import { toast, Toaster } from "sonner";
-=======
-import { toast } from "sonner";
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
 import { Image } from "@heroui/image";
 import { Divider } from "@heroui/divider";
 import { Trash2 } from "lucide-react";
@@ -16,7 +12,6 @@ import { useCart, CartItem } from "@/context/CartContext";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 
-<<<<<<< HEAD
 type SizeWithQty = {
   id: number;
   size: string;
@@ -24,8 +19,6 @@ type SizeWithQty = {
   qty?: number;
 };
 
-=======
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
 const CartPage = () => {
   const router = useRouter();
   const {
@@ -53,7 +46,6 @@ const CartPage = () => {
     setDisplayCartItems(contextCartItems);
   }, [contextCartItems]);
 
-<<<<<<< HEAD
   // Fungsi utilitas untuk menampilkan pesan error (lebih sederhana)
   const showErrorMessage = (message: string) => {
     // Cek jika pesan berisi "Insufficient stock", format menjadi lebih user-friendly
@@ -65,8 +57,6 @@ const CartPage = () => {
       if (errorParts) {
         const [_, productName, size, available] = errorParts;
         const friendlyMessage = `Stok ${productName} (${size}) tidak cukup. Tersedia: ${available}`;
-
-        console.log("[CartPage] Showing friendly toast:", friendlyMessage);
         toast.error(friendlyMessage, {
           duration: 4000,
           position: "top-center",
@@ -75,9 +65,7 @@ const CartPage = () => {
         return; // Keluar dari fungsi setelah menampilkan pesan yang diformat
       }
     }
-
     // Untuk pesan error lainnya
-    console.log("[CartPage] Showing toast:", message);
     toast.error(message, {
       duration: 4000,
       position: "top-center",
@@ -85,48 +73,24 @@ const CartPage = () => {
     });
   };
 
-=======
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
   // Handle quantity change with optimistic update
   const handleUpdateQuantity = useCallback(
     async (id: number, currentQuantity: number, change: number) => {
       const newQuantity = currentQuantity + change;
-<<<<<<< HEAD
-      console.log(
-        `[CartPage] handleUpdateQuantity: id=${id}, currentQ=${currentQuantity}, change=${change}, newQ=${newQuantity}`
-      );
       if (newQuantity < 1 || processingItems[id]) {
-        console.log(
-          `[CartPage] Condition met: newQuantity < 1 or processingItems[id]`
-        );
         return;
       }
-
       // Cari item yang akan diupdate
       const item = displayCartItems.find((item) => item.id === id);
-      console.log("[CartPage] Found item:", item);
-
       const size = item?.size as SizeWithQty | undefined;
-      console.log("[CartPage] Item size data:", size);
-
       const availableStock =
         size && typeof size.qty !== "undefined" ? Number(size.qty) : Infinity;
-      console.log("[CartPage] Available stock calculated:", availableStock);
-
       if (change > 0 && newQuantity > availableStock) {
-        console.log(
-          "[CartPage] STOCK CHECK FAILED: Condition met for toast (newQ > availableStock)"
-        );
         showErrorMessage(
           `Stok tidak cukup. Maksimal quantity: ${availableStock}`
         );
         return;
       }
-      console.log("[CartPage] Stock check passed or change is not positive.");
-=======
-      if (newQuantity < 1 || processingItems[id]) return;
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
-
       const originalItems = [...displayCartItems];
       setDisplayCartItems((prevItems) =>
         prevItems.map((item) =>
@@ -134,20 +98,10 @@ const CartPage = () => {
         )
       );
       setProcessingItems((prev) => ({ ...prev, [id]: true }));
-
       try {
         await updateCartItem(id, newQuantity);
-<<<<<<< HEAD
       } catch (error: any) {
-        // Hanya log error, TIDAK menampilkan toast
-        // Toast sudah ditampilkan di CartContext saat updateCartItem gagal
-        console.log("[CartPage] Error updating cart item:", error);
-
         // Kembalikan state ke awal
-=======
-      } catch (error) {
-        toast.error("Gagal mengubah jumlah item");
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
         setDisplayCartItems(originalItems);
       } finally {
         setProcessingItems((prev) => ({ ...prev, [id]: false }));
@@ -229,7 +183,6 @@ const CartPage = () => {
   const formatPrice = (price: string | number | undefined) => {
     if (!price) return "Rp0";
     if (typeof price === "string") {
-<<<<<<< HEAD
       // If already formatted with Rp, return as is
       if (price.includes("Rp")) return price;
 
@@ -239,9 +192,6 @@ const CartPage = () => {
         currency: "IDR",
         minimumFractionDigits: 0,
       }).format(parseInt(price.replace(/\D/g, "") || "0"));
-=======
-      return price;
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
     }
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
@@ -251,13 +201,9 @@ const CartPage = () => {
   };
 
   return (
-<<<<<<< HEAD
     <div className="container mx-auto py-8 px-4">
       <Toaster position="top-center" richColors closeButton />
 
-=======
-    <div className="container mx-auto px-4 py-8">
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
       <h1 className="text-2xl font-bold mb-6">Keranjang Belanja</h1>
 
       {displayCartItems.length === 0 && !isLoadingCart ? (
@@ -348,13 +294,9 @@ const CartPage = () => {
                           <p className="font-semibold whitespace-nowrap">
                             {formatPrice(
                               parseInt(
-<<<<<<< HEAD
                                 item.size?.price
                                   ?.toString()
                                   .replace(/[^\d]/g, "") || "0"
-=======
-                                item.size?.price?.replace(/[^\d]/g, "") || "0"
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                               ) * item.quantity
                             )}
                           </p>

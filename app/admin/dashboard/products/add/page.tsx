@@ -9,7 +9,13 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "@/components/ui/card";
 import { toast } from "sonner";
 import { ArrowLeft, PlusCircle, Trash2 } from "lucide-react";
 import {
@@ -21,7 +27,7 @@ import {
 } from "@/components/ui/select";
 
 const formatCurrency = (value: string | number): string => {
-  const numStr = String(value).replace(/\./g, '');
+  const numStr = String(value).replace(/\./g, "");
   if (isNaN(parseFloat(numStr))) return "";
   return numStr.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 };
@@ -43,7 +49,9 @@ const AddProductPage = () => {
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [isEnabled, setIsEnabled] = useState(true);
-  const [sizes, setSizes] = useState<Size[]>([{ sizeValue: "", sizeUnit: "gram", price: "", qty: "" }]);
+  const [sizes, setSizes] = useState<Size[]>([
+    { sizeValue: "", sizeUnit: "gram", price: "", qty: "" },
+  ]);
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -59,36 +67,36 @@ const AddProductPage = () => {
     const newSizes = [...sizes];
     const currentSize = { ...newSizes[index] };
 
-    if (field === 'price') {
-        currentSize.price = unformatCurrency(value);
-    } else if (field === 'sizeValue') {
-        currentSize.sizeValue = value.replace(/[^\d.]/g, '');
-    } else if (field === 'qty') {
-        currentSize.qty = value;
+    if (field === "price") {
+      currentSize.price = unformatCurrency(value);
+    } else if (field === "sizeValue") {
+      currentSize.sizeValue = value.replace(/[^\d.]/g, "");
+    } else if (field === "qty") {
+      currentSize.qty = value;
     }
 
     newSizes[index] = currentSize;
     setSizes(newSizes);
   };
 
-<<<<<<< HEAD
-// Formats a number string into currency format (e.g., 100000 -> 100.000)
-const formatCurrency = (value: string | number): string => {
-  const numStr = String(value).replace(/\./g, ''); // Remove existing dots
-  if (isNaN(parseFloat(numStr))) return ""; // Return empty if not a valid number
-  return numStr.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-};
+  // Formats a number string into currency format (e.g., 100000 -> 100.000)
+  const formatCurrency = (value: string | number): string => {
+    const numStr = String(value).replace(/\./g, ""); // Remove existing dots
+    if (isNaN(parseFloat(numStr))) return ""; // Return empty if not a valid number
+    return numStr.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  };
 
-=======
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
   const handleUnitChange = (index: number, unit: string) => {
-      const newSizes = [...sizes];
-      newSizes[index].sizeUnit = unit;
-      setSizes(newSizes);
-  }
+    const newSizes = [...sizes];
+    newSizes[index].sizeUnit = unit;
+    setSizes(newSizes);
+  };
 
   const addSizeField = () => {
-    setSizes([...sizes, { sizeValue: "", sizeUnit: "gram", price: "", qty: "" }]);
+    setSizes([
+      ...sizes,
+      { sizeValue: "", sizeUnit: "gram", price: "", qty: "" },
+    ]);
   };
 
   const removeSizeField = (index: number) => {
@@ -118,33 +126,33 @@ const formatCurrency = (value: string | number): string => {
     const sizesToSend = [];
 
     for (let i = 0; i < sizes.length; i++) {
-        const s = sizes[i];
-        const priceNum = parseFloat(s.price);
-        const qtyNum = parseInt(s.qty, 10);
-        const sizeValueNum = parseFloat(s.sizeValue);
+      const s = sizes[i];
+      const priceNum = parseFloat(s.price);
+      const qtyNum = parseInt(s.qty, 10);
+      const sizeValueNum = parseFloat(s.sizeValue);
 
-        if (!s.sizeValue || isNaN(sizeValueNum) || sizeValueNum <= 0) {
-            validationError = `Size row #${i + 1}: Invalid Size value. Please enter a positive number.`;
-            break;
-        }
-        if (!s.sizeUnit) {
-             validationError = `Size row #${i + 1}: Please select a Unit.`;
-             break;
-        }
-        if (s.price === "" || isNaN(priceNum) || priceNum < 0) {
-             validationError = `Size row #${i + 1}: Invalid Price. Please enter a non-negative number.`;
-             break;
-        }
-        if (s.qty === "" || isNaN(qtyNum) || qtyNum < 0) {
-             validationError = `Size row #${i + 1}: Invalid Qty. Please enter a whole non-negative number.`;
-             break;
-        }
+      if (!s.sizeValue || isNaN(sizeValueNum) || sizeValueNum <= 0) {
+        validationError = `Size row #${i + 1}: Invalid Size value. Please enter a positive number.`;
+        break;
+      }
+      if (!s.sizeUnit) {
+        validationError = `Size row #${i + 1}: Please select a Unit.`;
+        break;
+      }
+      if (s.price === "" || isNaN(priceNum) || priceNum < 0) {
+        validationError = `Size row #${i + 1}: Invalid Price. Please enter a non-negative number.`;
+        break;
+      }
+      if (s.qty === "" || isNaN(qtyNum) || qtyNum < 0) {
+        validationError = `Size row #${i + 1}: Invalid Qty. Please enter a whole non-negative number.`;
+        break;
+      }
 
-        sizesToSend.push({
-            size: `${s.sizeValue} ${s.sizeUnit}`,
-            price: String(priceNum),
-            qty: qtyNum
-        });
+      sizesToSend.push({
+        size: `${s.sizeValue} ${s.sizeUnit}`,
+        price: String(priceNum),
+        qty: qtyNum,
+      });
     }
 
     if (validationError) {
@@ -154,7 +162,6 @@ const formatCurrency = (value: string | number): string => {
       return;
     }
 
-<<<<<<< HEAD
     try {
       // Siapkan data dalam format yang diharapkan oleh API
       const requestData = {
@@ -162,14 +169,13 @@ const formatCurrency = (value: string | number): string => {
         category: category,
         description: description,
         isEnabled: isEnabled,
-        sizes: sizesToSend
+        sizes: sizesToSend,
       };
 
       // Jika ada gambar, gunakan FormData
       if (image) {
-        console.log("Submitting with image using FormData");
         const formData = new FormData();
-        
+
         // Tambahkan data sebagai string untuk memastikan tipe data benar
         formData.append("name", String(name));
         formData.append("category", String(category));
@@ -177,7 +183,7 @@ const formatCurrency = (value: string | number): string => {
         formData.append("isEnabled", String(isEnabled));
         formData.append("sizes", JSON.stringify(sizesToSend));
         formData.append("image", image);
-        
+
         await axios.post(
           `${process.env.NEXT_PUBLIC_API_URL}/catalog`,
           formData,
@@ -189,45 +195,17 @@ const formatCurrency = (value: string | number): string => {
         );
       } else {
         // Tanpa gambar, kirim sebagai JSON biasa
-        console.log("Submitting without image using JSON");
-        
         await axios.post(
           `${process.env.NEXT_PUBLIC_API_URL}/catalog`,
           requestData
         );
       }
-      
-=======
-    const formData = new FormData();
-    formData.append("name", name);
-    formData.append("category", category);
-    formData.append("description", description);
-    formData.append("isEnabled", String(isEnabled));
 
-    formData.append("sizes", JSON.stringify(sizesToSend));
-
-    if (image) {
-      formData.append("image", image);
-    }
-
-    try {
-      console.log("Submitting FormData to POST /catalog/create");
-
-      await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/catalog/create`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
       toast.success("Product added successfully!");
       router.push("/admin/dashboard/products");
     } catch (err: any) {
-      console.error("Error adding product:", err);
-      const message = err.response?.data?.message || err.message || "Failed to add product.";
+      const message =
+        err.response?.data?.message || err.message || "Failed to add product.";
       setError(message);
       toast.error(`Error: ${message}`);
     } finally {
@@ -237,7 +215,10 @@ const formatCurrency = (value: string | number): string => {
 
   return (
     <div className="container mx-auto py-10">
-      <Link href="/admin/products" className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-4">
+      <Link
+        href="/admin/products"
+        className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-4"
+      >
         <ArrowLeft className="mr-1 h-4 w-4" />
         Back to Products
       </Link>
@@ -282,97 +263,110 @@ const formatCurrency = (value: string | number): string => {
             <div className="grid gap-4">
               <Label className="text-base font-medium">Sizes and Pricing</Label>
               {sizes.map((sizeItem, index) => (
-                <div key={index} className="flex flex-wrap items-end gap-3 p-3 border rounded-md bg-gray-50/80 relative">
+                <div
+                  key={index}
+                  className="flex flex-wrap items-end gap-3 p-3 border rounded-md bg-gray-50/80 relative"
+                >
                   <div className="grid gap-1.5 flex-1 min-w-[100px]">
-                    <Label htmlFor={`sizeValue-${index}`} className="text-xs">Value</Label>
+                    <Label htmlFor={`sizeValue-${index}`} className="text-xs">
+                      Value
+                    </Label>
                     <Input
                       id={`sizeValue-${index}`}
                       type="text"
-<<<<<<< HEAD
-                      value={sizeItem.sizeValue ? formatCurrency(sizeItem.sizeValue) : ""}
-=======
-                      value={sizeItem.sizeValue || ""}
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
-                      onChange={(e) => handleSizeChange(index, "sizeValue", e.target.value)}
+                      value={
+                        sizeItem.sizeValue
+                          ? formatCurrency(sizeItem.sizeValue)
+                          : ""
+                      }
+                      onChange={(e) =>
+                        handleSizeChange(index, "sizeValue", e.target.value)
+                      }
                       required
                       className="text-sm"
                       placeholder="e.g., 100"
                     />
                   </div>
                   <div className="grid gap-1.5 min-w-[100px]">
-                      <Label htmlFor={`sizeUnit-${index}`} className="text-xs">Unit</Label>
-                      <Select
-                          value={sizeItem.sizeUnit}
-                          onValueChange={(value) => handleUnitChange(index, value)}
-                          required
+                    <Label htmlFor={`sizeUnit-${index}`} className="text-xs">
+                      Unit
+                    </Label>
+                    <Select
+                      value={sizeItem.sizeUnit}
+                      onValueChange={(value) => handleUnitChange(index, value)}
+                      required
+                    >
+                      <SelectTrigger
+                        id={`sizeUnit-${index}`}
+                        className="text-sm w-full"
                       >
-                          <SelectTrigger id={`sizeUnit-${index}`} className="text-sm w-full">
-                              <SelectValue placeholder="Select unit" />
-                          </SelectTrigger>
-                          <SelectContent>
-                              {availableUnits.map(unit => (
-                                  <SelectItem key={unit} value={unit}>{unit}</SelectItem>
-                              ))}
-                          </SelectContent>
-                      </Select>
+                        <SelectValue placeholder="Select unit" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableUnits.map((unit) => (
+                          <SelectItem key={unit} value={unit}>
+                            {unit}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="grid gap-1.5 flex-1 min-w-[150px]">
-                    <Label htmlFor={`price-${index}`} className="text-xs">Price (IDR)</Label>
+                    <Label htmlFor={`price-${index}`} className="text-xs">
+                      Price (IDR)
+                    </Label>
                     <div className="flex items-center">
-                         <span className="text-sm text-gray-500 mr-1.5 pl-3 py-2 border border-r-0 rounded-l-md bg-gray-100">Rp</span>
-                         <Input
-                           id={`price-${index}`}
-                           type="text"
-<<<<<<< HEAD
-                           value={sizeItem.price}
-                           onChange={(e) => handleSizeChange(index, "price", e.target.value)}
-                           required
-                           className="text-sm"
-                           placeholder="e.g., 10000"
-                         />
+                      <span className="text-sm text-gray-500 mr-1.5 pl-3 py-2 border border-r-0 rounded-l-md bg-gray-100">
+                        Rp
+                      </span>
+                      <Input
+                        id={`price-${index}`}
+                        type="text"
+                        value={sizeItem.price}
+                        onChange={(e) =>
+                          handleSizeChange(index, "price", e.target.value)
+                        }
+                        required
+                        className="text-sm"
+                        placeholder="e.g., 10000"
+                      />
                     </div>
                   </div>
                   <div className="grid gap-1.5 flex-1 min-w-[100px]">
-                    <Label htmlFor={`qty-${index}`} className="text-xs">Qty</Label>
+                    <Label htmlFor={`qty-${index}`} className="text-xs">
+                      Qty
+                    </Label>
                     <Input
                       id={`qty-${index}`}
                       type="text"
                       value={sizeItem.qty}
-                      onChange={(e) => handleSizeChange(index, "qty", e.target.value)}
+                      onChange={(e) =>
+                        handleSizeChange(index, "qty", e.target.value)
+                      }
                       required
-=======
-                           value={formatCurrency(sizeItem.price)}
-                           onChange={(e) => handleSizeChange(index, "price", e.target.value)}
-                           required
-                           className="text-sm rounded-l-none"
-                           placeholder="e.g., 100.000"
-                         />
-                    </div>
-                  </div>
-                  <div className="grid gap-1.5 w-24">
-                    <Label htmlFor={`qty-${index}`} className="text-xs">Qty</Label>
-                    <Input
-                      id={`qty-${index}`}
-                      type="number"
-                      value={sizeItem.qty || ""}
-                      onChange={(e) => handleSizeChange(index, "qty", e.target.value)}
-                      required
-                      min="0"
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                       className="text-sm"
                       placeholder="e.g., 10"
                     />
                   </div>
-<<<<<<< HEAD
                   <div className="flex items-center gap-2">
-                    <Button type="button" variant="ghost" size="icon" onClick={() => removeSizeField(index)}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeSizeField(index)}
+                    >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
               ))}
               <div className="flex items-center gap-2">
-                <Button type="button" variant="ghost" size="icon" onClick={addSizeField}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={addSizeField}
+                >
                   <PlusCircle className="h-4 w-4" />
                 </Button>
               </div>
@@ -400,58 +394,6 @@ const formatCurrency = (value: string | number): string => {
           <CardFooter className="flex justify-end">
             <Button type="submit" disabled={isLoading}>
               {isLoading ? "Adding..." : "Add Product"}
-=======
-                  {sizes.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="text-red-500 hover:bg-red-100 self-center mt-4"
-                      onClick={() => removeSizeField(index)}
-                      aria-label="Remove size"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              ))}
-              <Button type="button" variant="outline" size="sm" onClick={addSizeField} className="mt-2 w-fit">
-                <PlusCircle className="mr-2 h-4 w-4" /> Add Size
-              </Button>
-            </div>
-
-             <div className="grid gap-2">
-              <Label htmlFor="image">Product Image</Label>
-              <Input id="image" type="file" onChange={handleImageChange} accept="image/*" />
-               {imagePreview && (
-                <div className="mt-2">
-                  <img src={imagePreview} alt="Image Preview" className="h-32 w-32 object-cover rounded-md border" />
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="isEnabled"
-                checked={isEnabled}
-                onCheckedChange={(checked) => setIsEnabled(Boolean(checked))}
-              />
-              <Label htmlFor="isEnabled" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                Product Enabled
-              </Label>
-            </div>
-
-            {error && (
-                <p className="text-sm font-medium text-red-600 bg-red-50 p-3 rounded-md border border-red-200">
-                    Error: {error}
-                 </p>
-             )}
-
-          </CardContent>
-          <CardFooter>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Adding Product..." : "Add Product"}
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
             </Button>
           </CardFooter>
         </Card>
@@ -460,8 +402,4 @@ const formatCurrency = (value: string | number): string => {
   );
 };
 
-<<<<<<< HEAD
 export default AddProductPage;
-=======
-export default AddProductPage;
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76

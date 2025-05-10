@@ -1,15 +1,11 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-<<<<<<< HEAD
-import { useRouter, usePathname } from 'next/navigation';
-=======
-import { useRouter } from 'next/navigation';
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
-import { useAuth } from '@/context/AuthContext'; // Assuming you use AuthContext
-import { jwtDecode } from 'jwt-decode';
-import { toast } from 'sonner'; // Or your preferred toast library
-import { Skeleton } from '@/components/ui/skeleton'; // For loading state
+import { useEffect, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { useAuth } from "@/context/AuthContext"; // Assuming you use AuthContext
+import { jwtDecode } from "jwt-decode";
+import { toast } from "sonner"; // Or your preferred toast library
+import { Skeleton } from "@/components/ui/skeleton"; // For loading state
 
 interface DecodedToken {
   userId: number;
@@ -19,115 +15,84 @@ interface DecodedToken {
   exp: number;
 }
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const router = useRouter();
-<<<<<<< HEAD
   const pathname = usePathname();
   // Use auth context if available to potentially speed up check or get user info
-  const { user, logout } = useAuth(); 
+  const { user, logout } = useAuth();
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
   // Force recheck auth on any route change within admin
   useEffect(() => {
-    console.log('[AdminLayout] Path changed to:', pathname);
     checkAdminAuthorization();
   }, [pathname]);
 
   // Main authorization check function
   const checkAdminAuthorization = () => {
-=======
-  // Use auth context if available to potentially speed up check or get user info
-  // const { user, loading: authLoading } = useAuth(); 
-  const [isAuthorized, setIsAuthorized] = useState(false);
-  const [checkingAuth, setCheckingAuth] = useState(true);
-
-  useEffect(() => {
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
-    console.log('[AdminLayout] Starting auth check...');
     setCheckingAuth(true);
-    
-    const token = localStorage.getItem('token');
-    console.log('[AdminLayout] Token from localStorage:', token ? 'Found' : 'Not Found');
+
+    const token = localStorage.getItem("token");
 
     if (!token) {
-      console.log('[AdminLayout] No token found, redirecting to login.');
-      toast.error('Akses ditolak. Silakan login terlebih dahulu.');
-      router.replace('/'); 
-      return; // Stop further execution in this effect run
+      toast.error("Akses ditolak. Silakan login terlebih dahulu.");
+      router.replace("/");
+      return;
     }
 
     try {
       const decoded = jwtDecode<DecodedToken>(token);
-      console.log('[AdminLayout] Decoded token:', decoded);
 
-      // Check token expiration
       const currentTime = Date.now() / 1000;
       if (decoded.exp < currentTime) {
-        console.log('[AdminLayout] Token expired, redirecting to login.');
-        localStorage.removeItem('token');
-        localStorage.removeItem('user'); // Also clear stored user data if any
-        toast.error('Sesi Anda telah berakhir. Silakan login kembali.');
-        router.replace('/');
-        return; 
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        toast.error("Sesi Anda telah berakhir. Silakan login kembali.");
+        router.replace("/");
+        return;
       }
 
-      // --- Role Check --- 
-      // Access the roleId within the first element of the roleId array
-      const userRoleId = decoded.roleId && Array.isArray(decoded.roleId) && decoded.roleId.length > 0 
-                       ? decoded.roleId[0].roleId 
-                       : undefined;
-      console.log('[AdminLayout] Extracted userRoleId:', userRoleId);
+      const userRoleId =
+        decoded.roleId &&
+        Array.isArray(decoded.roleId) &&
+        decoded.roleId.length > 0
+          ? decoded.roleId[0].roleId
+          : undefined;
 
-      if (userRoleId === 1) { // Compare the extracted roleId with 1 (Admin)
-        console.log('[AdminLayout] User is Admin. Access granted.');
+      if (userRoleId === 1) {
         setIsAuthorized(true);
       } else {
-        console.log(`[AdminLayout] User is not Admin (extracted roleId: ${userRoleId}), redirecting to home.`);
-        toast.error('Akses ditolak. Anda tidak memiliki izin admin.');
-<<<<<<< HEAD
-        // If user has role 3, redirect to user dashboard, otherwise to home
+        toast.error("Akses ditolak. Anda tidak memiliki izin admin.");
         if (userRoleId === 3) {
-          router.replace('/dashboard');
+          router.replace("/dashboard");
         } else {
-          router.replace('/'); 
+          router.replace("/");
         }
-=======
-        router.replace('/'); // Redirect non-admins to home page
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
         return;
       }
     } catch (error) {
-      console.error('[AdminLayout] Invalid token or decoding error:', error);
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      toast.error('Token tidak valid. Silakan login kembali.');
-      router.replace('/'); // Redirect if token is invalid
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      toast.error("Token tidak valid. Silakan login kembali.");
+      router.replace("/");
       return;
     } finally {
       setCheckingAuth(false);
-      console.log('[AdminLayout] Auth check complete.');
     }
-<<<<<<< HEAD
   };
-=======
-  // Run only once on mount, router changes shouldn't trigger re-check unless needed
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router]); 
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
 
   // Show loading state while checking authorization
   if (checkingAuth) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <p className="mb-4">Memeriksa otorisasi admin...</p>
-<<<<<<< HEAD
         <Skeleton className="h-4 w-[200px] mb-2" />
         <Skeleton className="h-4 w-[150px] mb-2" />
         <Skeleton className="h-4 w-[180px]" />
-=======
-        
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
       </div>
     );
   }
@@ -139,5 +104,5 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   // Fallback (should be handled by redirects, but good for safety)
   // Returning null prevents rendering anything before redirect completes
-  return null; 
-} 
+  return null;
+}

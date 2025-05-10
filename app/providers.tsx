@@ -2,8 +2,13 @@
 import * as React from "react";
 import { HeroUIProvider } from "@heroui/react";
 import { useRouter } from "next/navigation";
-import { ThemeProvider as NextThemesProvider, type ThemeProviderProps } from "next-themes";
+import {
+  ThemeProvider as NextThemesProvider,
+  type ThemeProviderProps,
+} from "next-themes";
 import { AuthProvider } from "../context/AuthContext"; // adjust path as needed
+import { CartProvider } from "@/context/CartContext";
+import { Toaster } from "sonner";
 
 export interface ProvidersProps {
   children: React.ReactNode;
@@ -16,7 +21,12 @@ export function Providers({ children, themeProps }: ProvidersProps) {
   return (
     <HeroUIProvider navigate={router.push}>
       <NextThemesProvider {...themeProps}>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <CartProvider>
+            {children}
+            <Toaster />
+          </CartProvider>
+        </AuthProvider>
       </NextThemesProvider>
     </HeroUIProvider>
   );

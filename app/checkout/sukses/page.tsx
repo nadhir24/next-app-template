@@ -79,11 +79,6 @@ export default function SuksesPage() {
   useEffect(() => {
     setIsBrowser(true);
     setLoginStatus(checkLoginStatus());
-
-    // Log debugging
-    console.log("Login status checked:", checkLoginStatus());
-    console.log("Token:", localStorage.getItem("token"));
-    console.log("GuestId:", localStorage.getItem("guestId"));
   }, []);
 
   const handleRetryInvoice = async () => {
@@ -119,7 +114,6 @@ export default function SuksesPage() {
         toast.error("Gagal membuat invoice. Silakan coba lagi.");
       }
     } catch (err) {
-      console.error("Retry error:", err);
       setErrorInvoice(true);
       toast.error("Gagal membuat invoice. Silakan coba lagi.");
     } finally {
@@ -144,28 +138,20 @@ export default function SuksesPage() {
 
   useEffect(() => {
     if (!orderId) {
-      console.log("No orderId found in URL.");
       return;
     }
 
-    // If it's a guest (no user logged in), store the invoice ID
     if (!user && orderId) {
-      console.log("Guest user detected, saving invoice ID:", orderId);
       localStorage.setItem("guestInvoiceId", orderId);
     } else if (user) {
-      // Optional: Clear guest ID if a user is logged in on this page load
-      console.log("Logged in user detected, clearing guest invoice ID.");
       localStorage.removeItem("guestInvoiceId");
     }
 
-    // Fetch order detail immediately on first load
     const fetchOrderDetail = async () => {
       try {
-        console.log("Fetching initial order details for:", orderId);
         const response = await axios.get(
           `${process.env.NEXT_PUBLIC_API_URL}/payment/snap/order-detail?orderId=${orderId}`
         );
-        console.log("Initial response from backend:", response.data);
 
         if (response.data.success) {
           const data = response.data.data;
@@ -178,28 +164,22 @@ export default function SuksesPage() {
           }
         }
       } catch (err) {
-        console.error("Initial fetch error:", err);
-        // Tetap tampilkan konten meskipun ada error
         setLoading(false);
       }
     };
 
-    // Fetch data immediately
     fetchOrderDetail();
 
-    // Then set up polling interval
     const interval = setInterval(async () => {
       try {
         const response = await axios.get(
           `${process.env.NEXT_PUBLIC_API_URL}/payment/snap/order-detail?orderId=${orderId}`
         );
-        console.log("Polling response from backend:", response.data);
 
         if (response.data.success) {
           const data = response.data.data;
           setOrderDetail(data);
 
-          // Pastikan loading state dinonaktifkan
           if (loading) {
             setLoading(false);
           }
@@ -215,7 +195,7 @@ export default function SuksesPage() {
           }
         }
       } catch (err) {
-        console.error("Polling error:", err);
+        // Handle error silently
       }
     }, 3000);
 
@@ -227,7 +207,6 @@ export default function SuksesPage() {
     // Matikan loading otomatis setelah 10 detik
     const timer = setTimeout(() => {
       if (loading) {
-        console.log("Force ending loading state after timeout");
         setLoading(false);
       }
     }, 10000);
@@ -237,27 +216,15 @@ export default function SuksesPage() {
 
   // Tambahkan fungsi untuk mengarahkan ke halaman yang sesuai
   const navigateToOrderDetails = () => {
-<<<<<<< HEAD
-=======
-    if (!orderDetail?.id) return;
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
-
     // Aktifkan state loading untuk memberikan feedback visual
     setIsNavigating(true);
 
     if (loginStatus === "LOGGED_IN") {
       // Jika user sudah login, arahkan ke dashboard
-<<<<<<< HEAD
       window.location.href = `/dashboard/invoice`;
     } else {
       // Jika user adalah guest, arahkan ke halaman invoice detail
       window.location.href = `/invoice`;
-=======
-      window.location.href = `/dashboard/invoice/${orderDetail.id}`;
-    } else {
-      // Jika user adalah guest, arahkan ke halaman invoice detail
-      window.location.href = `/invoice/${orderDetail.id}`;
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
     }
   };
 
@@ -345,10 +312,6 @@ export default function SuksesPage() {
           )}
         </CardContent>
         <CardFooter className="flex flex-col space-y-2">
-<<<<<<< HEAD
-=======
-          {/* Tampilkan error message */}
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
           {errorInvoice && (
             <div className="space-y-2">
               <p className="text-sm text-red-600">
@@ -389,7 +352,6 @@ export default function SuksesPage() {
               </div>
             </div>
           )}
-<<<<<<< HEAD
           {isBrowser && orderDetail?.status === "SETTLEMENT" && (
             <Tombol
               className="w-full"
@@ -411,35 +373,6 @@ export default function SuksesPage() {
               )}
             </Tombol>
           )}
-=======
-
-          {/* Tombol navigasi jika status settlement atau ada PDF URL */}
-          {isBrowser &&
-            (orderDetail?.status === "settlement" ||
-              orderDetail?.midtransInvoicePdfUrl) && (
-              <Tombol
-                className="w-full"
-                variant="ghost"
-                onPress={navigateToOrderDetails}
-                isDisabled={isNavigating}
-              >
-                {isNavigating ? (
-                  <>
-                    <div className="w-4 h-4 mr-2 border-2 border-t-transparent border-gray-600 rounded-full animate-spin"></div>
-                    {loginStatus === "LOGGED_IN"
-                      ? "Mengarahkan ke Dashboard..."
-                      : "Mengarahkan ke Detail Pesanan..."}
-                  </>
-                ) : loginStatus === "LOGGED_IN" ? (
-                  "Lihat di Dashboard"
-                ) : (
-                  "Lihat Detail Pesanan"
-                )}
-              </Tombol>
-            )}
-
-          {/* Tombol lanjutkan belanja */}
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
           <Tombol
             variant="ghost"
             className="w-full"

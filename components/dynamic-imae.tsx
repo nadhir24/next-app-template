@@ -1,6 +1,6 @@
 // dynamic-image.tsx
-import React, { useEffect, useState } from 'react';
-import Image from 'next/image';
+import React, { useEffect, useState } from "react";
+import Image from "next/image";
 
 interface DynamicImageProps {
   url: string;
@@ -8,7 +8,11 @@ interface DynamicImageProps {
   containerClass?: string;
 }
 
-const DynamicImage: React.FC<DynamicImageProps> = ({ url, alt, containerClass }) => {
+const DynamicImage: React.FC<DynamicImageProps> = ({
+  url,
+  alt,
+  containerClass,
+}) => {
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [hasError, setHasError] = useState<boolean>(false);
@@ -21,7 +25,6 @@ const DynamicImage: React.FC<DynamicImageProps> = ({ url, alt, containerClass })
           setImageSrc(url);
           setHasError(false);
         } catch (error) {
-          console.error('Error loading image:', error);
           setHasError(true);
         } finally {
           setIsLoading(false);
@@ -42,7 +45,7 @@ const DynamicImage: React.FC<DynamicImageProps> = ({ url, alt, containerClass })
   return (
     <div className={containerClass}>
       <Image
-        src={imageSrc || ''}
+        src={imageSrc || ""}
         alt={alt}
         layout="fill" // Or use layout="responsive" for responsive images
         objectFit="cover" // Adjust objectFit as needed

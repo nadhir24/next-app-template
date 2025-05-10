@@ -120,15 +120,8 @@ export default function Modall() {
       // ** Stricter Success Check **
       // Check if the necessary data (token, loginData) exists in the response
       if (!data || !data.token || !data.loginData) {
-        console.error(
-          "[Login] Backend response OK, but missing token or loginData:",
-          data
-        );
         throw new Error("Login failed: Invalid response from server.");
       }
-
-      // --- Proceed with successful login ---
-      console.log("[Login] Login successful, response data:", data);
 
       // Store token first
       localStorage.setItem("token", data.token);
@@ -150,19 +143,15 @@ export default function Modall() {
       // Remember me logic
       if (rememberMe) {
         localStorage.setItem("rememberedEmail", email.trim());
-        console.log("Remembering email:", email.trim());
       } else {
         localStorage.removeItem("rememberedEmail");
-        console.log("Forgetting email.");
       }
 
       closeLogin();
 
       // Don't clear email if remembered, but clear password
-      // setEmail("");
       setPassword("");
     } catch (error: any) {
-      console.log("Executing catch block in handleLogin!");
       toast({
         // Failure toast
         title: "Login Gagal",
@@ -170,7 +159,6 @@ export default function Modall() {
         description: "Email atau password yang anda masukan salah.",
         variant: "default", // Use destructive variant for errors
       });
-      console.error("Login API error:", error.message);
     } finally {
       setIsFormLoading(false);
     }
@@ -198,14 +186,11 @@ export default function Modall() {
     openRegister();
   };
 
-<<<<<<< HEAD
   const handleOpenLogin = () => {
     closeRegister();
     openLogin();
   };
 
-=======
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
   const handleSignup = async () => {
     setIsFormLoading(true);
     try {
@@ -252,12 +237,6 @@ export default function Modall() {
         }
       );
 
-      // Assume success if code reaches here (axios didn't throw for 4xx/5xx)
-      console.log(
-        "Signup successful, backend response status:",
-        response.status
-      );
-
       closeRegister();
       openLogin();
       setFullName("");
@@ -268,11 +247,9 @@ export default function Modall() {
       toast({
         title: "Registrasi berhasil!",
         description: "Silakan login.",
-        // variant: "default", // Keep default for success
       });
     } catch (error: any) {
       // This block now only catches actual HTTP errors (4xx, 5xx) or network errors
-      console.error("Signup Backend Error Response:", error.response?.data);
       const errorMessage =
         error.response?.data?.message || error.message || "Registrasi gagal";
       toast({
@@ -314,7 +291,6 @@ export default function Modall() {
 
               if (user && user.roleId && user.roleId.length > 0) {
                 userRole = user.roleId[0].roleId; // Assuming roleId is in an array
-<<<<<<< HEAD
 
                 // Lihat roleId dan tentukan link yang tepat
                 if (userRole === 1) {
@@ -330,22 +306,6 @@ export default function Modall() {
               }
 
               // Render the item only if the user is logged in
-=======
-                if (userRole === 1) {
-                  // Admin
-                  dashboardHref = "/admin/dashboard";
-                  isDashboardDisabled = false;
-                } else if (userRole === 3) {
-                  // User
-                  dashboardHref = "/dashboard";
-                  isDashboardDisabled = false;
-                }
-                // Role 2 or others: isDashboardDisabled remains true
-              }
-
-              // Render the item only if the user is logged in
-              // If the user is role 2, it will be rendered but disabled
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
               if (isLoggedIn) {
                 return (
                   <DropdownItem
@@ -359,30 +319,20 @@ export default function Modall() {
                         ? "text-gray-400 cursor-not-allowed"
                         : "font-bold"
                     } // Style disabled state
-<<<<<<< HEAD
                     textValue="My Dashboard" // Add textValue for accessibility
                   >
                     My Dashboard {isDashboardDisabled ? "(Disabled)" : ""}
-=======
-                  >
-                    My Dashboard {userRole === 2 ? "(Disabled)" : ""}{" "}
-                    {/* Add label for disabled state */}
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                   </DropdownItem>
                 );
               }
               return null; // Don't render if not logged in (handled by outer check anyway)
             })()}
-<<<<<<< HEAD
             <DropdownItem
               key="logout"
               color="danger"
               onPress={handleLogout}
               textValue="Log Out"
             >
-=======
-            <DropdownItem key="logout" color="danger" onPress={handleLogout}>
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
               Log Out
             </DropdownItem>
           </DropdownMenu>
@@ -443,11 +393,8 @@ export default function Modall() {
                         endContent={
                           <MailIcon className="text-2xl text-default-400 pointer-events-none flex-shrink-0" />
                         }
-<<<<<<< HEAD
                         type="email"
                         autoComplete="email"
-=======
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                       />
 
                       <Input
@@ -471,10 +418,7 @@ export default function Modall() {
                             )}
                           </button>
                         }
-<<<<<<< HEAD
                         autoComplete="current-password"
-=======
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                       />
 
                       <div className="flex py-2 px-1 justify-between">
@@ -624,7 +568,6 @@ export default function Modall() {
                 />
               </ModalBody>
               <ModalFooter>
-<<<<<<< HEAD
                 <Link
                   color="primary"
                   onPress={handleOpenLogin}
@@ -635,8 +578,6 @@ export default function Modall() {
                 >
                   Already have an account? Login
                 </Link>
-=======
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                 <Button
                   color="danger"
                   variant="flat"

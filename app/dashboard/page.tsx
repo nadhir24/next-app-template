@@ -44,10 +44,7 @@ interface Invoice {
   midtransOrderId: string;
   status: string;
   totalAmount: number;
-<<<<<<< HEAD
   amount?: number;
-=======
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
   createdAt: string;
   items: Array<{
     id: number;
@@ -56,20 +53,16 @@ interface Invoice {
     price: number;
   }>;
   midtransInvoicePdfUrl?: string;
-<<<<<<< HEAD
   shippingAddress?: string;
   shippingDistrict?: string;
   shippingCity?: string;
   shippingProvince?: string;
   shippingPostalCode?: string;
-=======
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
 }
 
 export default function DashboardPage() {
   const router = useRouter();
   const { user, isLoading, setUserState } = useAuth();
-  console.log("Dashboard render - User:", user, "isLoading:", isLoading);
 
   // Form states
   const [formData, setFormData] = useState<Partial<UserProfile>>({
@@ -109,55 +102,36 @@ export default function DashboardPage() {
 
   // Avatar preview URL
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "";
-  // Pastikan user.photoProfile tidak mengandung path lama dan hanya nama file
-  const imageName = user?.photoProfile?.split("/").pop() || ""; // Ambil hanya nama file
+  const imageName = user?.photoProfile?.split("/").pop() || "";
   const imageUrl =
     user?.photoProfile && imageName
-      ? `${apiBaseUrl}/uploads/users/${imageName}` // <<<=== UBAH INI: Gunakan path /uploads/users/
+      ? `${apiBaseUrl}/uploads/users/${imageName}`
       : "/defaultpp.svg";
-  console.log("Constructed imageUrl:", imageUrl);
+
   // Load user data on mount
   useEffect(() => {
-    console.log("User effect triggered", { user, isLoading });
     if (!user && !isLoading) {
-      console.log("No user, redirecting to home");
       router.push("/");
     }
 
     if (user) {
-<<<<<<< HEAD
-      console.log("User object structure:", JSON.stringify(user, null, 2));
-      
-      // Ensure user has userProfile object
       if (!user.userProfile) {
-        console.log("User has no userProfile, creating default");
         user.userProfile = {
-          addresses: []
+          addresses: [],
         };
       }
-      
-=======
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
+
       const userAddress = getUserPrimaryAddress(user);
-      console.log("Setting form data with user address:", userAddress);
       setFormData({
         fullName: user.fullName || "",
         phoneNumber: user.phoneNumber || "",
         userProfile: {
           address: {
-<<<<<<< HEAD
             label: userAddress?.label || "Rumah",
             street: userAddress?.street || "",
             city: userAddress?.city || "",
             state: userAddress?.state || "",
             postalCode: userAddress?.postalCode || "12345",
-=======
-            label: userAddress?.label || "",
-            street: userAddress?.street || "",
-            city: userAddress?.city || "",
-            state: userAddress?.state || "",
-            postalCode: userAddress?.postalCode || "",
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
             country: userAddress?.country || "Indonesia",
           },
         },
@@ -168,61 +142,43 @@ export default function DashboardPage() {
 
   // Load order history
   useEffect(() => {
-    console.log("Invoices effect triggered", { userId: user?.id, currentPage });
     fetchInvoices();
   }, [user?.id, currentPage]);
 
   const getUserPrimaryAddress = (userData: any) => {
-    console.log("Getting primary address from:", userData);
-<<<<<<< HEAD
-    
-    // First try to find default address from addresses array
-    if (userData.userProfile?.addresses && Array.isArray(userData.userProfile.addresses) && userData.userProfile.addresses.length > 0) {
-      const defaultAddress = userData.userProfile.addresses.find((addr: any) => addr.isDefault) || userData.userProfile.addresses[0];
-      console.log("Found address from addresses array:", defaultAddress);
+    if (
+      userData.userProfile?.addresses &&
+      Array.isArray(userData.userProfile.addresses) &&
+      userData.userProfile.addresses.length > 0
+    ) {
+      const defaultAddress =
+        userData.userProfile.addresses.find((addr: any) => addr.isDefault) ||
+        userData.userProfile.addresses[0];
       return defaultAddress;
     }
-    
-    // Then try single address object
+
     if (userData.userProfile?.address) {
-      console.log("Found single address object:", userData.userProfile.address);
       return userData.userProfile.address;
     }
-    
-    // Finally return empty object with defaults for required fields
-    console.log("No address found, returning defaults");
+
     return {
       label: "",
       street: "",
       city: "",
       state: "",
       postalCode: "",
-      country: "Indonesia"
+      country: "Indonesia",
     };
-=======
-    const address =
-      userData.userProfile?.addresses?.find((addr: any) => addr.isDefault) ||
-      userData.userProfile?.address ||
-      {};
-    console.log("Found address:", address);
-    return address;
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
   };
 
   const fetchInvoices = async () => {
     if (!user?.id) {
-      console.log("No user ID, skipping invoice fetch");
       return;
     }
 
-    console.log("Fetching invoices for user:", user.id, "page:", currentPage);
     setIsLoadingInvoices(true);
     try {
       const token = localStorage.getItem("token");
-      console.log(
-        "Using token for fetch:",
-        token ? "Token exists" : "No token"
-      );
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/payment/invoice/user?userId=${user.id}&page=${currentPage}&limit=10`,
         {
@@ -236,49 +192,40 @@ export default function DashboardPage() {
       if (!res.ok) throw new Error("Gagal mengambil riwayat pesanan");
 
       const data = await res.json();
-      console.log("Invoices fetched:", data);
-<<<<<<< HEAD
-      
-      // Make sure items are always properly mapped even if structure changes
+
       const processedInvoices = data.data.map((invoice: any) => {
-        console.log("Raw invoice amount fields:", {
-          id: invoice.id,
-          amount: invoice.amount,
-          totalAmount: invoice.totalAmount,
-          total: invoice.total,
-          items: invoice.items?.length
-        });
-        
         return {
           ...invoice,
-          items: Array.isArray(invoice.items) 
+          items: Array.isArray(invoice.items)
             ? invoice.items.map((item: any) => ({
                 id: item.id,
                 productName: item.productName || item.name || "Unnamed Product",
                 quantity: item.quantity || 1,
-                price: item.price || 0
+                price: item.price || 0,
               }))
             : [],
-          // Ensure shipping address fields are accessible
           shippingAddress: invoice.shippingAddress || null,
           shippingDistrict: invoice.shippingDistrict || null,
           shippingCity: invoice.shippingCity || null,
           shippingProvince: invoice.shippingProvince || null,
           shippingPostalCode: invoice.shippingPostalCode || null,
-          // Ensure total amount is correctly mapped from all possible API field names
-          totalAmount: invoice.totalAmount || invoice.amount || invoice.total || 
-            (Array.isArray(invoice.items) ? invoice.items.reduce((sum: number, item: any) => 
-              sum + ((item.price || 0) * (item.quantity || 1)), 0) : 0)
+          totalAmount:
+            invoice.totalAmount ||
+            invoice.amount ||
+            invoice.total ||
+            (Array.isArray(invoice.items)
+              ? invoice.items.reduce(
+                  (sum: number, item: any) =>
+                    sum + (item.price || 0) * (item.quantity || 1),
+                  0
+                )
+              : 0),
         };
       });
-      
+
       setInvoices(processedInvoices || []);
-=======
-      setInvoices(data.data || []);
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
       setPagination(data.pagination || {});
     } catch (err) {
-      console.error("Error fetching invoices:", err);
       toast.error("Gagal memuat riwayat pesanan.");
     } finally {
       setIsLoadingInvoices(false);
@@ -288,18 +235,10 @@ export default function DashboardPage() {
   // Handle input change
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    console.log("Input changed:", { name, value });
 
     if (name.startsWith("address.")) {
       const field = name.split(".")[1];
-      console.log(
-        "Updating address field:",
-        field,
-        "Current address state:",
-        formData.userProfile?.address
-      );
       setFormData((prev) => {
-        console.log("Previous state:", prev);
         const updated = {
           ...prev,
           userProfile: {
@@ -310,14 +249,11 @@ export default function DashboardPage() {
             },
           },
         };
-        console.log("Updated state:", updated);
         return updated;
       });
     } else {
-      console.log("Updating regular field:", name);
       setFormData((prev) => {
         const updated = { ...prev, [name]: value };
-        console.log("Updated regular state:", updated);
         return updated;
       });
     }
@@ -325,14 +261,11 @@ export default function DashboardPage() {
 
   // Handle image change
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log("Image input changed:", e.target.files);
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      console.log("Selected file:", file.name, file.size);
       setSelectedFile(file);
       setImagePreview(URL.createObjectURL(file));
     } else {
-      console.log("No file selected, resetting");
       setSelectedFile(null);
       setImagePreview(imageUrl); // Reset to current profile photo
     }
@@ -341,18 +274,15 @@ export default function DashboardPage() {
   // Submit form
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Form submission initiated with data:", formData);
 
     const userId = user?.id;
     if (!userId) {
-      console.log("No user ID found for submission");
       toast.error("User ID tidak ditemukan. Silakan login ulang.");
       return;
     }
 
     const token = localStorage.getItem("token");
     if (!token) {
-      console.log("No token found for submission");
       toast.error("Sesi tidak ditemukan. Silakan login kembali.");
       router.push("/");
       return;
@@ -361,21 +291,13 @@ export default function DashboardPage() {
     // Validate JWT
     try {
       const { exp } = jwtDecode<{ exp: number }>(token);
-      console.log(
-        "Token expiration:",
-        new Date(exp * 1000),
-        "Current time:",
-        new Date()
-      );
       if (Date.now() / 1000 > exp) {
-        console.log("Token expired");
         toast.error("Token telah kadaluarsa. Silakan login kembali.");
         localStorage.removeItem("token");
         router.push("/");
         return;
       }
     } catch (err) {
-      console.error("Error decoding token:", err);
       toast.error("Token tidak valid. Silakan login kembali.");
       localStorage.removeItem("token");
       router.push("/");
@@ -384,7 +306,6 @@ export default function DashboardPage() {
 
     setIsSubmitting(true);
     const loadingToast = toast.loading("Menyimpan perubahan...");
-    console.log("Starting form submission process");
 
     try {
       // Prepare FormData for profile update
@@ -393,12 +314,10 @@ export default function DashboardPage() {
       formDataToSend.append("phoneNumber", formData.phoneNumber || "");
 
       if (selectedFile) {
-        console.log("Adding file to form data:", selectedFile.name);
         formDataToSend.append("image", selectedFile);
       }
 
       // Update user profile
-      console.log("Updating user profile for user ID:", userId);
       const profileResponse = await axios.put(
         `${process.env.NEXT_PUBLIC_API_URL}/users/${userId}`,
         formDataToSend,
@@ -408,39 +327,18 @@ export default function DashboardPage() {
           },
         }
       );
-      console.log("Profile update response:", profileResponse.data);
 
       // Update user address
       const address = formData.userProfile?.address;
-      console.log("Address to update:", address);
-<<<<<<< HEAD
-=======
-      if (!address?.postalCode) {
-        console.log("Missing postal code");
-        toast.error("Kode Pos tidak boleh kosong.");
-        return;
-      }
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
-
-      console.log("Updating address for user ID:", userId);
-      const addressResponse = await axios.post(
+      await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/users/${userId}/addresses`,
         {
-<<<<<<< HEAD
           label: address?.label,
           street: address?.street,
           city: address?.city,
           state: address?.state,
           postalCode: address?.postalCode || "12345",
           country: address?.country || "Indonesia",
-=======
-          label: address.label,
-          street: address.street,
-          city: address.city,
-          state: address.state,
-          postalCode: address.postalCode,
-          country: address.country || "Indonesia",
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
           isDefault: true,
         },
         {
@@ -450,10 +348,8 @@ export default function DashboardPage() {
           },
         }
       );
-      console.log("Address update response:", addressResponse.data);
 
       // Refresh user data
-      console.log("Refreshing user data");
       const res = await axios.get(
         `${process.env.NEXT_PUBLIC_API_URL}/users/${userId}`,
         {
@@ -462,7 +358,6 @@ export default function DashboardPage() {
           },
         }
       );
-      console.log("Updated user data:", res.data);
 
       setUserState(res.data);
       toast.success("Profil dan alamat berhasil diperbarui!");
@@ -475,29 +370,21 @@ export default function DashboardPage() {
       setImagePreview(newImageUrl);
       setIsEditing(false);
     } catch (err: any) {
-      console.error("Error in submission:", err);
       const msg =
         err.response?.data?.message ||
         err.message ||
         "Terjadi kesalahan saat menyimpan data.";
-      console.log("Error message:", msg);
       toast.error(Array.isArray(msg) ? msg.join(", ") : msg);
     } finally {
       toast.dismiss(loadingToast);
       setIsSubmitting(false);
-      console.log("Form submission completed");
     }
   };
 
   // Format currency and date
-<<<<<<< HEAD
   const formatCurrency = (amount: number | undefined | null) => {
-    // Ensure amount is a valid number
-    const numAmount = typeof amount === 'number' && !isNaN(amount) ? amount : 0;
-    
-    // Log the currency formatting
-    console.log(`Formatting currency: ${amount} → ${numAmount}`);
-    
+    const numAmount = typeof amount === "number" && !isNaN(amount) ? amount : 0;
+
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
       currency: "IDR",
@@ -505,13 +392,6 @@ export default function DashboardPage() {
       maximumFractionDigits: 0,
     }).format(numAmount);
   };
-=======
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-    }).format(amount);
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
 
   const formatDate = (dateString: string) =>
     new Date(dateString).toLocaleDateString("id-ID", {
@@ -557,7 +437,6 @@ export default function DashboardPage() {
                 </CardDescription>
               </div>
 
-<<<<<<< HEAD
               {!isEditing && (
                 <Button
                   type="button"
@@ -567,15 +446,6 @@ export default function DashboardPage() {
                   Edit Profile
                 </Button>
               )}
-=======
-              <Button
-                type="button"
-                onClick={() => setIsEditing(true)}
-                size="sm"
-              >
-                Edit Profile
-              </Button>
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -776,12 +646,9 @@ export default function DashboardPage() {
                           Tanggal
                         </th>
                         <th className="px-6 py-3 text-left text-sm font-semibold">
-<<<<<<< HEAD
                           Alamat
                         </th>
                         <th className="px-6 py-3 text-left text-sm font-semibold">
-=======
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                           Produk
                         </th>
                         <th className="px-6 py-3 text-left text-sm font-semibold">
@@ -805,25 +672,29 @@ export default function DashboardPage() {
                             {formatDate(invoice.createdAt)}
                           </td>
                           <td className="px-6 py-4">
-<<<<<<< HEAD
-                              <div className="text-sm">
-                                <p className="font-medium">{invoice.shippingAddress}</p>
-                                <p className="text-gray-500">
-                                  {invoice.shippingDistrict && invoice.shippingCity ? 
-                                    `${invoice.shippingDistrict}, ${invoice.shippingCity}` : 
-                                    invoice.shippingCity || invoice.shippingDistrict || ''}
-                                </p>
-                                <p className="text-gray-500">
-                                  {invoice.shippingProvince && invoice.shippingPostalCode ? 
-                                    `${invoice.shippingProvince} ${invoice.shippingPostalCode}` : 
-                                    invoice.shippingProvince || invoice.shippingPostalCode || ''}
-                                </p>
-                              </div>
-                           
+                            <div className="text-sm">
+                              <p className="font-medium">
+                                {invoice.shippingAddress}
+                              </p>
+                              <p className="text-gray-500">
+                                {invoice.shippingDistrict &&
+                                invoice.shippingCity
+                                  ? `${invoice.shippingDistrict}, ${invoice.shippingCity}`
+                                  : invoice.shippingCity ||
+                                    invoice.shippingDistrict ||
+                                    ""}
+                              </p>
+                              <p className="text-gray-500">
+                                {invoice.shippingProvince &&
+                                invoice.shippingPostalCode
+                                  ? `${invoice.shippingProvince} ${invoice.shippingPostalCode}`
+                                  : invoice.shippingProvince ||
+                                    invoice.shippingPostalCode ||
+                                    ""}
+                              </p>
+                            </div>
                           </td>
                           <td className="px-6 py-4">
-=======
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                             {invoice.items.map((item) => (
                               <div key={item.id}>
                                 {item.productName} x{item.quantity}
@@ -831,42 +702,36 @@ export default function DashboardPage() {
                             ))}
                           </td>
                           <td className="px-6 py-4">
-<<<<<<< HEAD
-                            {invoice.totalAmount === 0 && Array.isArray(invoice.items) && invoice.items.length > 0 ? (
-                              formatCurrency(invoice.items.reduce((sum, item) => sum + (item.price * item.quantity), 0))
-                            ) : (
-                              formatCurrency(invoice.totalAmount || invoice.amount)
-                            )}
-=======
-                            {formatCurrency(invoice.totalAmount)}
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
+                            {invoice.totalAmount === 0 &&
+                            Array.isArray(invoice.items) &&
+                            invoice.items.length > 0
+                              ? formatCurrency(
+                                  invoice.items.reduce(
+                                    (sum, item) =>
+                                      sum + item.price * item.quantity,
+                                    0
+                                  )
+                                )
+                              : formatCurrency(
+                                  invoice.totalAmount || invoice.amount
+                                )}
                           </td>
                           <td className="px-6 py-4">
                             <span
                               className={`inline-block px-2 py-1 rounded-full text-sm ${
-<<<<<<< HEAD
                                 invoice.status === "PROCESSING"
                                   ? "bg-blue-100 text-blue-700"
                                   : invoice.status === "SHIPPED"
-                                  ? "bg-yellow-100 text-yellow-700"
-                                  : ["DELIVERED", "SETTLEMENT"].includes(invoice.status)
-                                  ? "bg-green-100 text-green-700"
-                                  : invoice.status === "CANCELLED"
-                                  ? "bg-red-100 text-red-700"
-                                  : invoice.status === "PENDING"
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : "bg-gray-100 text-gray-700"
-=======
-                                ["SETTLEMENT", "DELIVERED"].includes(
-                                  invoice.status
-                                )
-                                  ? "bg-green-100 text-green-800"
-                                  : ["PENDING", "PROCESSING"].includes(
-                                        invoice.status
-                                      )
-                                    ? "bg-yellow-100 text-yellow-800"
-                                    : "bg-red-100 text-red-800"
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
+                                    ? "bg-yellow-100 text-yellow-700"
+                                    : ["DELIVERED", "SETTLEMENT"].includes(
+                                          invoice.status
+                                        )
+                                      ? "bg-green-100 text-green-700"
+                                      : invoice.status === "CANCELLED"
+                                        ? "bg-red-100 text-red-700"
+                                        : invoice.status === "PENDING"
+                                          ? "bg-yellow-100 text-yellow-800"
+                                          : "bg-gray-100 text-gray-700"
                               }`}
                             >
                               {invoice.status}

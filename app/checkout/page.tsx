@@ -110,10 +110,7 @@ export default function CheckoutPage() {
     useState<string>("new_address");
   const [phoneSuffix, setPhoneSuffix] = useState("");
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-<<<<<<< HEAD
   const [isLoadingCart, setIsLoadingCart] = useState(true);
-=======
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
 
   const shippingMethods: ShippingMethod[] = [
     {
@@ -127,11 +124,7 @@ export default function CheckoutPage() {
       id: "gojek",
       name: "Gojek",
       description:
-<<<<<<< HEAD
         "langsung konfirmasi nomor oreder via Whatsapp jika pesanan sudah jadi akan diberi notifikasidan ongkir ditanggung pembeli",
-=======
-        "jika pesanan sudah jadi akan diberi notifikasidan ongkir ditanggung pembeli",
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
       price: null,
       estimatedDays: "Instant (1-2 jam)",
     },
@@ -146,7 +139,7 @@ export default function CheckoutPage() {
       try {
         parsedCartData = cartData ? JSON.parse(cartData) : null;
       } catch (e) {
-        console.error("Error parsing cart data:", e);
+        toast.error("Error parsing cart data");
       }
 
       // Get user data with proper fallback chain
@@ -188,12 +181,6 @@ export default function CheckoutPage() {
       ]);
 
       if (!itemsRes.ok || !totalRes.ok) {
-        console.error("API Error Details:", {
-          itemsStatus: itemsRes.status,
-          totalStatus: totalRes.status,
-          itemsStatusText: itemsRes.statusText,
-          totalStatusText: totalRes.statusText,
-        });
         throw new Error("Gagal mengambil data");
       }
 
@@ -203,26 +190,15 @@ export default function CheckoutPage() {
       ]);
 
       if (!items || items.length === 0) {
-        console.warn("[Checkout] Cart is empty based on API response.");
         setCheckoutData({ items: [], subtotal: 0, shipping: 0, total: 0 });
         setTotalFromBackend(0);
-<<<<<<< HEAD
         setIsLoadingCart(false);
-=======
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
         return;
       }
 
       let totalValue = 0;
       if (typeof totalText === "string" && totalText.startsWith("Rp")) {
         totalValue = parseInt(totalText.replace(/[^0-9]/g, "")) || 0;
-        console.log(
-          `[Checkout] Parsed total string '${totalText}' to number: ${totalValue}`
-        );
-      } else {
-        console.warn(
-          `[Checkout] Unexpected format for totalText: ${totalText}`
-        );
       }
       setTotalFromBackend(totalValue);
 
@@ -260,17 +236,10 @@ export default function CheckoutPage() {
         shipping: shippingCost,
         total: totalValue || subtotal + shippingCost,
       });
-<<<<<<< HEAD
       setIsLoadingCart(false);
     } catch (error) {
-      console.error("Error fetching cart - Full details:", error);
       toast.error("Gagal mengambil data cart");
       setIsLoadingCart(false);
-=======
-    } catch (error) {
-      console.error("Error fetching cart - Full details:", error);
-      toast.error("Gagal mengambil data cart");
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
     }
   }, [userId, selectedShippingMethod]);
 
@@ -278,29 +247,22 @@ export default function CheckoutPage() {
   const fetchCheckoutData = fetchCartData;
 
   const fetchSavedAddresses = async (userId: string) => {
-    console.log("🏠 Fetching saved addresses for user:", userId);
     setAddressesLoading(true);
     try {
-<<<<<<< HEAD
       // Get token from localStorage
       const token = localStorage.getItem("token");
       if (!token) {
-        console.warn("No token found when fetching addresses");
         return;
       }
-      
+
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/users/${userId}/addresses`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json"
-          }
+            "Content-Type": "application/json",
+          },
         }
-=======
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/users/${userId}/addresses`
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
       );
 
       if (!response.ok) {
@@ -308,38 +270,22 @@ export default function CheckoutPage() {
       }
 
       const addresses = await response.json();
-      console.log("📍 Fetched addresses:", addresses);
 
-<<<<<<< HEAD
       // Filter out duplicate addresses by comparing street values
-      const uniqueAddresses = addresses.reduce((acc: SavedAddress[], curr: SavedAddress) => {
-        // Normalize street by removing extra spaces and lowercasing
-        const normalizeText = (text: string) => 
-          text?.toLowerCase().replace(/\s+/g, ' ').trim() || '';
-          
-        const currStreetNormalized = normalizeText(curr.street);
-        
-        // Check if we already have an address with the same normalized street
-        const isDuplicate = acc.some(addr => 
-          normalizeText(addr.street) === currStreetNormalized
-        );
-        
-        if (!isDuplicate && currStreetNormalized) {
-          acc.push(curr);
-        }
-        return acc;
-      }, []);
-
-      console.log("📍 Filtered unique addresses:", uniqueAddresses);
-=======
-      // Filter alamat duplikat berdasarkan kombinasi street+city
       const uniqueAddresses = addresses.reduce(
         (acc: SavedAddress[], curr: SavedAddress) => {
-          // Cek apakah alamat dengan kombinasi street+city yang sama sudah ada
+          // Normalize street by removing extra spaces and lowercasing
+          const normalizeText = (text: string) =>
+            text?.toLowerCase().replace(/\s+/g, " ").trim() || "";
+
+          const currStreetNormalized = normalizeText(curr.street);
+
+          // Check if we already have an address with the same normalized street
           const isDuplicate = acc.some(
-            (addr) => addr.street === curr.street && addr.city === curr.city
+            (addr) => normalizeText(addr.street) === currStreetNormalized
           );
-          if (!isDuplicate) {
+
+          if (!isDuplicate && currStreetNormalized) {
             acc.push(curr);
           }
           return acc;
@@ -347,10 +293,8 @@ export default function CheckoutPage() {
         []
       );
 
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
       setSavedAddresses(uniqueAddresses);
     } catch (error) {
-      console.error("❌ Error fetching saved addresses:", error);
       toast.error("Gagal mengambil daftar alamat tersimpan");
     } finally {
       setAddressesLoading(false);
@@ -358,8 +302,6 @@ export default function CheckoutPage() {
   };
 
   const handleAddressSelect = (addressId: string) => {
-    console.log("🔄 Selected address ID:", addressId);
-
     if (addressId === "new_address") {
       // Clear all fields except email (which should come from user context)
       setShippingAddress((prev) => ({
@@ -374,9 +316,6 @@ export default function CheckoutPage() {
         email: user?.email || "", // Keep email from context
       }));
       setSelectedAddressId("new_address");
-      console.log(
-        "🧹 Cleared address and personal fields (except email) for new address entry"
-      );
       return;
     }
 
@@ -385,7 +324,6 @@ export default function CheckoutPage() {
     );
 
     if (selectedAddress && user) {
-      console.log("📍 Selected existing address:", selectedAddress);
       // Split fullName from user context for first/last name
       const nameParts = user.fullName ? user.fullName.split(" ") : ["", ""];
       const firstName = nameParts[0];
@@ -406,7 +344,6 @@ export default function CheckoutPage() {
       }));
       setSelectedAddressId(addressId);
     } else {
-      console.error("⚠️ Selected address not found or user data unavailable");
       // Fallback to new address if the selected address is not found
       setShippingAddress((prev) => ({
         ...prev,
@@ -424,13 +361,6 @@ export default function CheckoutPage() {
   };
 
   useEffect(() => {
-    console.log("🔄 useEffect triggered");
-    console.log("📦 All localStorage items:", {
-      allKeys: Object.keys(localStorage),
-      userObj: localStorage.getItem("user"),
-      cart: localStorage.getItem("cart"),
-    });
-
     // Mulai dengan status loading
     setAddressesLoading(true);
 
@@ -441,35 +371,23 @@ export default function CheckoutPage() {
       if (userStr) {
         const userData = JSON.parse(userStr);
         userIdFromStorage = userData.id?.toString();
-        console.log("👤 Parsed user data:", userData);
       }
     } catch (error) {
-      console.error("Error parsing user data:", error);
+      toast.error("Error parsing user data");
     }
 
-    console.log("🔑 UserID extracted from user object:", userIdFromStorage);
-
     if (userIdFromStorage) {
-      console.log(
-        "✅ Found userId in storage, fetching full user data and addresses:",
-        userIdFromStorage
-      );
       setUserId(userIdFromStorage);
 
       // Fetch full user data untuk pre-fill nama, email, telepon
-<<<<<<< HEAD
       fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/${userIdFromStorage}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
-          "Content-Type": "application/json"
-        }
+          "Content-Type": "application/json",
+        },
       })
-=======
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/${userIdFromStorage}`)
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
         .then((res) => res.json())
         .then((userData) => {
-          console.log("[Checkout] Fetched user data for pre-fill:", userData);
           if (userData) {
             const nameParts = userData.fullName
               ? userData.fullName.split(" ")
@@ -478,7 +396,7 @@ export default function CheckoutPage() {
             const lastName = nameParts.slice(1).join(" ");
 
             setShippingAddress((prev) => ({
-              ...prev, // Pertahankan alamat kosong dari reset sebelumnya
+              ...prev,
               firstName: firstName || "",
               lastName: lastName || "",
               email: userData.email || "",
@@ -486,9 +404,9 @@ export default function CheckoutPage() {
             }));
           }
         })
-        .catch((err) =>
-          console.error("Error fetching user data for pre-fill:", err)
-        );
+        .catch((err) => {
+          toast.error("Error fetching user data");
+        });
 
       // Fetch saved addresses untuk dropdown dan otomatis gunakan jika ada default
       fetchSavedAddresses(userIdFromStorage)
@@ -510,11 +428,9 @@ export default function CheckoutPage() {
           setAddressesLoading(false);
         });
     } else {
-      console.log("⚠️ No valid userId found in storage");
       setAddressesLoading(false);
     }
 
-    console.log("🛒 Calling fetchCartData");
     fetchCartData();
   }, [fetchCartData]);
 
@@ -588,8 +504,7 @@ export default function CheckoutPage() {
   };
 
   const createTransaction = async () => {
-    setLoading(true); // Aktifkan loading saat tombol dicetek
-    console.log("🚀 Loading state:", loading);
+    setLoading(true);
     try {
       // Validasi field yang required saat metode pengiriman = free
       if (selectedShippingMethod === "free") {
@@ -625,7 +540,6 @@ export default function CheckoutPage() {
 
       // Jika checkbox dicentang, simpan informasi pengiriman
       if (saveInfo && userId) {
-        console.log("💾 Checkbox dicentang, menyimpan informasi pengiriman");
         await handleSaveInfo(true);
       }
       const selectedMethod = shippingMethods.find(
@@ -659,17 +573,15 @@ export default function CheckoutPage() {
         window.location.href = data.data.paymentLink;
       }
     } catch (error) {
-      console.error("Error creating transaction:", error);
-      toast.error("Gagal membuat transaksi"); // Tampilkan toast error jika gagal
+      toast.error("Gagal membuat transaksi");
     } finally {
-      setLoading(false); // Nonaktifkan loading setelah selesai
+      setLoading(false);
     }
   };
 
   const handleSaveInfo = async (shouldSave: boolean) => {
     if (!shouldSave || !userId) return;
 
-    console.log("💾 Saving shipping info for user:", userId);
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/users/${userId}`,
@@ -694,45 +606,12 @@ export default function CheckoutPage() {
         throw new Error("Failed to save shipping info");
       }
 
-      console.log("✅ Shipping info saved successfully");
       toast.success("Informasi pengiriman berhasil disimpan");
     } catch (error) {
-      console.error("❌ Error saving shipping info:", error);
       toast.error("Gagal menyimpan informasi pengiriman");
       setSaveInfo(false); // Reset checkbox if save fails
     }
   };
-
-  // Tambahkan console.log di awal component untuk melihat render
-  console.log("🎨 Checkout Page Rendered", {
-    userId,
-    shippingAddress,
-    selectedShippingMethod,
-  });
-
-  // if (loading) {
-  //   return (
-  //     <div className="min-h-screen py-10">
-  //       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-  //         <div className="text-center mb-8">
-  //           <div className="h-8 w-48 mx-auto bg-gray-200 rounded animate-pulse mb-2"></div>
-  //           <div className="h-4 w-64 mx-auto bg-gray-200 rounded animate-pulse"></div>
-  //         </div>
-  //         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-  //           <div className="lg:col-span-2 space-y-6">
-  //             {[1, 2, 3].map((i) => (
-  //               <div
-  //                 key={i}
-  //                 className="h-64 bg-gray-200 rounded animate-pulse"
-  //               ></div>
-  //             ))}
-  //           </div>
-  //           <div className="h-96 bg-gray-200 rounded animate-pulse"></div>
-  //         </div>
-  //       </div>
-  //     </div>
-  //   );
-  // }
 
   return (
     <div className="min-h-screen py-10">
@@ -1115,12 +994,14 @@ export default function CheckoutPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="max-h-[300px] overflow-y-auto pr-2 space-y-4">
-<<<<<<< HEAD
                     {isLoadingCart ? (
                       // Skeleton loader while checking for items
                       <div className="space-y-4">
                         {[...Array(3)].map((_, index) => (
-                          <div key={index} className="flex items-center pb-4 border-b">
+                          <div
+                            key={index}
+                            className="flex items-center pb-4 border-b"
+                          >
                             <div className="w-16 h-16 rounded-md mr-4 bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
                             <div className="flex-1 space-y-2">
                               <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 animate-pulse"></div>
@@ -1135,10 +1016,6 @@ export default function CheckoutPage() {
                       </div>
                     ) : checkoutData.items.length === 0 ? (
                       // Empty cart message (only shown after loading)
-=======
-                    {checkoutData.items.length === 0 ? (
-                      // Pesan keranjang kosong alih-alih skeleton loader
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                       <div className="flex flex-col items-center justify-center py-8 text-center space-y-4">
                         <div className="text-4xl mb-2">🛒</div>
                         <h3 className="font-semibold text-gray-800">
@@ -1147,22 +1024,9 @@ export default function CheckoutPage() {
                         <p className="text-gray-500 text-sm mb-4">
                           Silahkan berbelanja untuk melanjutkan checkout
                         </p>
-<<<<<<< HEAD
                       </div>
                     ) : (
                       // Render actual items
-=======
-                        <Tombol
-                          onPress={() => router.push("/katalog")}
-                          className="bg-black hover:bg-gray-800 text-white"
-                          isLoading={false}
-                        >
-                          Lihat Katalog
-                        </Tombol>
-                      </div>
-                    ) : (
-                      // Render Item Asli
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                       checkoutData.items.map((item) => {
                         try {
                           return (
@@ -1177,7 +1041,6 @@ export default function CheckoutPage() {
                                   fill
                                   className="object-cover"
                                   onError={(e) => {
-                                    console.error("Error loading image:", e);
                                     e.currentTarget.src = "/blurry.svg";
                                   }}
                                 />
@@ -1201,7 +1064,6 @@ export default function CheckoutPage() {
                             </div>
                           );
                         } catch (error) {
-                          console.error("Error rendering cart item:", error);
                           return null;
                         }
                       })
@@ -1237,7 +1099,6 @@ export default function CheckoutPage() {
                   </div>
                 </CardContent>
                 <CardFooter>
-<<<<<<< HEAD
                   {checkoutData.items.length === 0 ? (
                     // If cart is empty, only show Lihat Katalog button
                     <Tombol
@@ -1255,7 +1116,7 @@ export default function CheckoutPage() {
                       size="lg"
                       isDisabled={loading} // Menambahkan prop disabled untuk mencegah pencetan saat loading
                     >
-                     {loading ? (
+                      {loading ? (
                         <>
                           <Spinner size="sm" className="mr-2" />
                           Memproses...
@@ -1265,24 +1126,6 @@ export default function CheckoutPage() {
                       )}
                     </Tombol>
                   )}
-=======
-                  <Tombol
-                    onPress={createTransaction}
-                    className="w-full bg-black hover:bg-gray-800 text-white"
-                    size="lg"
-                    isDisabled={loading} // Menambahkan prop disabled untuk mencegah pencetan saat loading
-                  >
-                   {loading ? (
-    <>
-      <Spinner size="sm" className="mr-2" />
-      Memproses...
-    </>
-  ) : (
-    "Bayar Sekarang"
-  )}
-
-                  </Tombol>
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                 </CardFooter>
               </Card>
             </div>

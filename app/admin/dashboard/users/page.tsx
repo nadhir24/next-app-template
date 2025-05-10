@@ -81,7 +81,6 @@ export default function UsersPage() {
 
       // Log the API URL being used
       const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/users?${params.toString()}`;
-      console.log("Fetching from:", apiUrl);
 
       const response = await fetch(apiUrl, {
         method: "GET",
@@ -95,29 +94,22 @@ export default function UsersPage() {
         credentials: "same-origin",
       });
 
-      console.log("Response status:", response.status);
-
       if (!response.ok) {
         let errorMessage = "Failed to fetch users";
         try {
           const errorData = await response.json();
           errorMessage = errorData.message || errorMessage;
         } catch (e) {
-          // If response is not JSON, try to get text
           try {
             errorMessage = (await response.text()) || errorMessage;
           } catch (textError) {
-            console.error("Could not parse error response as text:", textError);
           }
         }
-        console.error("Error response:", errorMessage);
         throw new Error(errorMessage);
       }
 
       const data = await response.json();
-      console.log("Raw API response:", data);
 
-      // Handle both formats - direct array or users object with pagination
       let usersArray;
       let paginationData;
 
@@ -144,7 +136,6 @@ export default function UsersPage() {
           hasPreviousPage: false,
         };
       } else {
-        console.error("Invalid data format received:", data);
         throw new Error("Invalid data format received from API");
       }
 
@@ -160,13 +151,10 @@ export default function UsersPage() {
         roleId: user.roleId,
       }));
 
-      console.log("Formatted users:", formattedUsers);
-
       setUsers(formattedUsers);
       setTotalPages(paginationData.totalPages);
       setCurrentPage(paginationData.currentPage);
     } catch (error) {
-      console.error("Error in fetchUsers:", error);
       toast({
         title: "Error",
         description:
@@ -185,7 +173,6 @@ export default function UsersPage() {
   useEffect(() => {
     if (searchQuery.length === 0 || searchQuery.length >= 2) {
       const timeoutId = setTimeout(() => {
-        console.log("Triggering search with query:", searchQuery);
         fetchUsers(1, searchQuery);
       }, 500);
 
@@ -214,9 +201,8 @@ export default function UsersPage() {
       try {
         const decoded = jwtDecode<{ id: number }>(token);
         setCurrentUserId(decoded.id);
-        console.log("Current user ID:", decoded.id);
       } catch (error) {
-        console.error("Error decoding token:", error);
+        // Error handling without console.log
       }
     }
   }, []);
@@ -361,14 +347,6 @@ export default function UsersPage() {
                                   user.userRoles[0]?.roleId === 1 &&
                                   newRoleId !== 1;
 
-                                console.log("Role change details:", {
-                                  userId: user.id,
-                                  currentUserId,
-                                  newRoleId,
-                                  isChangingOwnRole,
-                                  isChangingFromAdminToUser,
-                                });
-
                                 const response = await fetch(
                                   `${process.env.NEXT_PUBLIC_API_URL}/user-role/update`,
                                   {
@@ -390,16 +368,9 @@ export default function UsersPage() {
 
                                 // Parse response to get new token
                                 const responseData = await response.json();
-                                console.log(
-                                  "Role update response:",
-                                  responseData
-                                );
 
                                 // Update token in localStorage if it's the current user
                                 if (isChangingOwnRole && responseData.token) {
-                                  console.log(
-                                    "Updating token in localStorage with new role information"
-                                  );
                                   localStorage.setItem(
                                     "token",
                                     responseData.token
@@ -419,10 +390,7 @@ export default function UsersPage() {
                                         JSON.stringify(userObj)
                                       );
                                     } catch (e) {
-                                      console.error(
-                                        "Error updating user in localStorage:",
-                                        e
-                                      );
+                                      // Error handling without console.log
                                     }
                                   }
                                 }
@@ -460,7 +428,6 @@ export default function UsersPage() {
                                   description: "Failed to update role",
                                   variant: "destructive",
                                 });
-                                console.error("Error updating role:", error);
                               }
                             }}
                           >
@@ -530,15 +497,10 @@ export default function UsersPage() {
                                         variant: "default",
                                       });
 
-                                      // Close all toasts before fetching new data
                                       setTimeout(() => {
                                         fetchUsers(currentPage, searchQuery);
                                       }, 500);
                                     } catch (error) {
-                                      console.error(
-                                        "Error deleting user:",
-                                        error
-                                      );
                                       toast({
                                         title: "Error",
                                         description:

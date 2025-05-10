@@ -41,7 +41,7 @@ export const authOptions: NextAuthOptions = {
       name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" }
+        password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
@@ -50,16 +50,19 @@ export const authOptions: NextAuthOptions = {
 
         try {
           // Call your API endpoint for authentication
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              email: credentials.email,
-              password: credentials.password,
-            }),
-          });
+          const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/auth/login`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                email: credentials.email,
+                password: credentials.password,
+              }),
+            }
+          );
 
           const data = await response.json();
 
@@ -72,14 +75,13 @@ export const authOptions: NextAuthOptions = {
               refreshToken: data.refreshToken,
             };
           }
-          
+
           return null;
         } catch (error) {
-          console.error('Auth error:', error);
           return null;
         }
-      }
-    })
+      },
+    }),
   ],
   callbacks: {
     async jwt({ token, user }) {
@@ -104,8 +106,8 @@ export const authOptions: NextAuthOptions = {
     },
   },
   pages: {
-    signIn: '/login',
-    error: '/login',
+    signIn: "/login",
+    error: "/login",
   },
-  secret: process.env.NEXTAUTH_SECRET || 'your-secret-key',
-}; 
+  secret: process.env.NEXTAUTH_SECRET || "your-secret-key",
+};

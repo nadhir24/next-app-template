@@ -40,7 +40,6 @@ export default function InvoicePage() {
   const router = useRouter();
   const { isLoggedIn } = useAuth();
 
-<<<<<<< HEAD
   // Clear invoice data when component unmounts or when login state changes
   useEffect(() => {
     return () => {
@@ -57,26 +56,24 @@ export default function InvoicePage() {
     const handleStorageChange = () => {
       const storedGuestId = localStorage.getItem("guestId");
       setGuestId(storedGuestId);
-      
+
       if (!storedGuestId) {
         setInvoices([]);
       }
     };
-    
+
     // Listen for storage changes
-    window.addEventListener('storage', handleStorageChange);
-    
+    window.addEventListener("storage", handleStorageChange);
+
     // Listen for auth events
-    window.addEventListener('cart_clear_needed', handleStorageChange);
-    
+    window.addEventListener("cart_clear_needed", handleStorageChange);
+
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('cart_clear_needed', handleStorageChange);
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("cart_clear_needed", handleStorageChange);
     };
   }, []);
 
-=======
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
   useEffect(() => {
     if (typeof isLoggedIn === "boolean") {
       if (isLoggedIn) {
@@ -87,45 +84,37 @@ export default function InvoicePage() {
       } else {
         const storedGuestId = localStorage.getItem("guestId");
         setGuestId(storedGuestId);
-  
+
         if (!storedGuestId) {
           setLoading(false);
           return;
         }
-  
+
         const fetchGuestInvoices = async () => {
           setLoading(true);
           try {
             const response = await fetch(
               `${process.env.NEXT_PUBLIC_API_URL}/payment/invoice/guest-list?guestId=${storedGuestId}`
             );
-  
+
             if (!response.ok) {
               throw new Error("Failed to fetch invoices");
             }
-  
-<<<<<<< HEAD
+
             const result = await response.json();
             setInvoices(result.data || []);
-=======
-            const data = await response.json();
-            setInvoices(data);
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
           } catch (error) {
-            console.error("Error fetching guest invoices:", error);
             toast.error("Gagal mengambil data invoice");
           } finally {
             setLoading(false);
           }
         };
-  
+
         fetchGuestInvoices();
       }
     }
   }, [isLoggedIn, router]);
-  
 
-  
   // Function to get status badge color based on invoice status
   const getStatusBadge = (status: string) => {
     switch (status.toUpperCase()) {
@@ -199,8 +188,8 @@ export default function InvoicePage() {
             <AlertCircle className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
             <h2 className="text-xl font-semibold mb-2">Tidak Ada ID Tamu</h2>
             <p className="text-gray-500 mb-4">
-              Anda adalah User. Silahkan lakukan pembelian 
-              untuk melihat invoice Anda.
+              Anda adalah User. Silahkan lakukan pembelian untuk melihat invoice
+              Anda.
             </p>
             <div className="flex justify-center gap-4">
               <Button onClick={() => router.push("/katalog")} variant="outline">
@@ -264,7 +253,7 @@ export default function InvoicePage() {
                         PDF
                       </Button>
                     )}
-                   
+
                     {invoice.status === "PENDING" && invoice.paymentUrl && (
                       <Button
                         variant="default"

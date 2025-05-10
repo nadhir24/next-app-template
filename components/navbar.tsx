@@ -63,7 +63,7 @@ export default function Navy() {
           setCartItems(JSON.parse(storedCart));
         }
       } catch (error) {
-        console.error("Error initializing data:", error);
+        // Silent fail
       } finally {
         setIsLoading(false);
       }
@@ -154,15 +154,7 @@ export default function Navy() {
               <NavbarMenuItem key={`${item}-${index}`}>
                 <Link
                   className={
-<<<<<<< HEAD
                     `transition-colors duration-200 text-base font-medium ` 
-=======
-                    index === 2
-                      ? "text-primary"
-                      : index === siteConfig.navMenuItems.length - 1
-                        ? "text-yellow"
-                        : "text-white"
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                   }
                   href={item.href}
                 >

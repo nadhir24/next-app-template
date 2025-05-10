@@ -1,22 +1,23 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { Bell } from 'lucide-react';
+import { useEffect, useState } from "react";
+import { Bell } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
-import { formatCurrency } from '@/lib/utils';
-import Link from 'next/link';
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { formatCurrency } from "@/lib/utils";
+import Link from "next/link";
+import { toast } from "sonner";
 
 interface InvoiceNotification {
   id: string;
   order_id: string;
   invoice_number: string;
-  status: 'draft' | 'pending' | 'expired' | 'overdue' | 'paid' | 'voided';
+  status: "draft" | "pending" | "expired" | "overdue" | "paid" | "voided";
   gross_amount: number;
   pdf_url: string;
   payment_link_url: string;
@@ -41,13 +42,16 @@ export function InvoiceNotification() {
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
-        const response = await fetch('/api/payment/invoice/notifications');
-        if (!response.ok) throw new Error('Failed to fetch notifications');
+        const response = await fetch("/api/payment/invoice/notifications");
+        if (!response.ok) throw new Error("Failed to fetch notifications");
         const data = await response.json();
         setNotifications(data.data);
-        setUnreadCount(data.data.filter((n: InvoiceNotification) => n.status === 'pending').length);
+        setUnreadCount(
+          data.data.filter((n: InvoiceNotification) => n.status === "pending")
+            .length
+        );
       } catch (error) {
-        console.error('Error fetching notifications:', error);
+        toast.error("Failed to fetch notifications");
       }
     };
 
@@ -85,15 +89,24 @@ export function InvoiceNotification() {
                 className="flex flex-col gap-1 p-2"
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-medium">Invoice #{notification.invoice_number}</span>
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    notification.status === 'paid' ? 'bg-green-100 text-green-800' :
-                    notification.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                    notification.status === 'expired' ? 'bg-red-100 text-red-800' :
-                    notification.status === 'overdue' ? 'bg-orange-100 text-orange-800' :
-                    notification.status === 'voided' ? 'bg-gray-100 text-gray-800' :
-                    'bg-blue-100 text-blue-800'
-                  }`}>
+                  <span className="font-medium">
+                    Invoice #{notification.invoice_number}
+                  </span>
+                  <span
+                    className={`text-xs px-2 py-1 rounded-full ${
+                      notification.status === "paid"
+                        ? "bg-green-100 text-green-800"
+                        : notification.status === "pending"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : notification.status === "expired"
+                            ? "bg-red-100 text-red-800"
+                            : notification.status === "overdue"
+                              ? "bg-orange-100 text-orange-800"
+                              : notification.status === "voided"
+                                ? "bg-gray-100 text-gray-800"
+                                : "bg-blue-100 text-blue-800"
+                    }`}
+                  >
                     {notification.status.toUpperCase()}
                   </span>
                 </div>
@@ -120,4 +133,4 @@ export function InvoiceNotification() {
       </DropdownMenuContent>
     </DropdownMenu>
   );
-} 
+}
