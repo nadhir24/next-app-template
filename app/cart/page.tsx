@@ -364,8 +364,8 @@ const CartPage = () => {
         <ModalContent className="dark:bg-zinc-800">
           <ModalBody className="p-6">
             <p className="mb-4 dark:text-gray-300">
-              Apakah Anda yakin ingin menghapus item "
-              {itemToDelete?.catalog?.name} ({itemToDelete?.size?.size})"?
+              Apakah Anda yakin ingin menghapus item &quot;
+              {itemToDelete?.catalog?.name} ({itemToDelete?.size?.size})&quot;?
             </p>
             <div className="flex justify-end gap-2">
               <Button
