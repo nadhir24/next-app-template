@@ -132,15 +132,11 @@ const HoverCartModal: React.FC = () => {
                       Ukuran: {item.size?.size}
                     </p>
                     <p className="text-xs font-medium text-gray-900">
-<<<<<<< HEAD
                       {typeof item.size?.price === 'string' 
                         ? item.size.price.includes('Rp') 
                           ? item.size.price 
                           : `Rp${new Intl.NumberFormat('id-ID').format(parseInt(item.size.price.replace(/\D/g, '') || '0'))}`
                         : `Rp${new Intl.NumberFormat('id-ID').format(item.size?.price || 0)}`}
-=======
-                      {item.size?.price}
->>>>>>> 77f85158d758c5ddc80273101a0ba52b5035df76
                     </p>
                     <p className="text-xs text-gray-500">
                       Jumlah: {item.quantity}
