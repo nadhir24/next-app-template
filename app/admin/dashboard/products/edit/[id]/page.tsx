@@ -4,6 +4,7 @@ import { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import axios from "axios";
 import Link from "next/link";
+import Image from "next/image";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -551,10 +552,47 @@ const EditProductPage = () => {
               {imagePreview && (
                 <div className="mt-2">
                   <p className="text-xs text-gray-500 mb-1">Image Preview:</p>
-                  <img
+                  <Image
                     src={imagePreview}
-                    alt="Image Preview"
-                    className="h-32 w-32 object-cover rounded-md border"
+                    alt={product?.name || "Product image preview"}
+                    width={200}
+                    height={200}
+                    className="mt-2 rounded-md object-cover border"
+                    priority
+                    onError={(e) => {
+                      e.currentTarget.src = "/blurry.svg";
+                      e.currentTarget.srcset = "";
+                    }}
+                  />
+                </div>
+              )}
+              {!imagePreview && existingImageUrl && (
+                <div className="mt-4">
+                  <p className="text-sm text-gray-500">Current Image:</p>
+                  <Image
+                    src={`${process.env.NEXT_PUBLIC_API_URL}${existingImageUrl}`}
+                    alt={product?.name || "Current product image"}
+                    width={200}
+                    height={200}
+                    className="mt-2 rounded-md object-cover border"
+                    priority
+                    onError={(e) => {
+                      e.currentTarget.src = "/blurry.svg";
+                      e.currentTarget.srcset = "";
+                    }}
+                  />
+                </div>
+              )}
+              {!imagePreview && !existingImageUrl && (
+                <div className="mt-4">
+                  <p className="text-sm text-gray-500">No image uploaded.</p>
+                  <Image
+                    src="/placeholder-image.webp"
+                    alt="No image placeholder"
+                    width={200}
+                    height={200}
+                    className="mt-2 rounded-md object-cover border bg-gray-100"
+                    priority
                   />
                 </div>
               )}

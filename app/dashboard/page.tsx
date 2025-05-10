@@ -200,7 +200,7 @@ export default function DashboardPage() {
     } finally {
       setIsLoadingInvoices(false);
     }
-  }, [user?.id, currentPage, toast]);
+  }, [user?.id, currentPage]);
 
   // Load order history
   useEffect(() => {

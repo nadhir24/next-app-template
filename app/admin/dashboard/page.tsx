@@ -62,7 +62,7 @@ export default function DashboardPage() {
         });
       }
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     const fetchData = async () => {

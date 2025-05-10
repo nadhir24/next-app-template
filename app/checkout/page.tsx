@@ -246,7 +246,7 @@ export default function CheckoutPage() {
   // Keeping the old function name for compatibility
   const fetchCheckoutData = fetchCartData;
 
-  const fetchSavedAddresses = async (userId: string) => {
+  const fetchSavedAddresses = useCallback(async (userId: string) => {
     setAddressesLoading(true);
     try {
       // Get token from localStorage
@@ -299,7 +299,7 @@ export default function CheckoutPage() {
     } finally {
       setAddressesLoading(false);
     }
-  };
+  }, [toast]);
 
   const handleAddressSelect = useCallback((addressId: string) => {
     if (addressId === "new_address") {
@@ -404,7 +404,7 @@ export default function CheckoutPage() {
     }
 
     fetchCartData();
-  }, [fetchCartData]);
+  }, [fetchCartData, fetchSavedAddresses, savedAddresses, handleAddressSelect]);
 
   useEffect(() => {
     if (shippingAddress.phone) {

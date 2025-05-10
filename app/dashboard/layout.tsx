@@ -82,7 +82,7 @@ export default function UserDashboardLayout({
     } finally {
       setCheckingAuth(false);
     }
-  }, [router, toast]);
+  }, [router]);
 
   // Force recheck auth on any route change within dashboard
   useEffect(() => {

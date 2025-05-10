@@ -78,7 +78,7 @@ export default function AdminLayout({
     } finally {
       setCheckingAuth(false);
     }
-  }, [router, toast]);
+  }, [router]);
 
   // Force recheck auth on any route change within admin
   useEffect(() => {

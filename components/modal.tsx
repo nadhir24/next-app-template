@@ -12,7 +12,6 @@ import {
   useDisclosure,
 } from "@heroui/modal";
 import { MailIcon } from "./MailIcon";
-import { LockIcon } from "./LockIcon";
 import { Link } from "@heroui/link";
 import { Input } from "@heroui/input";
 import { Checkbox } from "@heroui/checkbox";
@@ -441,7 +440,7 @@ export default function Modall() {
                               : ""
                           }
                         >
-Don&apos;t have an account? Sign up
+                          Don&apos;t have an account? Sign up
                         </Link>
                       </div>
 
