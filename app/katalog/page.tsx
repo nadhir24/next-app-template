@@ -1,10 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { Suspense } from "react";
 import FilterableCatalog from "@/components/FilterableCatalog";
 import { useSearchParams } from "next/navigation";
 
-export default function KatalogPage() {
+// Original content of KatalogPage moved to KatalogPageContent
+function KatalogPageContent() {
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get("search");
 
@@ -12,5 +13,13 @@ export default function KatalogPage() {
     <div>
       <FilterableCatalog initialCategory={searchQuery} />
     </div>
+  );
+}
+
+export default function KatalogPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center min-h-screen">Loading Catalog...</div>}>
+      <KatalogPageContent />
+    </Suspense>
   );
 }

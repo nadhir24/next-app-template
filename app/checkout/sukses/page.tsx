@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import {
   Card,
@@ -41,7 +41,7 @@ interface OrderDetail {
   midtransInvoicePdfUrl?: string;
 }
 
-export default function SuksesPage() {
+function CheckoutSuksesContent() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
   const [orderDetail, setOrderDetail] = useState<OrderDetail | null>(null);
@@ -395,5 +395,13 @@ export default function SuksesPage() {
         </CardFooter>
       </Card>
     </div>
+  );
+}
+
+export default function SuksesPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center min-h-screen">Loading Page...</div>}>
+      <CheckoutSuksesContent />
+    </Suspense>
   );
 }
