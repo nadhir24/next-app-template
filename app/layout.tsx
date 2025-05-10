@@ -19,7 +19,7 @@ import Image from "next/image";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 import { Toaster } from "@/components/ui/toaster";
-import { SpeedInsights } from "@vercel/speed-insights/next";
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 export const metadata: Metadata = {
   title: {
