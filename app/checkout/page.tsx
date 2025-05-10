@@ -974,7 +974,7 @@ export default function CheckoutPage() {
                   </div>
                   <div className="text-center text-sm text-gray-600 mt-4">
                     <p>
-                      Setelah mengklik "Bayar Sekarang", Anda akan diarahkan ke
+                      Setelah mengklik &quot;Bayar Sekarang&quot;, Anda akan diarahkan ke
                     </p>
                     <p>
                       Payments By Midtrans untuk menyelesaikan pembelian Anda
