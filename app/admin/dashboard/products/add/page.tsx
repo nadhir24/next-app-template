@@ -79,13 +79,6 @@ const AddProductPage = () => {
     setSizes(newSizes);
   };
 
-  // Formats a number string into currency format (e.g., 100000 -> 100.000)
-  const formatCurrency = (value: string | number): string => {
-    const numStr = String(value).replace(/\./g, ""); // Remove existing dots
-    if (isNaN(parseFloat(numStr))) return ""; // Return empty if not a valid number
-    return numStr.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  };
-
   const handleUnitChange = (index: number, unit: string) => {
     const newSizes = [...sizes];
     newSizes[index].sizeUnit = unit;
@@ -322,13 +315,13 @@ const AddProductPage = () => {
                       <Input
                         id={`price-${index}`}
                         type="text"
-                        value={sizeItem.price}
+                        value={sizeItem.price ? formatCurrency(sizeItem.price) : ""}
                         onChange={(e) =>
                           handleSizeChange(index, "price", e.target.value)
                         }
                         required
                         className="text-sm"
-                        placeholder="e.g., 10000"
+                        placeholder="e.g., 100.000"
                       />
                     </div>
                   </div>

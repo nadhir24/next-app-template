@@ -30,7 +30,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Spinner } from "@nextui-org/spinner";
-import axios from "axios";
 
 interface ShippingAddress {
   firstName: string;
@@ -112,7 +111,6 @@ export default function CheckoutPage() {
   const [phoneSuffix, setPhoneSuffix] = useState("");
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isLoadingCart, setIsLoadingCart] = useState(true);
-  const [localCart, setLocalCart] = useState<CartItem[]>([]);
 
   const shippingMethods: ShippingMethod[] = [
     {
@@ -134,90 +132,97 @@ export default function CheckoutPage() {
 
   const fetchCartData = useCallback(async () => {
     try {
-      // Simulate API call
-      const userStr = localStorage.getItem("user");
-      let effectiveUserId = userId; // Use state userId by default
+      // Get cart data from localStorage first
+      const cartData = localStorage.getItem("cart");
 
-      // If user is not in state (e.g., initial load, guest), try to get from localStorage
-      if (!effectiveUserId && userStr) {
-        try {
-          const userData = JSON.parse(userStr);
-          effectiveUserId = userData.id?.toString();
-        } catch (parseError) {
-          console.error("Error parsing user data from localStorage:", parseError);
-          // toast.error("Error reading user data."); // toast removed
-          setIsLoadingCart(false);
-          return;
+      let parsedCartData;
+      try {
+        parsedCartData = cartData ? JSON.parse(cartData) : null;
+      } catch (e) {
+        toast.error("Error parsing cart data");
+      }
+
+      // Get user data with proper fallback chain
+      let effectiveUserId = userId;
+
+      // If no userId from context, try localStorage
+      if (!effectiveUserId) {
+        effectiveUserId = localStorage.getItem("userId");
+      }
+
+      // If still no userId, try to get it from cart data
+      if (!effectiveUserId && parsedCartData && Array.isArray(parsedCartData)) {
+        const firstCartItem = parsedCartData[0];
+        if (firstCartItem && firstCartItem.userId) {
+          effectiveUserId = firstCartItem.userId;
         }
       }
 
-      // If still no userId (neither from state nor localStorage) and not a guest, then it's an error or pending login
-      // For guests, localCart will be used if userId is null.
-      if (!effectiveUserId && !localStorage.getItem("guestId")) {
-        // This case might indicate the user is not logged in and is not a guest.
-        // Or the user context hasn't loaded the userId yet.
-        // We might want to wait or show a specific message.
-        // For now, if localCart is also empty, we assume there's nothing to fetch.
-        if (!localCart || localCart.length === 0) {
-          setCheckoutData({
-            items: [],
-            subtotal: 0,
-            shipping: 0,
-            total: 0,
-          });
-          setIsLoadingCart(false);
-          return;
-        }
-        // If there's localCart, proceed with guest checkout flow below
-      }
+      const guestIdFromStorage = localStorage.getItem("guestId");
+      const userDataFromStorage = localStorage.getItem("user");
 
-      let cartItems: any[] = [];
-      let totalValue: number | null = null;
-
-      if (effectiveUserId) {
-        // User is logged in, fetch cart from backend
-        const response = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/cart/${effectiveUserId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-          }
+      if (!effectiveUserId && !guestIdFromStorage) {
+        toast.error(
+          "Silakan login atau tambahkan item ke keranjang terlebih dahulu"
         );
-        cartItems = response.data.cartItems || [];
-        totalValue = response.data.total || null;
-      } else if (localCart && localCart.length > 0) {
-        // Guest user with items in localCart, prepare items for display
-        cartItems = localCart.map((item) => ({
-          productcatalog: {
-            id: item.id,
-            name: item.name,
-            image: item.image,
-          },
-          priceAtPurchase: item.price, // Use price from localCart
+        return;
+      }
+
+      const baseUrl = `${process.env.NEXT_PUBLIC_API_URL}/cart`;
+      const queryParam = effectiveUserId
+        ? `userId=${effectiveUserId}`
+        : `guestId=${guestIdFromStorage}`;
+      const itemsUrl = `${baseUrl}/findMany?${queryParam}`;
+      const totalUrl = `${baseUrl}/total?${queryParam}`;
+
+      const [itemsRes, totalRes] = await Promise.all([
+        fetch(itemsUrl),
+        fetch(totalUrl),
+      ]);
+
+      if (!itemsRes.ok || !totalRes.ok) {
+        throw new Error("Gagal mengambil data");
+      }
+
+      const [items, totalText] = await Promise.all([
+        itemsRes.json(),
+        totalRes.text(),
+      ]);
+
+      if (!items || items.length === 0) {
+        setCheckoutData({ items: [], subtotal: 0, shipping: 0, total: 0 });
+        setTotalFromBackend(0);
+        setIsLoadingCart(false);
+        return;
+      }
+
+      let totalValue = 0;
+      if (typeof totalText === "string" && totalText.startsWith("Rp")) {
+        totalValue = parseInt(totalText.replace(/[^0-9]/g, "")) || 0;
+      }
+      setTotalFromBackend(totalValue);
+
+      const transformedItems = items.map((item: any) => {
+        const sizeValue =
+          typeof item.size === "object" ? item.size.size : item.size || "";
+
+        const priceValue =
+          typeof item.size === "object" && item.size.price
+            ? parseInt(item.size.price.replace(/[^0-9]/g, ""))
+            : 0;
+
+        return {
+          id: item.id.toString(),
+          name: item.catalog?.name || "",
+          price: priceValue,
           quantity: item.quantity,
-          size: item.size,
-        }));
-        // Calculate total for guest based on localCart
-        totalValue = localCart.reduce(
-          (sum, item) => sum + item.price * item.quantity,
-          0
-        );
-      }
-
-      const transformedItems = cartItems.map((item: any) => ({
-        id: item.productcatalog.id.toString(),
-        name: item.productcatalog.name,
-        price: item.priceAtPurchase, // Ensure this uses the price at time of purchase
-        quantity: item.quantity,
-        size: item.size,
-        image: item.productcatalog.image
-          ? `${process.env.NEXT_PUBLIC_API_URL}${item.productcatalog.image}`
-          : "/placeholder-image.webp",
-      }));
+          size: sizeValue,
+          image: item.catalog?.image || "",
+        };
+      });
 
       const subtotal = transformedItems.reduce(
-        (sum, item) => sum + item.price * item.quantity,
+        (total: number, item: CartItem) => total + item.price * item.quantity,
         0
       );
 
@@ -229,14 +234,14 @@ export default function CheckoutPage() {
         items: transformedItems,
         subtotal: subtotal,
         shipping: shippingCost,
-        total: totalValue !== null ? totalValue + shippingCost : subtotal + shippingCost, // Adjust total calculation
+        total: totalValue || subtotal + shippingCost,
       });
       setIsLoadingCart(false);
     } catch (error) {
-      // toast.error("Gagal mengambil data cart"); // toast removed
+      toast.error("Gagal mengambil data cart");
       setIsLoadingCart(false);
     }
-  }, [userId, selectedShippingMethod, shippingMethods, localCart]); // Removed toast, added localCart
+  }, [userId, selectedShippingMethod, shippingMethods, toast]);
 
   // Keeping the old function name for compatibility
   const fetchCheckoutData = fetchCartData;
@@ -247,8 +252,6 @@ export default function CheckoutPage() {
       // Get token from localStorage
       const token = localStorage.getItem("token");
       if (!token) {
-        // toast.error("Anda harus login untuk mengambil alamat."); // toast removed
-        setAddressesLoading(false); // Ensure loading state is reset
         return;
       }
 
@@ -263,23 +266,25 @@ export default function CheckoutPage() {
       );
 
       if (!response.ok) {
-        // const errorData = await response.json().catch(() => ({})); // Try to parse error
-        // toast.error( // toast removed
-        //   `Gagal mengambil alamat: ${errorData.message || response.statusText}`
-        // );
         throw new Error("Failed to fetch saved addresses");
       }
 
       const addresses = await response.json();
 
+      // Filter out duplicate addresses by comparing street values
       const uniqueAddresses = addresses.reduce(
         (acc: SavedAddress[], curr: SavedAddress) => {
+          // Normalize street by removing extra spaces and lowercasing
           const normalizeText = (text: string) =>
             text?.toLowerCase().replace(/\s+/g, " ").trim() || "";
+
           const currStreetNormalized = normalizeText(curr.street);
+
+          // Check if we already have an address with the same normalized street
           const isDuplicate = acc.some(
             (addr) => normalizeText(addr.street) === currStreetNormalized
           );
+
           if (!isDuplicate && currStreetNormalized) {
             acc.push(curr);
           }
@@ -290,12 +295,11 @@ export default function CheckoutPage() {
 
       setSavedAddresses(uniqueAddresses);
     } catch (error) {
-      // console.error("Fetch saved addresses error:", error); // Log error for debugging
-      // toast.error("Gagal mengambil daftar alamat tersimpan"); // toast removed
+      toast.error("Gagal mengambil daftar alamat tersimpan");
     } finally {
       setAddressesLoading(false);
     }
-  }, []); // Removed toast
+  }, [toast]);
 
   const handleAddressSelect = useCallback((addressId: string) => {
     if (addressId === "new_address") {

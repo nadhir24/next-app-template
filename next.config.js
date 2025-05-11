@@ -8,14 +8,14 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: "http",
-        hostname: "localhost",
-        port: "5000",
+        hostname: "bima-back-production.up.railway.app",
+        port: '',
         pathname: "/catalog/images/**",
       },
       {
         protocol: "http",
-        hostname: "localhost",
-        port: "5000",
+        hostname: "bima-back-production.up.railway.app",
+        port: '',
         pathname: "/uploads/**",
       },
       {
