@@ -20,6 +20,18 @@ const nextConfig = {
       },
       {
         protocol: "https",
+        hostname: "bima-back-production.up.railway.app",
+        port: '',
+        pathname: "/catalog/images/**",
+      },
+      {
+        protocol: "https",
+        hostname: "bima-back-production.up.railway.app",
+        port: '',
+        pathname: "/uploads/**",
+      },
+      {
+        protocol: "https",
         hostname: "avatars.githubusercontent.com",
         pathname: "/**",
       },
