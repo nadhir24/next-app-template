@@ -162,6 +162,9 @@ export default function ProductsPage() {
         });
       } else {
         const deleteUrl = `${process.env.NEXT_PUBLIC_API_URL}/catalog/${id}`;
+        
+        console.log(`Attempting to delete product with ID: ${id}`);
+        console.log(`Delete URL: ${deleteUrl}`);
 
         const response = await fetch(deleteUrl, {
           method: "DELETE",
@@ -171,15 +174,57 @@ export default function ProductsPage() {
           },
         });
 
-        let responseData = null;
+        console.log(`Delete response status: ${response.status}`);
+        
+        // Handle response based on status code
+        if (response.status === 400) {
+          console.log("Received 400 error, attempting to parse response");
+          // Try to get the response text first to check what we're dealing with
+          const responseText = await response.text();
+          console.log("Response text:", responseText);
+          
+          let errorMessage = "Bad request. Please check product details.";
+          
+          // Try to parse as JSON if it looks like JSON
+          if (responseText.trim().startsWith('{')) {
+            try {
+              const errorData = JSON.parse(responseText);
+              errorMessage = errorData.message || errorMessage;
+            } catch (parseError) {
+              console.error("Failed to parse JSON from 400 response:", parseError);
+            }
+          }
+          
+          toast({
+            title: "Delete Failed",
+            description: errorMessage,
+            variant: "destructive",
+            duration: 5000,
+          });
+          setProductToDelete(null);
+          return;
+        }
+        
+        // For all other non-success responses
         if (!response.ok) {
           try {
-            responseData = await response.json();
+            const responseText = await response.text();
+            console.log("Error response text:", responseText);
+            
+            let responseData = null;
+            // Try to parse the response as JSON if it looks like it
+            if (responseText.trim().startsWith('{')) {
+              try {
+                responseData = JSON.parse(responseText);
+              } catch (jsonError) {
+                console.error("Error parsing JSON:", jsonError);
+              }
+            }
 
             // Cek apakah error karena produk ada di keranjang
             if (
               response.status === 409 &&
-              responseData?.message?.includes("cart")
+              (responseData?.message?.includes("cart") || responseText.includes("cart"))
             ) {
               // Tampilkan dialog untuk konfirmasi force delete
               const forceToastId = toast({
@@ -217,32 +262,40 @@ export default function ProductsPage() {
             }
 
             throw new Error(
-              responseData?.message ||
-                `Failed to delete product (status: ${response.status})`
+              responseData?.message || 
+              `Delete failed: ${responseText || response.statusText} (Status: ${response.status})`
             );
           } catch (parseError) {
+            console.error("Error handling delete response:", parseError);
             throw new Error(
-              `Failed to delete product and parse error response (status: ${response.status})`
+              `Delete failed (Status: ${response.status}). Please try again.`
             );
           }
         } else {
+          let successMessage = "Product deleted successfully";
+          
           try {
-            responseData = await response.json();
+            const responseData = await response.json();
+            console.log("Delete success response:", responseData);
+            if (responseData?.message) {
+              successMessage = responseData.message;
+            }
           } catch (parseError) {
-            responseData = null;
+            console.log("No JSON in success response");
           }
+
+          toast({
+            title: "Success",
+            description: successMessage,
+            variant: "default",
+            duration: 3000,
+          });
+
+          await fetchProducts(currentPage);
         }
-
-        toast({
-          title: "Success",
-          description: "Product deleted successfully",
-          variant: "default",
-          duration: 3000,
-        });
-
-        await fetchProducts(currentPage);
       }
     } catch (error) {
+      console.error("Delete product error:", error);
       toast({
         title: "Error",
         description:
@@ -270,6 +323,8 @@ export default function ProductsPage() {
       }
 
       const forceDeleteUrl = `${process.env.NEXT_PUBLIC_API_URL}/catalog/${id}/force`;
+      console.log(`Attempting force delete for product ID: ${id}`);
+      console.log(`Force delete URL: ${forceDeleteUrl}`);
 
       const response = await fetch(forceDeleteUrl, {
         method: "DELETE",
@@ -279,25 +334,54 @@ export default function ProductsPage() {
         },
       });
 
+      console.log(`Force delete response status: ${response.status}`);
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData?.message ||
-            `Failed to force delete product (status: ${response.status})`
-        );
+        // Get response text first
+        const responseText = await response.text();
+        console.log("Force delete error response:", responseText);
+        
+        let errorMessage = `Failed to force delete product (Status: ${response.status})`;
+        
+        // Try to parse as JSON if possible
+        if (responseText.trim().startsWith('{')) {
+          try {
+            const errorData = JSON.parse(responseText);
+            errorMessage = errorData.message || errorMessage;
+          } catch (parseError) {
+            console.error("Failed to parse JSON from force delete error:", parseError);
+          }
+        }
+        
+        throw new Error(errorMessage);
       }
 
-      const responseData = await response.json();
+      // Get response data for success message
+      let successMessage = "Product successfully removed.";
+      let removedCount = 0;
+      
+      try {
+        const responseText = await response.text();
+        console.log("Force delete success response:", responseText);
+        
+        if (responseText.trim().startsWith('{')) {
+          const responseData = JSON.parse(responseText);
+          removedCount = responseData.count || 0;
+        }
+      } catch (error) {
+        console.log("No parsable JSON in success response");
+      }
 
       toast({
         title: "Success",
-        description: `Product deleted successfully. ${responseData.count || 0} items were removed from carts.`,
+        description: `Product deleted successfully${removedCount > 0 ? `. ${removedCount} items were removed from carts.` : ''}`,
         variant: "default",
         duration: 3000,
       });
 
       await fetchProducts(currentPage);
     } catch (error) {
+      console.error("Force delete error:", error);
       toast({
         title: "Error",
         description:
