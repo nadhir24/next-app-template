@@ -614,309 +614,292 @@ export default function CheckoutPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {shippingMethods.map((method) => (
-                  <div
-                    key={method.id}
-                    className={`border rounded-lg p-4 flex justify-between items-center cursor-pointer transition-colors ${
-                      selectedShippingMethod === method.id
-                        ? "border-blue-500 bg-blue-50"
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
-                    onClick={() => {
-                      try {
-                        console.log("Setting shipping method to:", method.id);
-                        setSelectedShippingMethod(method.id);
-                      } catch (error) {
-                        console.error("Error setting shipping method:", error);
-                        toast.error("Error selecting shipping method");
-                      }
-                    }}
-                  >
-                    <div className="flex items-center">
-                      <input
-                        type="radio"
-                        id={method.id}
-                        name="shippingMethod"
-                        value={method.id}
-                        checked={selectedShippingMethod === method.id}
-                        onChange={(e) => {
-                          try {
-                            console.log("Radio onChange - Setting shipping method to:", e.target.value);
-                            setSelectedShippingMethod(e.target.value);
-                          } catch (error) {
-                            console.error("Error in radio onChange:", error);
-                            toast.error("Error selecting shipping method");
-                          }
-                        }}
-                        className="h-4 w-4 text-blue-600 mr-3"
-                      />
-                      <label htmlFor={method.id} className="cursor-pointer">
-                        <div className="font-medium">{method.name}</div>
-                        <div className="text-sm text-gray-500">
-                          {method.description}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          Estimasi: {method.estimatedDays}
-                        </div>
-                      </label>
+                {shippingMethods.map((method) => {
+                  const isSelected = selectedShippingMethod === method.id;
+                  return (
+                    <div
+                      key={method.id}
+                      className={`border rounded-lg p-4 flex justify-between items-center cursor-pointer transition-colors ${
+                        isSelected
+                          ? "border-blue-500 bg-blue-50"
+                          : "border-gray-200 hover:border-gray-300"
+                      }`}
+                      onClick={() => {
+                        try {
+                          // Simply update state, don't derive anything
+                          console.log("Setting shipping method to:", method.id);
+                          setSelectedShippingMethod(method.id);
+                        } catch (error) {
+                          console.error("Error setting shipping method:", error);
+                          toast.error("Error selecting shipping method");
+                        }
+                      }}
+                    >
+                      <div className="flex items-center">
+                        <input
+                          type="radio"
+                          id={method.id}
+                          name="shippingMethod"
+                          value={method.id}
+                          checked={isSelected}
+                          onChange={(e) => {
+                            // Don't derive state in event handler
+                            const newValue = e.target.value;
+                            try {
+                              console.log("Radio onChange - Setting shipping method to:", newValue);
+                              setSelectedShippingMethod(newValue);
+                            } catch (error) {
+                              console.error("Error in radio onChange:", error);
+                              toast.error("Error selecting shipping method");
+                            }
+                          }}
+                          className="h-4 w-4 text-blue-600 mr-3"
+                        />
+                        <label htmlFor={method.id} className="cursor-pointer">
+                          <div className="font-medium">{method.name}</div>
+                          <div className="text-sm text-gray-500">
+                            {method.description}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            Estimasi: {method.estimatedDays}
+                          </div>
+                        </label>
+                      </div>
+                      <div className="text-right font-medium">
+                        {method.price === 0
+                          ? "Gratis"
+                          : method.price === null
+                            ? "Manual Via Aplikasi"
+                            : `Rp ${method.price.toLocaleString()}`}
+                      </div>
                     </div>
-                    <div className="text-right font-medium">
-                      {method.price === 0
-                        ? "Gratis"
-                        : method.price === null
-                          ? "Manual Via Aplikasi"
-                          : `Rp ${method.price.toLocaleString()}`}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </CardContent>
             </Card>
 
             {/* Informasi Pengiriman hanya ditampilkan jika memilih pengantaran langsung */}
-            {(() => {
-              try {
-                if (selectedShippingMethod === "free") {
-                  return (
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                          <TruckIcon className="h-5 w-5" /> Informasi Pengiriman
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        {/* Pilih Alamat */}
-                        {savedAddresses.length > 0 && (
-                          <div className="space-y-2 relative z-10">
-                            <label className="text-sm text-gray-600">
-                              Pilih Alamat Tersimpan
-                            </label>
-                            <Select
-                              value={selectedAddressId}
-                              onValueChange={handleAddressSelect}
-                            >
-                              <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Pilih alamat tersimpan" />
-                              </SelectTrigger>
-                              <SelectContent className="z-50">
-                                <SelectItem value="new_address">
-                                  Masukkan alamat baru
-                                </SelectItem>
-                                {savedAddresses.map((addr) => (
-                                  <SelectItem key={addr.id} value={addr.id}>
-                                    {addr.street}, {addr.city}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        )}
+            {selectedShippingMethod === "free" && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <TruckIcon className="h-5 w-5" /> Informasi Pengiriman
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Pilih Alamat */}
+                  {savedAddresses.length > 0 && (
+                    <div className="space-y-2 relative z-10">
+                      <label className="text-sm text-gray-600">
+                        Pilih Alamat Tersimpan
+                      </label>
+                      {/* Temporarily replace with a simpler dropdown to avoid React error */}
+                      <select 
+                        value={selectedAddressId} 
+                        onChange={(e) => handleAddressSelect(e.target.value)}
+                        className="w-full h-10 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="new_address">Masukkan alamat baru</option>
+                        {savedAddresses.map((addr) => (
+                          <option key={addr.id} value={addr.id}>
+                            {addr.street}, {addr.city}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
-                        {/* Tampilkan skeleton loading saat addressesLoading=true */}
-                        {addressesLoading ? (
-                          <div className="space-y-4">
-                            <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
-                              <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
-                            </div>
-                            <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
-                            <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
-                              <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
-                              <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="relative z-10">
-                            <div className="grid grid-cols-2 gap-4 relative z-10">
-                              <div>
-                                <Input
-                                  type="text"
-                                  name="firstName"
-                                  value={shippingAddress.firstName}
-                                  onChange={handleInputChange}
-                                  placeholder="Nama Depan"
-                                  className={
-                                    errors.firstName
-                                      ? "border-red-500 focus:ring-red-500"
-                                      : ""
-                                  }
-                                  required
-                                />
-                                {errors.firstName && (
-                                  <div className="flex items-center mt-1 text-red-500 text-xs">
-                                    <AlertCircle className="h-3 w-3 mr-1" />
-                                    {errors.firstName}
-                                  </div>
-                                )}
-                              </div>
-                              <Input
-                                type="text"
-                                name="lastName"
-                                value={shippingAddress.lastName}
-                                onChange={handleInputChange}
-                                placeholder="Nama Belakang"
-                                // lastName bisa opsional jika diinginkan
-                              />
-                            </div>
-
-                            <div>
-                              <Input
-                                type="text"
-                                name="address"
-                                value={shippingAddress.address}
-                                onChange={handleInputChange}
-                                placeholder="Alamat"
-                                className={
-                                  errors.address
-                                    ? "border-red-500 focus:ring-red-500"
-                                    : ""
-                                }
-                                required
-                              />
-                              {errors.address && (
-                                <div className="flex items-center mt-1 text-red-500 text-xs">
-                                  <AlertCircle className="h-3 w-3 mr-1" />
-                                  {errors.address}
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <Input
-                                  type="text"
-                                  name="city"
-                                  value={shippingAddress.city}
-                                  onChange={handleInputChange}
-                                  placeholder="Kota"
-                                  className={
-                                    errors.city
-                                      ? "border-red-500 focus:ring-red-500"
-                                      : ""
-                                  }
-                                  required
-                                />
-                                {errors.city && (
-                                  <div className="flex items-center mt-1 text-red-500 text-xs">
-                                    <AlertCircle className="h-3 w-3 mr-1" />
-                                    {errors.city}
-                                  </div>
-                                )}
-                              </div>
-                              <div>
-                                <Input
-                                  type="text"
-                                  name="province"
-                                  value={shippingAddress.province}
-                                  onChange={handleInputChange}
-                                  placeholder="Provinsi"
-                                  className={
-                                    errors.province
-                                      ? "border-red-500 focus:ring-red-500"
-                                      : ""
-                                  }
-                                  required
-                                />
-                                {errors.province && (
-                                  <div className="flex items-center mt-1 text-red-500 text-xs">
-                                    <AlertCircle className="h-3 w-3 mr-1" />
-                                    {errors.province}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <Input
-                                  type="text"
-                                  name="postalCode"
-                                  value={shippingAddress.postalCode}
-                                  onChange={handleInputChange}
-                                  placeholder="Kode Pos"
-                                  className={
-                                    errors.postalCode
-                                      ? "border-red-500 focus:ring-red-500"
-                                      : ""
-                                  }
-                                  required
-                                />
-                                {errors.postalCode && (
-                                  <div className="flex items-center mt-1 text-red-500 text-xs">
-                                    <AlertCircle className="h-3 w-3 mr-1" />
-                                    {errors.postalCode}
-                                  </div>
-                                )}
-                              </div>
-                              <div>
-                                <div className="relative">
-                                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
-                                    +62
-                                  </span>
-                                  <Input
-                                    type="tel"
-                                    name="phone"
-                                    value={phoneSuffix}
-                                    onChange={handlePhoneChange}
-                                    placeholder="812 3456 7890"
-                                    className={`pl-10 ${errors.phone ? "border-red-500 focus:ring-red-500" : ""}`}
-                                    required
-                                  />
-                                </div>
-                                {errors.phone && (
-                                  <div className="flex items-center mt-1 text-red-500 text-xs">
-                                    <AlertCircle className="h-3 w-3 mr-1" />
-                                    {errors.phone}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            {/* Conditionally render the save info checkbox only if userId exists */}
-                            {userId && (
-                              <div className="flex items-center">
-                                <input
-                                  type="checkbox"
-                                  id="saveInfo"
-                                  checked={saveInfo}
-                                  onChange={(e) => {
-                                    setSaveInfo(e.target.checked);
-                                    // Jangan lakukan save segera, biarkan user klik tombol bayar
-                                  }}
-                                  className="h-4 w-4 text-blue-600 rounded"
-                                />
-                                <label
-                                  htmlFor="saveInfo"
-                                  className="ml-2 text-sm text-gray-600"
-                                >
-                                  Simpan informasi ini untuk pembelian berikutnya
-                                </label>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  );
-                }
-                return null;
-              } catch (error) {
-                console.error("Error rendering shipping address form:", error);
-                return (
-                  <Card>
-                    <CardContent>
-                      <div className="p-4 text-red-500">
-                        Error loading shipping details. Please refresh the page and try again.
+                  {/* Tampilkan skeleton loading saat addressesLoading=true */}
+                  {addressesLoading ? (
+                    <div className="space-y-4">
+                      <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+                        <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
                       </div>
-                    </CardContent>
-                  </Card>
-                );
-              }
-            })()}
+                      <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+                      <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+                        <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+                        <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="relative z-10">
+                      <div className="grid grid-cols-2 gap-4 relative z-10">
+                        <div>
+                          <Input
+                            type="text"
+                            name="firstName"
+                            value={shippingAddress.firstName}
+                            onChange={handleInputChange}
+                            placeholder="Nama Depan"
+                            className={
+                              errors.firstName
+                                ? "border-red-500 focus:ring-red-500"
+                                : ""
+                            }
+                            required
+                          />
+                          {errors.firstName && (
+                            <div className="flex items-center mt-1 text-red-500 text-xs">
+                              <AlertCircle className="h-3 w-3 mr-1" />
+                              {errors.firstName}
+                            </div>
+                          )}
+                        </div>
+                        <Input
+                          type="text"
+                          name="lastName"
+                          value={shippingAddress.lastName}
+                          onChange={handleInputChange}
+                          placeholder="Nama Belakang"
+                          // lastName bisa opsional jika diinginkan
+                        />
+                      </div>
+
+                      <div>
+                        <Input
+                          type="text"
+                          name="address"
+                          value={shippingAddress.address}
+                          onChange={handleInputChange}
+                          placeholder="Alamat"
+                          className={
+                            errors.address
+                              ? "border-red-500 focus:ring-red-500"
+                              : ""
+                          }
+                          required
+                        />
+                        {errors.address && (
+                          <div className="flex items-center mt-1 text-red-500 text-xs">
+                            <AlertCircle className="h-3 w-3 mr-1" />
+                            {errors.address}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Input
+                            type="text"
+                            name="city"
+                            value={shippingAddress.city}
+                            onChange={handleInputChange}
+                            placeholder="Kota"
+                            className={
+                              errors.city
+                                ? "border-red-500 focus:ring-red-500"
+                                : ""
+                            }
+                            required
+                          />
+                          {errors.city && (
+                            <div className="flex items-center mt-1 text-red-500 text-xs">
+                              <AlertCircle className="h-3 w-3 mr-1" />
+                              {errors.city}
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <Input
+                            type="text"
+                            name="province"
+                            value={shippingAddress.province}
+                            onChange={handleInputChange}
+                            placeholder="Provinsi"
+                            className={
+                              errors.province
+                                ? "border-red-500 focus:ring-red-500"
+                                : ""
+                            }
+                            required
+                          />
+                          {errors.province && (
+                            <div className="flex items-center mt-1 text-red-500 text-xs">
+                              <AlertCircle className="h-3 w-3 mr-1" />
+                              {errors.province}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Input
+                            type="text"
+                            name="postalCode"
+                            value={shippingAddress.postalCode}
+                            onChange={handleInputChange}
+                            placeholder="Kode Pos"
+                            className={
+                              errors.postalCode
+                                ? "border-red-500 focus:ring-red-500"
+                                : ""
+                            }
+                            required
+                          />
+                          {errors.postalCode && (
+                            <div className="flex items-center mt-1 text-red-500 text-xs">
+                              <AlertCircle className="h-3 w-3 mr-1" />
+                              {errors.postalCode}
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <div className="relative">
+                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                              +62
+                            </span>
+                            <Input
+                              type="tel"
+                              name="phone"
+                              value={phoneSuffix}
+                              onChange={handlePhoneChange}
+                              placeholder="812 3456 7890"
+                              className={`pl-10 ${errors.phone ? "border-red-500 focus:ring-red-500" : ""}`}
+                              required
+                            />
+                          </div>
+                          {errors.phone && (
+                            <div className="flex items-center mt-1 text-red-500 text-xs">
+                              <AlertCircle className="h-3 w-3 mr-1" />
+                              {errors.phone}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      {/* Conditionally render the save info checkbox only if userId exists */}
+                      {userId && (
+                        <div className="flex items-center">
+                          <input
+                            type="checkbox"
+                            id="saveInfo"
+                            checked={saveInfo}
+                            onChange={(e) => {
+                              setSaveInfo(e.target.checked);
+                              // Jangan lakukan save segera, biarkan user klik tombol bayar
+                            }}
+                            className="h-4 w-4 text-blue-600 rounded"
+                          />
+                          <label
+                            htmlFor="saveInfo"
+                            className="ml-2 text-sm text-gray-600"
+                          >
+                            Simpan informasi ini untuk pembelian berikutnya
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             <Card>
               <CardHeader className="pb-2">
