@@ -9,7 +9,6 @@ import axios from "axios";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { debounce } from "lodash";
-import { normalizeImageUrl } from "@/lib/utils";
 
 interface Size {
   size: string;
@@ -58,7 +57,7 @@ const CatalogItem = memo(
           <div className="relative w-full aspect-square mb-4">
             {catalog.image ? (
               <Image
-                src={normalizeImageUrl(`${process.env.NEXT_PUBLIC_API_URL}${catalog.image}`)}
+                src={`${process.env.NEXT_PUBLIC_API_URL}${catalog.image}`}
                 alt={catalog.name || "Product Image"}
                 layout="fill"
                 objectFit="cover"

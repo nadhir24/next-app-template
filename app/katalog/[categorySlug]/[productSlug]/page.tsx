@@ -9,7 +9,6 @@ import { Modal, ModalBody, ModalFooter } from "@heroui/modal";
 import { Button } from "@heroui/button";
 import { Image } from "@heroui/image";
 import { useCart } from "@/context/CartContext";
-import { normalizeImageUrl } from "@/lib/utils";
 
 interface Size {
   id: number;
@@ -168,7 +167,7 @@ const ProductDetailPage = () => {
           ) : (
             product?.image && (
               <Image
-                src={normalizeImageUrl(`${process.env.NEXT_PUBLIC_API_URL}${product.image}`)}
+                src={`${process.env.NEXT_PUBLIC_API_URL}${product.image}`}
                 alt={product.name || "Product Image"}
                 className="object-contain rounded-lg w-full h-auto max-h-[60vh] sm:max-h-[500px]"
                 width={500}
