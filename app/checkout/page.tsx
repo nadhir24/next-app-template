@@ -113,6 +113,8 @@ export default function CheckoutPage() {
     useState<string>("new_address");
   const [phoneSuffix, setPhoneSuffix] = useState("");
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  // Add a flag to track if user has explicitly chosen to enter a new address
+  const [userChoseNewAddress, setUserChoseNewAddress] = useState(false);
   
   // Gunakan useRef untuk menyimpan status sebelumnya dan mencegah fetch ulang yang tidak perlu
   const fetchedRef = React.useRef(false);
@@ -276,6 +278,8 @@ export default function CheckoutPage() {
           phone: "",
         });
         setPhoneSuffix("");
+        // Set the flag to true when user deliberately chooses new address
+        setUserChoseNewAddress(true);
       } else {
         const selected = savedAddresses.find((addr) => addr.id === addressId);
         if (selected) {
@@ -301,7 +305,7 @@ export default function CheckoutPage() {
       console.error("Error in handleAddressSelect:", error);
       toast.error("Error selecting address");
     }
-  }, [savedAddresses, user]);
+  }, [savedAddresses, user, setUserChoseNewAddress]);
 
   useEffect(() => {
     // Mulai dengan status loading
@@ -373,15 +377,19 @@ export default function CheckoutPage() {
   useEffect(() => {
     try {
       // Only run this effect once when addresses are first loaded
+      // AND user has not explicitly chosen to use a new address
       const shouldSetDefaultAddress = savedAddresses.length > 0 && 
                                       !addressesLoading && 
                                       selectedAddressId === "new_address" &&
-                                      !shippingAddress.address; // Only if no address is already entered
+                                      !shippingAddress.address && 
+                                      !userChoseNewAddress; // Don't override if user chose new address
       
       console.log("Checking for default address:", {
         addressCount: savedAddresses.length,
         loading: addressesLoading,
         selectedId: selectedAddressId,
+        hasAddress: !!shippingAddress.address,
+        userChoseNew: userChoseNewAddress,
         shouldSetDefault: shouldSetDefaultAddress
       });
       
@@ -415,7 +423,7 @@ export default function CheckoutPage() {
     } catch (error) {
       console.error("Error setting default address:", error);
     }
-  }, [savedAddresses, addressesLoading, user, selectedAddressId, shippingAddress.address]);
+  }, [savedAddresses, addressesLoading, user, selectedAddressId, shippingAddress.address, userChoseNewAddress]);
 
   // Effect untuk mengatur phoneSuffix saat shippingAddress.phone berubah
   useEffect(() => {
@@ -715,8 +723,13 @@ export default function CheckoutPage() {
                         onChange={(e) => {
                           const value = e.target.value;
                           console.log("Address dropdown change:", value);
-                          // Force reset of form fields first for better UX
+                          
+                          // Update the selection state
+                          setSelectedAddressId(value);
+                          
+                          // Handle the selection logic directly here
                           if (value === "new_address") {
+                            console.log("Resetting form fields for new address");
                             setShippingAddress({
                               firstName: "",
                               lastName: "",
@@ -728,11 +741,30 @@ export default function CheckoutPage() {
                               phone: "",
                             });
                             setPhoneSuffix("");
+                            setUserChoseNewAddress(true);
+                          } else {
+                            setUserChoseNewAddress(false);
+                            // Find and apply the selected address
+                            const selected = savedAddresses.find((addr) => addr.id === value);
+                            if (selected) {
+                              console.log("Found selected address:", selected);
+                              setShippingAddress({
+                                firstName: selected.firstName || user?.fullName?.split(' ')[0] || "",
+                                lastName: selected.lastName || user?.fullName?.split(' ').slice(1).join(' ') || "",
+                                email: selected.email || user?.email || "",
+                                address: selected.street || "",
+                                city: selected.city || "",
+                                province: selected.state || "",
+                                postalCode: selected.postalCode || "",
+                                phone: selected.phone || user?.phoneNumber || "",
+                              });
+                              // Perbaikan format nomor telepon
+                              const phoneNumber = selected.phone || user?.phoneNumber || "";
+                              setPhoneSuffix(phoneNumber.replace(/^\+?62|^0/, ""));
+                            } else {
+                              console.warn("Address not found:", value);
+                            }
                           }
-                          // Then update the selection state
-                          setSelectedAddressId(value);
-                          // Finally call the handler
-                          handleAddressSelect(value);
                         }}
                         className="w-full h-10 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
                       >
