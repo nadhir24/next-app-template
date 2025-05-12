@@ -190,6 +190,42 @@ export default function ProductsPage() {
             try {
               const errorData = JSON.parse(responseText);
               errorMessage = errorData.message || errorMessage;
+              
+              // Check if this is a reference constraint error (sizes)
+              if (errorMessage.includes("referenced by other data") || errorMessage.includes("sizes")) {
+                // Show force delete option for sizes issue
+                const forceToastId = toast({
+                  title: "Related Data Found",
+                  description: "Cannot delete this product because it has related data (sizes). Would you like to force delete this product and all its related data?",
+                  variant: "destructive",
+                  duration: 10000,
+                  action: (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          dismiss(forceToastId.id);
+                          setProductToDelete(null);
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={async () => {
+                          dismiss(forceToastId.id);
+                          await forceDelete(id);
+                        }}
+                      >
+                        Force Delete
+                      </Button>
+                    </div>
+                  ),
+                });
+                return;
+              }
             } catch (parseError) {
               console.error("Failed to parse JSON from 400 response:", parseError);
             }
@@ -231,6 +267,47 @@ export default function ProductsPage() {
                 title: "Product In Cart",
                 description:
                   "This product can't be deleted because it's in customer carts. Do you want to force delete it? This will remove the product from all carts.",
+                variant: "destructive",
+                duration: 10000,
+                action: (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        dismiss(forceToastId.id);
+                        setProductToDelete(null);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={async () => {
+                        dismiss(forceToastId.id);
+                        await forceDelete(id);
+                      }}
+                    >
+                      Force Delete
+                    </Button>
+                  </div>
+                ),
+              });
+              return;
+            }
+
+            // Check if this is a reference constraint error (sizes or other relations)
+            if (
+              responseData?.message?.includes("referenced by other data") || 
+              responseData?.message?.includes("sizes") ||
+              responseText.includes("referenced by other data") ||
+              responseText.includes("sizes")
+            ) {
+              // Show force delete option for reference constraint issue
+              const forceToastId = toast({
+                title: "Related Data Found",
+                description: "Cannot delete this product because it has related data. Would you like to force delete this product and all its related data?",
                 variant: "destructive",
                 duration: 10000,
                 action: (
