@@ -281,7 +281,10 @@ export default function CheckoutPage() {
         // Set the flag to true when user deliberately chooses new address
         setUserChoseNewAddress(true);
       } else {
-        const selected = savedAddresses.find((addr) => addr.id === addressId);
+        const selected = savedAddresses.find((addr) => 
+          String(addr.id) === addressId
+        );
+        
         if (selected) {
           console.log("Found selected address:", selected);
           setShippingAddress({
@@ -298,7 +301,7 @@ export default function CheckoutPage() {
           const phoneNumber = selected.phone || user?.phoneNumber || "";
           setPhoneSuffix(phoneNumber.replace(/^\+?62|^0/, ""));
         } else {
-          console.warn("Address not found:", addressId, "Available addresses:", savedAddresses);
+          console.warn("Address not found:", addressId, "Available addresses:", savedAddresses.map(a => ({id: a.id, type: typeof a.id})));
         }
       }
     } catch (error) {
@@ -399,10 +402,13 @@ export default function CheckoutPage() {
         if (defaultAddress) {
           console.log("Found default address:", defaultAddress.id);
           // Gunakan alamat default
-          setSelectedAddressId(defaultAddress.id);
+          setSelectedAddressId(String(defaultAddress.id));
           
           // Applying address directly here to avoid circular dependency
-          const selected = savedAddresses.find((addr) => addr.id === defaultAddress.id);
+          const selected = savedAddresses.find((addr) => 
+            String(addr.id) === String(defaultAddress.id)
+          );
+          
           if (selected) {
             setShippingAddress({
               firstName: selected.firstName || user?.fullName?.split(' ')[0] || "",
@@ -745,7 +751,11 @@ export default function CheckoutPage() {
                           } else {
                             setUserChoseNewAddress(false);
                             // Find and apply the selected address
-                            const selected = savedAddresses.find((addr) => addr.id === value);
+                            // Make sure to compare string with string or number with number
+                            const selected = savedAddresses.find((addr) => 
+                              String(addr.id) === value
+                            );
+                            
                             if (selected) {
                               console.log("Found selected address:", selected);
                               setShippingAddress({
@@ -762,7 +772,7 @@ export default function CheckoutPage() {
                               const phoneNumber = selected.phone || user?.phoneNumber || "";
                               setPhoneSuffix(phoneNumber.replace(/^\+?62|^0/, ""));
                             } else {
-                              console.warn("Address not found:", value);
+                              console.warn("Address not found:", value, "Available addresses:", savedAddresses.map(a => ({id: a.id, type: typeof a.id})));
                             }
                           }
                         }}
@@ -770,7 +780,7 @@ export default function CheckoutPage() {
                       >
                         <option value="new_address">Masukkan alamat baru</option>
                         {savedAddresses.map((addr) => (
-                          <option key={addr.id} value={addr.id}>
+                          <option key={addr.id} value={String(addr.id)}>
                             {addr.street}, {addr.city}
                           </option>
                         ))}
