@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@gmail/context/AuthContext";
 import { toast } from "sonner";
 
 export default function RefundPolicyPage() {
@@ -147,7 +147,7 @@ export default function RefundPolicyPage() {
         <section className="mb-8">
           <h2 className="text-2xl font-semibold mb-4">Cara Mengajukan Pengembalian Dana</h2>
           <ol className="list-decimal pl-6 mb-4 space-y-2">
-            <li>Hubungi customer service Rano Cake melalui email support@uryindonesia.com atau chat dalam waktu 7 hari setelah menerima produk.</li>
+            <li>Hubungi customer service Rano Cake melalui email supportRanoCake@gmail.com atau chat dalam waktu 7 hari setelah menerima produk.</li>
             <li>Sertakan nomor pesanan, alasan pengembalian, dan foto produk (jika diperlukan).</li>
             <li>Tim kami akan merespons permintaan Anda dalam waktu 1-2 hari kerja dengan instruksi selanjutnya.</li>
             <li>Setelah mendapat persetujuan, kirimkan produk ke alamat yang diberikan dengan menyertakan formulir pengembalian.</li>
@@ -229,7 +229,7 @@ export default function RefundPolicyPage() {
             Terakhir diperbarui: 12 Mei 2025
           </p>
           <p className="text-sm text-gray-600 mt-2">
-            Jika Anda memiliki pertanyaan tentang kebijakan pengembalian kami, silakan hubungi kami di <a href="mailto:support@uryindonesia.com" className="text-blue-600 hover:underline">support@uryindonesia.com</a>
+            Jika Anda memiliki pertanyaan tentang kebijakan pengembalian kami, silakan hubungi kami di <a href="mailto:support@gmail.com" className="text-blue-600 hover:underline">support@gmail.com</a>
           </p>
         </div>
       </div>

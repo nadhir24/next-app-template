@@ -11,6 +11,6 @@ export default function KebijakanPengembalianLayout({
 }
 
 export const metadata = {
-  title: 'Kebijakan Pengembalian Dana | URY Indonesia',
-  description: 'Kebijakan dan prosedur pengembalian dana untuk produk yang dibeli di URY Indonesia',
+  title: 'Kebijakan Pengembalian Dana | Rano Cake',
+  description: 'Kebijakan dan prosedur pengembalian dana untuk produk yang dibeli di Rano Cake',
 }; 

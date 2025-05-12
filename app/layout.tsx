@@ -99,7 +99,7 @@ export default function RootLayout({
                           Kebijakan Pengembalian
                         </h3>
                         <p className="text-gray-100">
-                          Silakan buka <Link href="/kebijakan-pengembangan" className="text-white hover:text-gray-300 transition-colors">kebijakan pengembalian </Link> kami.
+                          Silakan buka <Link href="/kebijakan-pengembalian" className="text-white hover:text-gray-300 transition-colors">kebijakan pengembalian </Link> kami.
                         </p>
                       </div>
                       <div>
