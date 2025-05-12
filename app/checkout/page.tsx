@@ -112,6 +112,13 @@ export default function CheckoutPage() {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isLoadingCart, setIsLoadingCart] = useState(true);
 
+  // Function to get full image URL
+  const getImageUrl = (imagePath: string) => {
+    if (!imagePath) return '';
+    if (imagePath.startsWith('http')) return imagePath;
+    return `${process.env.NEXT_PUBLIC_API_URL}${imagePath}`;
+  };
+
   const shippingMethods: ShippingMethod[] = [
     {
       id: "free",
@@ -1008,7 +1015,7 @@ export default function CheckoutPage() {
                             >
                               <div className="relative w-16 h-16 rounded-md mr-4 overflow-hidden">
                                 <Image
-                                  src={item.image || "/blurry.svg"}
+                                  src={getImageUrl(item.image) || "/blurry.svg"}
                                   alt={item.name}
                                   fill
                                   className="object-cover"
