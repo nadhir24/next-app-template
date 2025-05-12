@@ -259,6 +259,7 @@ export default function CheckoutPage() {
       // Get token from localStorage
       const token = localStorage.getItem("token");
       if (!token) {
+        setAddressesLoading(false);
         return;
       }
 
@@ -388,31 +389,27 @@ export default function CheckoutPage() {
         });
 
       // Fetch saved addresses untuk dropdown dan otomatis gunakan jika ada default
-      fetchSavedAddresses(userIdFromStorage)
-        .then(() => {
-          // Cek apakah ada alamat default dan gunakan
-          if (savedAddresses.length > 0) {
-            // Cari alamat default
-            const defaultAddress = savedAddresses.find(
-              (addr) => addr.isDefault
-            );
-            if (defaultAddress) {
-              // Gunakan alamat default
-              handleAddressSelect(defaultAddress.id);
-            }
-          }
-          setAddressesLoading(false);
-        })
-        .catch(() => {
-          setAddressesLoading(false);
-        });
+      fetchSavedAddresses(userIdFromStorage);
     } else {
       setAddressesLoading(false);
     }
 
     fetchCartData();
-  }, [fetchCartData, fetchSavedAddresses, savedAddresses, handleAddressSelect]);
+  }, [fetchCartData, fetchSavedAddresses, handleAddressSelect]);
 
+  // Effect untuk menggunakan alamat default ketika savedAddresses berubah
+  useEffect(() => {
+    if (savedAddresses.length > 0 && !addressesLoading) {
+      // Cari alamat default
+      const defaultAddress = savedAddresses.find((addr) => addr.isDefault);
+      if (defaultAddress) {
+        // Gunakan alamat default
+        handleAddressSelect(defaultAddress.id);
+      }
+    }
+  }, [savedAddresses, addressesLoading, handleAddressSelect]);
+
+  // Effect untuk mengatur phoneSuffix saat shippingAddress.phone berubah
   useEffect(() => {
     if (shippingAddress.phone) {
       let initialSuffix = shippingAddress.phone
