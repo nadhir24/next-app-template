@@ -328,17 +328,18 @@ export default function CheckoutPage() {
 
   const handleAddressSelect = useCallback((addressId: string) => {
     if (addressId === "new_address") {
+      // Reset semua field saat memilih alamat baru
       setShippingAddress({
-        firstName: user?.fullName?.split(' ')[0] || "",
-        lastName: user?.fullName?.split(' ').slice(1).join(' ') || "",
+        firstName: "",
+        lastName: "",
         email: user?.email || "",
         address: "",
         city: "",
         province: "",
         postalCode: "",
-        phone: user?.phoneNumber || "",
+        phone: "",
       });
-      setPhoneSuffix(user?.phoneNumber?.replace(/^\+62|^0/, "") || "");
+      setPhoneSuffix("");
     } else {
       const selected = savedAddresses.find((addr) => addr.id === addressId);
       if (selected) {
@@ -352,7 +353,9 @@ export default function CheckoutPage() {
           postalCode: selected.postalCode || "",
           phone: selected.phone || user?.phoneNumber || "",
         });
-        setPhoneSuffix(selected.phone?.replace(/^\+62|^0/, "") || user?.phoneNumber?.replace(/^\+62|^0/, "") || "");
+        // Perbaikan format nomor telepon
+        const phoneNumber = selected.phone || user?.phoneNumber || "";
+        setPhoneSuffix(phoneNumber.replace(/^\+?62|^0/, ""));
       }
     }
   }, [savedAddresses, user]);
@@ -457,6 +460,7 @@ export default function CheckoutPage() {
   }, [shippingAddress.phone]);
 
   const validateField = (name: string, value: string) => {
+    // Hanya periksa apakah field kosong (trim untuk menghilangkan spasi di awal/akhir)
     if (value.trim() === "" && name !== "lastName") {
       return `${name} tidak boleh kosong`;
     }
@@ -480,28 +484,16 @@ export default function CheckoutPage() {
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target.value;
-    // Remove non-digits and the prefix if user accidentally typed it
-    const digits = input.replace(/^\+?62\s*/, "").replace(/\D/g, "");
-
-    // Update the suffix state (allow starting with 8 or not)
+    
+    // Terima semua digit, termasuk 8
+    const digits = input.replace(/[^\d]/g, "");
+    
+    // Simpan di state, tanpa filter tambahan
     setPhoneSuffix(digits);
-
-    // Update the main shippingAddress state with the full +62 format
-    let fullNumber = "";
-    if (digits) {
-      if (digits.startsWith("8")) {
-        fullNumber = `+62${digits}`;
-      } else {
-        // Attempt to correct if starts with 08
-        if (digits.startsWith("08")) {
-          fullNumber = `+62${digits.substring(1)}`;
-        } else {
-          // If format is unexpected, store with +62 prefix anyway
-          fullNumber = `+62${digits}`;
-        }
-      }
-    }
-
+    
+    // Format nomor dengan +62
+    let fullNumber = digits ? `+62${digits}` : "";
+    
     handleInputChange({
       target: {
         name: "phone",
