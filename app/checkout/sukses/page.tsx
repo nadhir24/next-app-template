@@ -91,7 +91,6 @@ function CheckoutSuksesContent() {
     setErrorInvoice(false);
 
     try {
-      console.log(`Manually generating invoice for orderId: ${orderId}, phoneNumber: ${phoneNumber}`);
       // Trigger invoice generation manually
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/payment/snap/invoice/generate-manual`,
@@ -106,7 +105,6 @@ function CheckoutSuksesContent() {
         }
       );
 
-      console.log(`Manual generation response:`, response.data);
       if (response.data.success) {
         setOrderDetail(response.data.data);
         setErrorInvoice(false);
@@ -116,7 +114,6 @@ function CheckoutSuksesContent() {
         toast.error("Gagal membuat invoice. Silakan coba lagi.");
       }
     } catch (err) {
-      console.error("Error generating invoice manually:", err);
       setErrorInvoice(true);
       toast.error("Gagal membuat invoice. Silakan coba lagi.");
     } finally {
@@ -152,25 +149,21 @@ function CheckoutSuksesContent() {
 
     const fetchOrderDetail = async () => {
       try {
-        console.log(`Fetching order details for orderId: ${orderId}`);
         const response = await axios.get(
           `${process.env.NEXT_PUBLIC_API_URL}/payment/snap/order-detail?orderId=${orderId}`
         );
 
         if (response.data.success) {
           const data = response.data.data;
-          console.log(`Order details received:`, data);
           setOrderDetail(data);
           setLoading(false);
 
           if (data.status === "SETTLEMENT" && !data.midtransInvoicePdfUrl) {
-            console.log("Settlement status detected but no invoice PDF URL found");
             setErrorInvoice(true);
             toast.error("Invoice belum tersedia. Silakan coba generate ulang.");
           }
         }
       } catch (err) {
-        console.error("Error fetching order details:", err);
         setLoading(false);
       }
     };
@@ -185,7 +178,6 @@ function CheckoutSuksesContent() {
 
         if (response.data.success) {
           const data = response.data.data;
-          console.log(`Order details updated:`, data);
           setOrderDetail(data);
 
           if (loading) {
@@ -195,7 +187,6 @@ function CheckoutSuksesContent() {
           if (data.status === "SETTLEMENT") {
             clearInterval(interval);
             if (!data.midtransInvoicePdfUrl) {
-              console.log("Settlement status detected but no invoice PDF URL found in polling");
               setErrorInvoice(true);
               toast.error(
                 "Invoice belum tersedia. Silakan coba generate ulang."
@@ -204,7 +195,6 @@ function CheckoutSuksesContent() {
           }
         }
       } catch (err) {
-        console.error("Error polling order details:", err);
         // Handle error silently
       }
     }, 3000);
@@ -231,7 +221,7 @@ function CheckoutSuksesContent() {
 
     if (loginStatus === "LOGGED_IN") {
       // Jika user sudah login, arahkan ke dashboard
-      window.location.href = `/dashboard/invoice`;
+      window.location.href = `/dashboard`;
     } else {
       // Jika user adalah guest, arahkan ke halaman invoice detail
       window.location.href = `/invoice`;
@@ -324,7 +314,7 @@ function CheckoutSuksesContent() {
           ) : (
             <p className="text-sm text-gray-500">
               {loginStatus === "LOGGED_IN"
-                ? "Anda juga dapat melihat status pesanan di halaman Dashboard Anda."
+                ? "Anda juga dapat melihat status pesanan di halaman Dashboard ---> pesanan Anda."
                 : "Anda juga dapat melihat status pesanan di halaman Invoice Anda."}
             </p>
           )}
