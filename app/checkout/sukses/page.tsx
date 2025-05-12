@@ -91,6 +91,7 @@ function CheckoutSuksesContent() {
     setErrorInvoice(false);
 
     try {
+      console.log(`Manually generating invoice for orderId: ${orderId}, phoneNumber: ${phoneNumber}`);
       // Trigger invoice generation manually
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/payment/snap/invoice/generate-manual`,
@@ -105,6 +106,7 @@ function CheckoutSuksesContent() {
         }
       );
 
+      console.log(`Manual generation response:`, response.data);
       if (response.data.success) {
         setOrderDetail(response.data.data);
         setErrorInvoice(false);
@@ -114,6 +116,7 @@ function CheckoutSuksesContent() {
         toast.error("Gagal membuat invoice. Silakan coba lagi.");
       }
     } catch (err) {
+      console.error("Error generating invoice manually:", err);
       setErrorInvoice(true);
       toast.error("Gagal membuat invoice. Silakan coba lagi.");
     } finally {
@@ -149,21 +152,25 @@ function CheckoutSuksesContent() {
 
     const fetchOrderDetail = async () => {
       try {
+        console.log(`Fetching order details for orderId: ${orderId}`);
         const response = await axios.get(
           `${process.env.NEXT_PUBLIC_API_URL}/payment/snap/order-detail?orderId=${orderId}`
         );
 
         if (response.data.success) {
           const data = response.data.data;
+          console.log(`Order details received:`, data);
           setOrderDetail(data);
           setLoading(false);
 
-          if (data.status === "settlement" && !data.midtransInvoicePdfUrl) {
+          if (data.status === "SETTLEMENT" && !data.midtransInvoicePdfUrl) {
+            console.log("Settlement status detected but no invoice PDF URL found");
             setErrorInvoice(true);
             toast.error("Invoice belum tersedia. Silakan coba generate ulang.");
           }
         }
       } catch (err) {
+        console.error("Error fetching order details:", err);
         setLoading(false);
       }
     };
@@ -178,15 +185,17 @@ function CheckoutSuksesContent() {
 
         if (response.data.success) {
           const data = response.data.data;
+          console.log(`Order details updated:`, data);
           setOrderDetail(data);
 
           if (loading) {
             setLoading(false);
           }
 
-          if (data.status === "settlement") {
+          if (data.status === "SETTLEMENT") {
             clearInterval(interval);
             if (!data.midtransInvoicePdfUrl) {
+              console.log("Settlement status detected but no invoice PDF URL found in polling");
               setErrorInvoice(true);
               toast.error(
                 "Invoice belum tersedia. Silakan coba generate ulang."
@@ -195,6 +204,7 @@ function CheckoutSuksesContent() {
           }
         }
       } catch (err) {
+        console.error("Error polling order details:", err);
         // Handle error silently
       }
     }, 3000);
@@ -301,6 +311,14 @@ function CheckoutSuksesContent() {
             )
           )}
 
+          {/* Debug info */}
+          {!loading && orderDetail && !orderDetail.midtransInvoicePdfUrl && !errorInvoice && (
+            <div className="text-xs text-left mt-1 text-red-500">
+              <p>Status: {orderDetail.status}</p>
+              <p>Membutuhkan invoice? Klik tombol generate ulang di bawah.</p>
+            </div>
+          )}
+
           {loading ? (
             <Skeleton className="h-4 w-4/5 mx-auto" />
           ) : (
@@ -312,7 +330,8 @@ function CheckoutSuksesContent() {
           )}
         </CardContent>
         <CardFooter className="flex flex-col space-y-2">
-          {errorInvoice && (
+          {/* Always show the retry button for orders with SETTLEMENT status that don't have an invoice */}
+          {(!loading && orderDetail?.status === "SETTLEMENT" && !orderDetail.midtransInvoicePdfUrl) || errorInvoice ? (
             <div className="space-y-2">
               <p className="text-sm text-red-600">
                 Invoice belum tersedia. Silakan coba generate ulang.
@@ -351,7 +370,7 @@ function CheckoutSuksesContent() {
                 )}
               </div>
             </div>
-          )}
+          ) : null}
           {isBrowser && orderDetail?.status === "SETTLEMENT" && (
             <Tombol
               className="w-full"
