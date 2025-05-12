@@ -259,8 +259,12 @@ export default function CheckoutPage() {
     try {
       console.log("Selecting address:", addressId);
       
+      // First update the selection ID to trigger UI update
+      setSelectedAddressId(addressId);
+      
       if (addressId === "new_address") {
         // Reset semua field saat memilih alamat baru
+        console.log("Resetting form fields for new address");
         setShippingAddress({
           firstName: "",
           lastName: "",
@@ -365,11 +369,23 @@ export default function CheckoutPage() {
     }
   }, [fetchSavedAddresses]);
 
-  // Effect untuk menggunakan alamat default ketika savedAddresses berubah
+  // Effect untuk menggunakan alamat default ketika savedAddresses berubah - only on initial load
   useEffect(() => {
     try {
-      console.log("Checking for default address in", savedAddresses.length, "addresses");
-      if (savedAddresses.length > 0 && !addressesLoading) {
+      // Only run this effect once when addresses are first loaded
+      const shouldSetDefaultAddress = savedAddresses.length > 0 && 
+                                      !addressesLoading && 
+                                      selectedAddressId === "new_address" &&
+                                      !shippingAddress.address; // Only if no address is already entered
+      
+      console.log("Checking for default address:", {
+        addressCount: savedAddresses.length,
+        loading: addressesLoading,
+        selectedId: selectedAddressId,
+        shouldSetDefault: shouldSetDefaultAddress
+      });
+      
+      if (shouldSetDefaultAddress) {
         // Cari alamat default
         const defaultAddress = savedAddresses.find((addr) => addr.isDefault);
         if (defaultAddress) {
@@ -399,7 +415,7 @@ export default function CheckoutPage() {
     } catch (error) {
       console.error("Error setting default address:", error);
     }
-  }, [savedAddresses, addressesLoading, user]);
+  }, [savedAddresses, addressesLoading, user, selectedAddressId, shippingAddress.address]);
 
   // Effect untuk mengatur phoneSuffix saat shippingAddress.phone berubah
   useEffect(() => {
@@ -696,8 +712,29 @@ export default function CheckoutPage() {
                       {/* Temporarily replace with a simpler dropdown to avoid React error */}
                       <select 
                         value={selectedAddressId} 
-                        onChange={(e) => handleAddressSelect(e.target.value)}
-                        className="w-full h-10 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          console.log("Address dropdown change:", value);
+                          // Force reset of form fields first for better UX
+                          if (value === "new_address") {
+                            setShippingAddress({
+                              firstName: "",
+                              lastName: "",
+                              email: user?.email || "",
+                              address: "",
+                              city: "",
+                              province: "",
+                              postalCode: "",
+                              phone: "",
+                            });
+                            setPhoneSuffix("");
+                          }
+                          // Then update the selection state
+                          setSelectedAddressId(value);
+                          // Finally call the handler
+                          handleAddressSelect(value);
+                        }}
+                        className="w-full h-10 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
                       >
                         <option value="new_address">Masukkan alamat baru</option>
                         {savedAddresses.map((addr) => (
@@ -730,7 +767,7 @@ export default function CheckoutPage() {
                     </div>
                   ) : (
                     <div className="relative z-10">
-                      <div className="grid grid-cols-2 gap-4 relative z-10">
+                      <div className="grid grid-cols-2 gap-4 relative z-10 mb-4">
                         <div>
                           <Input
                             type="text"
@@ -762,18 +799,18 @@ export default function CheckoutPage() {
                         />
                       </div>
 
-                      <div>
+                      <div className="mb-4">
                         <Input
                           type="text"
                           name="address"
                           value={shippingAddress.address}
                           onChange={handleInputChange}
                           placeholder="Alamat"
-                          className={
+                          className={`mb-1 ${
                             errors.address
                               ? "border-red-500 focus:ring-red-500"
                               : ""
-                          }
+                          }`}
                           required
                         />
                         {errors.address && (
@@ -784,7 +821,7 @@ export default function CheckoutPage() {
                         )}
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-2 gap-4 mb-4">
                         <div>
                           <Input
                             type="text"
@@ -792,11 +829,11 @@ export default function CheckoutPage() {
                             value={shippingAddress.city}
                             onChange={handleInputChange}
                             placeholder="Kota"
-                            className={
+                            className={`mb-1 ${
                               errors.city
                                 ? "border-red-500 focus:ring-red-500"
                                 : ""
-                            }
+                            }`}
                             required
                           />
                           {errors.city && (
@@ -813,11 +850,11 @@ export default function CheckoutPage() {
                             value={shippingAddress.province}
                             onChange={handleInputChange}
                             placeholder="Provinsi"
-                            className={
+                            className={`mb-1 ${
                               errors.province
                                 ? "border-red-500 focus:ring-red-500"
                                 : ""
-                            }
+                            }`}
                             required
                           />
                           {errors.province && (
@@ -829,7 +866,7 @@ export default function CheckoutPage() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-2 gap-4 mb-4">
                         <div>
                           <Input
                             type="text"
@@ -837,11 +874,11 @@ export default function CheckoutPage() {
                             value={shippingAddress.postalCode}
                             onChange={handleInputChange}
                             placeholder="Kode Pos"
-                            className={
+                            className={`mb-1 ${
                               errors.postalCode
                                 ? "border-red-500 focus:ring-red-500"
                                 : ""
-                            }
+                            }`}
                             required
                           />
                           {errors.postalCode && (
@@ -862,7 +899,7 @@ export default function CheckoutPage() {
                               value={phoneSuffix}
                               onChange={handlePhoneChange}
                               placeholder="812 3456 7890"
-                              className={`pl-10 ${errors.phone ? "border-red-500 focus:ring-red-500" : ""}`}
+                              className={`pl-10 mb-1 ${errors.phone ? "border-red-500 focus:ring-red-500" : ""}`}
                               required
                             />
                           </div>
