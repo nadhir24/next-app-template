@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Spinner } from "@nextui-org/spinner";
+import React from "react";
 
 interface ShippingAddress {
   firstName: string;
@@ -111,12 +112,20 @@ export default function CheckoutPage() {
   const [phoneSuffix, setPhoneSuffix] = useState("");
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isLoadingCart, setIsLoadingCart] = useState(true);
+  
+  // Gunakan useRef untuk menyimpan status sebelumnya dan mencegah fetch ulang yang tidak perlu
+  const fetchedRef = React.useRef(false);
+  const hasAddressesRef = React.useRef(false);
 
-  // Function to get full image URL
-  const getImageUrl = (imagePath: string) => {
-    if (!imagePath) return '';
-    if (imagePath.startsWith('http')) return imagePath;
-    return `${process.env.NEXT_PUBLIC_API_URL}${imagePath}`;
+  // Optimasi pengaturan image agar tidak load ulang dan gunakan memori yang cukup
+  const imageLoader = ({ src, width }: { src: string, width: number }) => {
+    if (!src || src === '/blurry.svg') return '/blurry.svg';
+    // Batasi ukuran gambar yang diminta
+    const limitedWidth = Math.min(width, 96); // Batasi ukuran gambar
+    if (src.startsWith('http')) {
+      return src;
+    }
+    return `${process.env.NEXT_PUBLIC_API_URL}${src}`;
   };
 
   const shippingMethods: ShippingMethod[] = [
@@ -138,6 +147,9 @@ export default function CheckoutPage() {
   ];
 
   const fetchCartData = useCallback(async () => {
+    // Jika sudah loading, jangan fetch ulang
+    if (isLoadingCart && checkoutData.items.length > 0) return;
+    
     try {
       // Get cart data from localStorage first
       const cartData = localStorage.getItem("cart");
@@ -302,6 +314,11 @@ export default function CheckoutPage() {
       );
 
       setSavedAddresses(uniqueAddresses);
+      
+      // Tandai bahwa kita sudah memiliki alamat tersimpan
+      if (uniqueAddresses.length > 0) {
+        hasAddressesRef.current = true;
+      }
     } catch (error) {
       toast.error("Gagal mengambil daftar alamat tersimpan");
     } finally {
@@ -356,6 +373,12 @@ export default function CheckoutPage() {
       toast.error("Error parsing user data");
     }
 
+    // Cek jika sudah di-fetch sebelumnya untuk mencegah fetch berlebihan
+    if (fetchedRef.current) {
+      setAddressesLoading(false);
+      return;
+    }
+
     if (userIdFromStorage) {
       setUserId(userIdFromStorage);
 
@@ -388,13 +411,21 @@ export default function CheckoutPage() {
           toast.error("Error fetching user data");
         });
 
-      // Fetch saved addresses untuk dropdown dan otomatis gunakan jika ada default
-      fetchSavedAddresses(userIdFromStorage);
+      // Fetch saved addresses - hanya jika belum ada
+      if (!hasAddressesRef.current) {
+        fetchSavedAddresses(userIdFromStorage);
+        fetchedRef.current = true;
+      } else {
+        setAddressesLoading(false);
+      }
     } else {
       setAddressesLoading(false);
     }
 
-    fetchCartData();
+    // Fetch cart data dengan optimization
+    if (checkoutData.items.length === 0) {
+      fetchCartData();
+    }
   }, [fetchCartData, fetchSavedAddresses, handleAddressSelect]);
 
   // Effect untuk menggunakan alamat default ketika savedAddresses berubah
@@ -686,8 +717,9 @@ export default function CheckoutPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* Pilih Alamat */}
                   {savedAddresses.length > 0 && (
-                    <div className="space-y-2">
+                    <div className="space-y-2 relative z-10">
                       <label className="text-sm text-gray-600">
                         Pilih Alamat Tersimpan
                       </label>
@@ -698,7 +730,7 @@ export default function CheckoutPage() {
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Pilih alamat tersimpan" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="z-50">
                           <SelectItem value="new_address">
                             Masukkan alamat baru
                           </SelectItem>
@@ -732,8 +764,8 @@ export default function CheckoutPage() {
                       </div>
                     </div>
                   ) : (
-                    <>
-                      <div className="grid grid-cols-2 gap-4">
+                    <div className="relative z-10">
+                      <div className="grid grid-cols-2 gap-4 relative z-10">
                         <div>
                           <Input
                             type="text"
@@ -898,7 +930,7 @@ export default function CheckoutPage() {
                           </label>
                         </div>
                       )}
-                    </>
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -1012,7 +1044,7 @@ export default function CheckoutPage() {
                             >
                               <div className="relative w-16 h-16 rounded-md mr-4 overflow-hidden">
                                 <Image
-                                  src={getImageUrl(item.image) || "/blurry.svg"}
+                                  src={imageLoader({ src: item.image, width: 100 }) || "/blurry.svg"}
                                   alt={item.name}
                                   fill
                                   className="object-cover"
@@ -1088,7 +1120,7 @@ export default function CheckoutPage() {
                     // If cart has items, show the Pay button
                     <Tombol
                       onPress={createTransaction}
-                      className="w-full bg-black hover:bg-gray-800 text-white"
+                      className="w-full bg-black hover:bg-gray-800 text-white relative z-30 cursor-pointer !pointer-events-auto"
                       size="lg"
                       isDisabled={loading} // Menambahkan prop disabled untuk mencegah pencetan saat loading
                     >
