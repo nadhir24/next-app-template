@@ -22,6 +22,7 @@ import {
 import Tombol from "@/components/button";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { useCart } from "@/context/CartContext";
 import {
   Select,
   SelectContent,
@@ -83,6 +84,7 @@ interface SavedAddress {
 export default function CheckoutPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { cartItems: contextCartItems, cartCount, cartTotal, isLoadingCart, fetchCart } = useCart();
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
     firstName: "",
     lastName: "",
@@ -111,7 +113,6 @@ export default function CheckoutPage() {
     useState<string>("new_address");
   const [phoneSuffix, setPhoneSuffix] = useState("");
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const [isLoadingCart, setIsLoadingCart] = useState(true);
   
   // Gunakan useRef untuk menyimpan status sebelumnya dan mencegah fetch ulang yang tidak perlu
   const fetchedRef = React.useRef(false);
@@ -146,124 +147,52 @@ export default function CheckoutPage() {
     },
   ];
 
-  const fetchCartData = useCallback(async () => {
-    // Jika sudah loading, jangan fetch ulang
-    if (isLoadingCart && checkoutData.items.length > 0) return;
-    
-    try {
-      // Get cart data from localStorage first
-      const cartData = localStorage.getItem("cart");
-
-      let parsedCartData;
-      try {
-        parsedCartData = cartData ? JSON.parse(cartData) : null;
-      } catch (e) {
-        toast.error("Error parsing cart data");
-      }
-
-      // Get user data with proper fallback chain
-      let effectiveUserId = userId;
-
-      // If no userId from context, try localStorage
-      if (!effectiveUserId) {
-        effectiveUserId = localStorage.getItem("userId");
-      }
-
-      // If still no userId, try to get it from cart data
-      if (!effectiveUserId && parsedCartData && Array.isArray(parsedCartData)) {
-        const firstCartItem = parsedCartData[0];
-        if (firstCartItem && firstCartItem.userId) {
-          effectiveUserId = firstCartItem.userId;
-        }
-      }
-
-      const guestIdFromStorage = localStorage.getItem("guestId");
-      const userDataFromStorage = localStorage.getItem("user");
-
-      if (!effectiveUserId && !guestIdFromStorage) {
-        toast.error(
-          "Silakan login atau tambahkan item ke keranjang terlebih dahulu"
-        );
-        return;
-      }
-
-      const baseUrl = `${process.env.NEXT_PUBLIC_API_URL}/cart`;
-      const queryParam = effectiveUserId
-        ? `userId=${effectiveUserId}`
-        : `guestId=${guestIdFromStorage}`;
-      const itemsUrl = `${baseUrl}/findMany?${queryParam}`;
-      const totalUrl = `${baseUrl}/total?${queryParam}`;
-
-      const [itemsRes, totalRes] = await Promise.all([
-        fetch(itemsUrl),
-        fetch(totalUrl),
-      ]);
-
-      if (!itemsRes.ok || !totalRes.ok) {
-        throw new Error("Gagal mengambil data");
-      }
-
-      const [items, totalText] = await Promise.all([
-        itemsRes.json(),
-        totalRes.text(),
-      ]);
-
-      if (!items || items.length === 0) {
-        setCheckoutData({ items: [], subtotal: 0, shipping: 0, total: 0 });
-        setTotalFromBackend(0);
-        setIsLoadingCart(false);
-        return;
-      }
-
-      let totalValue = 0;
-      if (typeof totalText === "string" && totalText.startsWith("Rp")) {
-        totalValue = parseInt(totalText.replace(/[^0-9]/g, "")) || 0;
-      }
-      setTotalFromBackend(totalValue);
-
-      const transformedItems = items.map((item: any) => {
-        const sizeValue =
-          typeof item.size === "object" ? item.size.size : item.size || "";
-
-        const priceValue =
-          typeof item.size === "object" && item.size.price
-            ? parseInt(item.size.price.replace(/[^0-9]/g, ""))
-            : 0;
-
-        return {
-          id: item.id.toString(),
-          name: item.catalog?.name || "",
-          price: priceValue,
-          quantity: item.quantity,
-          size: sizeValue,
-          image: item.catalog?.image || "",
-        };
-      });
-
+  // Transform cart context data to checkout data format
+  useEffect(() => {
+    if (!isLoadingCart && contextCartItems.length > 0) {
+      const transformedItems = contextCartItems.map(item => ({
+        id: item.id.toString(),
+        name: item.catalog?.name || "",
+        price: typeof item.size?.price === 'string' 
+          ? parseInt(item.size.price.replace(/[^0-9]/g, "")) || 0
+          : 0,
+        quantity: item.quantity,
+        size: typeof item.size?.size === 'string' ? item.size.size : "",
+        image: item.catalog?.image || "",
+      }));
+      
       const subtotal = transformedItems.reduce(
         (total: number, item: CartItem) => total + item.price * item.quantity,
         0
       );
-
+      
       const shippingCost =
         shippingMethods.find((method) => method.id === selectedShippingMethod)
           ?.price || 0;
-
+      
       setCheckoutData({
         items: transformedItems,
         subtotal: subtotal,
         shipping: shippingCost,
-        total: totalValue || subtotal + shippingCost,
+        total: cartTotal || subtotal + shippingCost,
       });
-      setIsLoadingCart(false);
-    } catch (error) {
-      toast.error("Gagal mengambil data cart");
-      setIsLoadingCart(false);
+      
+      setTotalFromBackend(cartTotal);
+    } else if (!isLoadingCart) {
+      setCheckoutData({
+        items: [],
+        subtotal: 0,
+        shipping: 0,
+        total: 0
+      });
+      setTotalFromBackend(0);
     }
-  }, [userId, selectedShippingMethod, shippingMethods, toast]);
+  }, [contextCartItems, cartTotal, isLoadingCart, selectedShippingMethod, shippingMethods]);
 
-  // Keeping the old function name for compatibility
-  const fetchCheckoutData = fetchCartData;
+  // Use fetchCart from context instead of local implementation
+  useEffect(() => {
+    fetchCart();
+  }, [fetchCart]);
 
   const fetchSavedAddresses = useCallback(async (userId: string) => {
     setAddressesLoading(true);
@@ -424,12 +353,7 @@ export default function CheckoutPage() {
     } else {
       setAddressesLoading(false);
     }
-
-    // Fetch cart data dengan optimization
-    if (checkoutData.items.length === 0) {
-      fetchCartData();
-    }
-  }, [fetchCartData, fetchSavedAddresses, handleAddressSelect]);
+  }, [fetchSavedAddresses, handleAddressSelect]);
 
   // Effect untuk menggunakan alamat default ketika savedAddresses berubah
   useEffect(() => {

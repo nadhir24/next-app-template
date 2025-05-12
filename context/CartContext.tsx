@@ -470,16 +470,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
     };
   }, [clearCart]);
 
-  // Di CartProvider setelah useEffect pertama
-  useEffect(() => {
-    // Force reset localStorage on initial load (temporary fix)
-    localStorage.setItem("cart_items", "[]");
-    localStorage.setItem("cart_count", "0");
-    localStorage.setItem("cart_total", "0");
-
-    // Existing code...
-  }, []); // Empty dependency array = run once on mount
-
   // Context value memoized
   const contextValue = useMemo(
     () => ({
