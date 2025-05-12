@@ -363,19 +363,43 @@ export default function CheckoutPage() {
     } else {
       setAddressesLoading(false);
     }
-  }, [fetchSavedAddresses, handleAddressSelect]);
+  }, [fetchSavedAddresses]);
 
   // Effect untuk menggunakan alamat default ketika savedAddresses berubah
   useEffect(() => {
-    if (savedAddresses.length > 0 && !addressesLoading) {
-      // Cari alamat default
-      const defaultAddress = savedAddresses.find((addr) => addr.isDefault);
-      if (defaultAddress) {
-        // Gunakan alamat default
-        handleAddressSelect(defaultAddress.id);
+    try {
+      console.log("Checking for default address in", savedAddresses.length, "addresses");
+      if (savedAddresses.length > 0 && !addressesLoading) {
+        // Cari alamat default
+        const defaultAddress = savedAddresses.find((addr) => addr.isDefault);
+        if (defaultAddress) {
+          console.log("Found default address:", defaultAddress.id);
+          // Gunakan alamat default
+          setSelectedAddressId(defaultAddress.id);
+          
+          // Applying address directly here to avoid circular dependency
+          const selected = savedAddresses.find((addr) => addr.id === defaultAddress.id);
+          if (selected) {
+            setShippingAddress({
+              firstName: selected.firstName || user?.fullName?.split(' ')[0] || "",
+              lastName: selected.lastName || user?.fullName?.split(' ').slice(1).join(' ') || "",
+              email: selected.email || user?.email || "",
+              address: selected.street || "",
+              city: selected.city || "",
+              province: selected.state || "",
+              postalCode: selected.postalCode || "",
+              phone: selected.phone || user?.phoneNumber || "",
+            });
+            // Perbaikan format nomor telepon
+            const phoneNumber = selected.phone || user?.phoneNumber || "";
+            setPhoneSuffix(phoneNumber.replace(/^\+?62|^0/, ""));
+          }
+        }
       }
+    } catch (error) {
+      console.error("Error setting default address:", error);
     }
-  }, [savedAddresses, addressesLoading, handleAddressSelect]);
+  }, [savedAddresses, addressesLoading, user]);
 
   // Effect untuk mengatur phoneSuffix saat shippingAddress.phone berubah
   useEffect(() => {
