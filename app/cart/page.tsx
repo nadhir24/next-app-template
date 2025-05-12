@@ -141,6 +141,13 @@ const CartPage = () => {
     }
   }, [itemToDelete, removeFromCart, displayCartItems, processingItems, onClose]);
 
+  // Add this function
+  const getImageUrl = (imagePath: string) => {
+    if (!imagePath) return '';
+    if (imagePath.startsWith('http')) return imagePath;
+    return `${process.env.NEXT_PUBLIC_API_URL}${imagePath}`;
+  };
+
   // Loading skeleton
   if (isLoadingCart && displayCartItems.length === 0) {
     return (
@@ -232,7 +239,7 @@ const CartPage = () => {
                     <div className="flex flex-col sm:flex-row gap-4">
                       {item.catalog?.image && (
                         <Image
-                          src={item.catalog.image}
+                          src={getImageUrl(item.catalog.image)}
                           alt={item.catalog?.name || "Product Image"}
                           className="w-24 h-24 object-cover rounded flex-shrink-0"
                           width={96}

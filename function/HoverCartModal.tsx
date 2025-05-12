@@ -56,6 +56,13 @@ const HoverCartModal: React.FC = () => {
     </div>
   );
 
+  // Function to get full image URL
+  const getImageUrl = (imagePath: string) => {
+    if (!imagePath) return '';
+    if (imagePath.startsWith('http')) return imagePath;
+    return `${process.env.NEXT_PUBLIC_API_URL}${imagePath}`;
+  };
+
   return (
     <>
       <Button onPress={() => setIsModalOpen(true)} className="relative">
@@ -117,7 +124,7 @@ const HoverCartModal: React.FC = () => {
                 >
                   {item.catalog?.image && (
                     <Image
-                      src={item.catalog.image}
+                      src={getImageUrl(item.catalog.image)}
                       alt={item.catalog.name ?? "Product Image"}
                       className="w-12 h-12 object-cover rounded flex-shrink-0"
                       width={48}
