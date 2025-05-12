@@ -163,7 +163,7 @@ export default function RefundPolicyPage() {
             <li>Produk personal seperti pakaian dalam.</li>
             <li>Produk yang sudah digunakan atau dicuci.</li>
             <li>Produk yang telah diubah atau diperbaiki oleh pembeli.</li>
-            <li>Produk diskon dengan label "tidak dapat dikembalikan".</li>
+            <li>Produk diskon dengan label &quot;tidak dapat dikembalikan&quot;.</li>
           </ul>
         </section>
 
@@ -185,7 +185,7 @@ export default function RefundPolicyPage() {
                   required
                 />
                 <p className="text-sm text-gray-500 mt-1">
-                  Masukkan nomor pesanan yang dimulai dengan "order-"
+                  Masukkan nomor pesanan yang dimulai dengan &quot;order-&quot;
                 </p>
               </div>
               
