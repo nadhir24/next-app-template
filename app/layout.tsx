@@ -96,6 +96,14 @@ export default function RootLayout({
                       </div>
                       <div>
                         <h3 className="text-xl font-bold mb-6">
+                          Syarat & Ketentuan
+                        </h3>
+                        <p className="text-gray-100">
+                          Silakan baca <Link href="/syarat-ketentuan" className="text-white hover:text-gray-300 transition-colors">Syarat & Ketentuan</Link> kami.
+                        </p>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold mb-6">
                           Support Pembayaran
                         </h3>
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3 gap-4 items-center">
