@@ -6,12 +6,16 @@ interface DynamicImageProps {
   url: string;
   alt: string;
   containerClass?: string;
+  width?: number;
+  height?: number;
 }
 
 const DynamicImage: React.FC<DynamicImageProps> = ({
   url,
   alt,
   containerClass,
+  width = 500,
+  height = 300,
 }) => {
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -43,13 +47,22 @@ const DynamicImage: React.FC<DynamicImageProps> = ({
   }
 
   return (
-    <div className={containerClass}>
-      <Image
-        src={imageSrc || ""}
-        alt={alt}
-        layout="fill" // Or use layout="responsive" for responsive images
-        objectFit="cover" // Adjust objectFit as needed
-      />
+    <div className={`relative ${containerClass}`} style={{ width: '100%', height: 'auto' }}>
+      {imageSrc && (
+        <Image
+          src={imageSrc}
+          alt={alt}
+          width={width}
+          height={height}
+          style={{ 
+            objectFit: "cover",
+            width: "100%",
+            height: "auto"
+          }}
+          priority={false}
+          unoptimized={false}
+        />
+      )}
     </div>
   );
 };

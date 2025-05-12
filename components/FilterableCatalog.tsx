@@ -59,9 +59,16 @@ const CatalogItem = memo(
               <Image
                 src={`${process.env.NEXT_PUBLIC_API_URL}${catalog.image}`}
                 alt={catalog.name || "Product Image"}
-                layout="fill"
-                objectFit="cover"
-                className="rounded-lg"
+                width={500}
+                height={500}
+                style={{
+                  objectFit: "cover",
+                  width: "100%",
+                  height: "100%",
+                  borderRadius: "0.5rem"
+                }}
+                priority={false}
+                unoptimized={false}
               />
             ) : (
               <div className="w-full h-full bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">

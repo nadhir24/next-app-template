@@ -5,30 +5,19 @@ const withBundleAnalyzer = require("@next/bundle-analyzer")({
 
 const nextConfig = {
   images: {
+    domains: ["bima-back-production.up.railway.app"],
     remotePatterns: [
       {
         protocol: "http",
         hostname: "bima-back-production.up.railway.app",
         port: '',
-        pathname: "/catalog/images/**",
-      },
-      {
-        protocol: "http",
-        hostname: "bima-back-production.up.railway.app",
-        port: '',
-        pathname: "/uploads/**",
+        pathname: "/**",
       },
       {
         protocol: "https",
         hostname: "bima-back-production.up.railway.app",
         port: '',
-        pathname: "/catalog/images/**",
-      },
-      {
-        protocol: "https",
-        hostname: "bima-back-production.up.railway.app",
-        port: '',
-        pathname: "/uploads/**",
+        pathname: "/**",
       },
       {
         protocol: "https",
@@ -44,11 +33,12 @@ const nextConfig = {
     // Optimize image loading
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-    formats: ["image/webp"],
+    formats: ["image/webp", "image/avif", "image/jpg", "image/jpeg", "image/png"],
     minimumCacheTTL: 60,
     dangerouslyAllowSVG: true,
     disableStaticImages: false,
-    unoptimized: process.env.NODE_ENV === "development",
+    unoptimized: false,
+    remoteImageTimeout: 15,
   },
   // Enable Fast Refresh for faster development experience
   reactStrictMode: true,
