@@ -220,8 +220,9 @@ const ProductDetailPage = () => {
                 <Image
                   src={`${process.env.NEXT_PUBLIC_API_URL}${img.imageUrl}`}
                   alt={`${product.name} image ${index + 1}`}
-                  className="object-cover"
-                  fill
+                  className="object-cover w-full h-full"
+                  width={70}
+                  height={70}
                   sizes="70px"
                 />
               </button>
