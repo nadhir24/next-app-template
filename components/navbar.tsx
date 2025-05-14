@@ -87,8 +87,11 @@ export default function Navy() {
       <NavbarContent className="flex items-center justify-between">
         <div className="flex items-center justify-between">
           <NavbarContent className="sm:hidden basis-1 mr-4" justify="start">
-            <div className="p-3 cursor-pointer touch-manipulation">
-              <NavbarMenuToggle className="scale-125" />
+            <div className="p-2 cursor-pointer touch-manipulation">
+              <NavbarMenuToggle 
+                className="scale-125 w-8 h-8 p-0.5" 
+                aria-label="Toggle navigation menu"
+              />
             </div>
           </NavbarContent>
           <NavbarBrand as="li" className="max-w-fit mr-4">
@@ -116,7 +119,7 @@ export default function Navy() {
         </div>
       </NavbarContent>
       <NavbarContent
-        className="flex basis-1/5 sm:basis-full px-4 lg:px-8"
+        className="flex basis-1/5 sm:basis-full px-2 sm:px-4 lg:px-8"
         justify="end"
       >
         {/* Tetap tampilkan keranjang dan theme switch */}
@@ -142,8 +145,8 @@ export default function Navy() {
           )}
         </NavbarItem>
       </NavbarContent>
-      <NavbarMenu>
-        <div className="mx-4 mt-2 flex flex-col gap-2">
+      <NavbarMenu className="pt-2 pb-6">
+        <div className="mx-4 mt-2 flex flex-col gap-4">
           {siteConfig.navMenuItems
             .filter((item) => {
               // Filter juga menu mobile dengan cara yang sama
@@ -156,7 +159,7 @@ export default function Navy() {
               <NavbarMenuItem key={`${item}-${index}`}>
                 <Link
                   className={
-                    `transition-colors duration-200 text-base font-medium ` 
+                    `transition-colors duration-200 text-lg font-medium py-2 block`
                   }
                   href={item.href}
                 >
@@ -165,7 +168,7 @@ export default function Navy() {
               </NavbarMenuItem>
             ))}
           {/* Login dipindahkan ke dalam menu hamburger saat mobile */}
-          <NavbarMenuItem key="auth-mobile" className="sm:hidden">
+          <NavbarMenuItem key="auth-mobile" className="sm:hidden mt-2">
             <Modall />
           </NavbarMenuItem>
         </div>
