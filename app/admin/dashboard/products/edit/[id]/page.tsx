@@ -177,6 +177,10 @@ const EditProductPage = () => {
     fetchProduct();
   }, [id]);
 
+  useEffect(() => {
+    console.log("Current sizes state:", sizes);
+  }, [sizes]);
+
   const handleInputChange = (
     field: keyof Omit<CatalogItem, "sizes">,
     value: string | boolean
@@ -215,10 +219,16 @@ const EditProductPage = () => {
   };
 
   const addSizeField = () => {
-    setSizes([
+    console.log("Adding size field. Current count:", sizes.length);
+    const newSizes = [
       ...sizes,
       { sizeValue: "", sizeUnit: "gram", price: "", qty: "" },
-    ]);
+    ];
+    console.log("New sizes count:", newSizes.length);
+    setSizes(newSizes);
+    
+    // Show alert to verify function is called
+    toast.success(`Size field added. Total: ${newSizes.length}`);
   };
 
   const removeSizeField = (index: number) => {
@@ -258,9 +268,12 @@ const EditProductPage = () => {
     // --- Start Validation ---
     let validationError: string | null = null;
     const sizesToSend = [];
+    
+    console.log("Submitting sizes - total count: ", sizes.length);
 
     for (let i = 0; i < sizes.length; i++) {
       const s = sizes[i];
+      console.log(`Processing size #${i+1}:`, s);
       const priceNum = parseFloat(s.price);
       const qtyNum = parseInt(s.qty, 10);
       const sizeValueNum = parseFloat(s.sizeValue);
@@ -652,7 +665,7 @@ const EditProductPage = () => {
             )}
           </CardContent>
           <CardFooter className="flex justify-between border-t pt-6">
-            <Link href="/admin/products">
+            <Link href="/admin/dashboard/products">
               <Button type="button" variant="outline">
                 Cancel
               </Button>
