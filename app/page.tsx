@@ -95,7 +95,7 @@ export default function Home() {
     },
     {
       image: wkwkwkwk,
-      title: "Nasi dan Asinan",
+      title: "Nasi and Asinan",
       subTitle: "Fresh",
       description: "Menu nasi dan asinan segar untuk acara Anda",
     },
