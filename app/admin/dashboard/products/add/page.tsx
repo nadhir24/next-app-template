@@ -154,7 +154,9 @@ const AddProductPage = () => {
       }
 
       sizesToSend.push({
-        size: `${s.sizeValue} ${s.sizeUnit}`,
+        size: s.sizeUnit === "custom" 
+          ? s.sizeValue // Untuk unit custom, hanya kirim nilai ukuran tanpa unit
+          : `${s.sizeValue} ${s.sizeUnit}`,
         price: String(priceNum),
         qty: qtyNum,
       });
@@ -221,7 +223,7 @@ const AddProductPage = () => {
   return (
     <div className="container mx-auto py-10">
       <Link
-        href="/admin/products"
+        href="/admin/dashboard/products"
         className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-4"
       >
         <ArrowLeft className="mr-1 h-4 w-4" />

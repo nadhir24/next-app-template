@@ -35,16 +35,31 @@ const parseSizeString = (
   sizeStr: string | null | undefined
 ): { value: string; unit: string } => {
   if (!sizeStr) return { value: "", unit: "gram" }; // Default unit
+  
+  // If there's no space, assume it's a custom size name (no unit)
+  if (!sizeStr.includes(' ')) {
+    return { value: sizeStr, unit: "custom" };
+  }
+  
   const match = sizeStr.match(/^(\d*\.?\d+)\s*([a-zA-Z%]+)$/);
   if (match) {
     return { value: match[1], unit: match[2] || "gram" };
   }
-  // Fallback if no unit found, treat the whole string as value?
-  // Or maybe assume a default unit if it's just a number
-  if (sizeStr.match(/^\d*\.?\d+$/)) {
-    return { value: sizeStr, unit: "gram" };
+  
+  // Try to extract unit if there's a space
+  const parts = sizeStr.split(' ');
+  const lastPart = parts[parts.length - 1].toLowerCase();
+  
+  // Check if last part is a known unit
+  if (['gram', 'kg', 'pcs', 'ml', 'liter', 'cm', 'meter'].includes(lastPart)) {
+    return { 
+      value: parts.slice(0, -1).join(' '), 
+      unit: lastPart 
+    };
   }
-  return { value: sizeStr, unit: "gram" }; // Default unit if parsing fails
+  
+  // If no known unit or no space, treat as custom
+  return { value: sizeStr, unit: "custom" };
 };
 
 // Formats a number string into currency format (e.g., 100000 -> 100.000)
@@ -100,7 +115,6 @@ const EditProductPage = () => {
   const [sizes, setSizes] = useState<Size[]>([
     { sizeValue: "", sizeUnit: "gram", price: "", qty: "" },
   ]);
-  const [sizesToDelete, setSizesToDelete] = useState<number[]>([]);
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
@@ -209,19 +223,13 @@ const EditProductPage = () => {
 
   const removeSizeField = (index: number) => {
     const sizeToRemove = sizes[index];
-    const newSizes = sizes.filter((_, i) => i !== index);
-    
-    if (sizeToRemove && sizeToRemove.id) {
-      // Add to sizes to delete list
-      setSizesToDelete(prev => [...prev, sizeToRemove.id as number]);
-      toast.info("Size marked for deletion and will be removed when you save.");
-    }
-    
-    setSizes(newSizes);
-    
-    // Ensure we always have at least one size field
-    if (newSizes.length === 0) {
-      setSizes([{ sizeValue: "", sizeUnit: "gram", price: "", qty: "" }]);
+    if (sizeToRemove && !sizeToRemove.id) {
+      const newSizes = sizes.filter((_, i) => i !== index);
+      setSizes(newSizes);
+    } else if (sizeToRemove && sizeToRemove.id) {
+      toast.info(
+        "Cannot remove saved size. Backend deletion feature not implemented."
+      );
     }
   };
 
@@ -286,7 +294,7 @@ const EditProductPage = () => {
 
       sizesToSend.push({
         id: s.id,
-        size: `${s.sizeValue} ${s.sizeUnit}`,
+        size: s.sizeUnit === "custom" ? s.sizeValue : `${s.sizeValue} ${s.sizeUnit}`,
         price: String(priceNum),
         qty: String(qtyNum),
       });
@@ -311,11 +319,6 @@ const EditProductPage = () => {
       formData.append("isEnabled", String(product.isEnabled));
 
     formData.append("sizes", JSON.stringify(sizesToSend));
-    
-    // Add sizes to delete if there are any
-    if (sizesToDelete.length > 0) {
-      formData.append("sizesToDelete", JSON.stringify(sizesToDelete));
-    }
 
     if (image) {
       formData.append("image", image);
@@ -379,7 +382,7 @@ const EditProductPage = () => {
       <div className="container mx-auto py-10 text-center">
         <p className="text-red-600 text-xl mb-4">Error loading product data!</p>
         <p className="text-gray-700 mb-6">{error}</p>
-        <Link href="/admin/products">
+        <Link href="/admin/dashboard/products">
           <Button variant="outline">
             <ArrowLeft className="mr-2 h-4 w-4" /> Back to Products
           </Button>
