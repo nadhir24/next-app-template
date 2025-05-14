@@ -941,7 +941,7 @@ export default function CheckoutPage() {
                               value={phoneSuffix}
                               onChange={handlePhoneChange}
                               placeholder="812 3456 7890"
-                              className={`pl-10 mb-1 ${errors.phone ? "border-red-500 focus:ring-red-500" : ""}`}
+                              className={`pl-14 mb-1 ${errors.phone ? "border-red-500 focus:ring-red-500" : ""}`}
                               required
                             />
                           </div>

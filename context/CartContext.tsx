@@ -113,7 +113,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
     // Handle user login case
     if (isLoggedIn) {
       if (storedGuestId) {
-        localStorage.removeItem("guestId");
+        // Auto-sync cart if user logs in and has a previous guest session
+        axios.post(
+          `${process.env.NEXT_PUBLIC_API_URL}/cart/sync`,
+          { userId: user?.id, guestId: storedGuestId }
+        )
+        .then(() => {
+          localStorage.removeItem("guestId");
+          setGuestId(null);
+          fetchCartImpl(); // Refresh cart after sync
+          toast.success("Cart synced successfully");
+        })
+        .catch(err => {
+          console.error("Failed to sync cart", err);
+        });
       }
       setGuestId(null);
     }
@@ -142,7 +155,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
 
     setHasInitialized(true);
-  }, [isLoggedIn]); // Only depends on login state
+  }, [isLoggedIn, user?.id, fetchCartImpl]); // Added user?.id and fetchCartImpl to dependencies
 
   // Separate effect to listen for create_guest_session events
   useEffect(() => {

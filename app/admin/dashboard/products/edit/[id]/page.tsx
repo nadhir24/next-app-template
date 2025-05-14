@@ -107,7 +107,7 @@ const EditProductPage = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const availableUnits = ["gram", "kg", "pcs", "ml", "liter", "cm", "meter"];
+  const availableUnits = ["gram", "kg", "pcs", "ml", "liter", "cm", "meter", "custom"];
 
   useEffect(() => {
     if (!id) {
@@ -180,7 +180,11 @@ const EditProductPage = () => {
     if (field === "price") {
       currentSize.price = unformatCurrency(value);
     } else if (field === "sizeValue") {
-      currentSize.sizeValue = value.replace(/[^\d.]/g, "");
+      if (currentSize.sizeUnit === "custom") {
+        currentSize.sizeValue = value; // Allow any text for custom size
+      } else {
+        currentSize.sizeValue = value.replace(/[^\d.]/g, "");
+      }
     } else if (field === "qty") {
       currentSize.qty = value;
     }
@@ -246,10 +250,20 @@ const EditProductPage = () => {
       const qtyNum = parseInt(s.qty, 10);
       const sizeValueNum = parseFloat(s.sizeValue);
 
-      if (!s.sizeValue || isNaN(sizeValueNum) || sizeValueNum <= 0) {
-        validationError = `Size row #${i + 1}: Invalid Size value. Please enter a positive number.`;
-        break;
+      if (s.sizeUnit === "custom") {
+        // For custom sizes, just make sure the size name is not empty
+        if (!s.sizeValue || s.sizeValue.trim() === "") {
+          validationError = `Size row #${i + 1}: Size name cannot be empty.`;
+          break;
+        }
+      } else {
+        // For numeric sizes, validate that it's a positive number
+        if (!s.sizeValue || isNaN(sizeValueNum) || sizeValueNum <= 0) {
+          validationError = `Size row #${i + 1}: Invalid Size value. Please enter a positive number.`;
+          break;
+        }
       }
+      
       if (!s.sizeUnit) {
         validationError = `Size row #${i + 1}: Please select a Unit.`;
         break;
@@ -427,18 +441,22 @@ const EditProductPage = () => {
 
                     <div className="grid gap-1.5 flex-1 min-w-[100px]">
                       <Label htmlFor={`sizeValue-${index}`} className="text-xs">
-                        Value
+                        {sizeItem.sizeUnit === "custom" ? "Size Name" : "Value"}
                       </Label>
                       <Input
                         id={`sizeValue-${index}`}
                         type="text"
-                        value={sizeItem.sizeValue || ""}
+                        value={
+                          sizeItem.sizeUnit === "custom" 
+                            ? sizeItem.sizeValue 
+                            : sizeItem.sizeValue || ""
+                        }
                         onChange={(e) =>
                           handleSizeChange(index, "sizeValue", e.target.value)
                         }
                         required
                         className="text-sm"
-                        placeholder="e.g., 100"
+                        placeholder={sizeItem.sizeUnit === "custom" ? "e.g., Large" : "e.g., 100"}
                       />
                     </div>
 

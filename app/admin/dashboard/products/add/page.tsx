@@ -57,7 +57,7 @@ const AddProductPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const availableUnits = ["gram", "kg", "pcs", "ml", "liter", "cm", "meter"];
+  const availableUnits = ["gram", "kg", "pcs", "ml", "liter", "cm", "meter", "custom"];
 
   const handleSizeChange = (
     index: number,
@@ -70,7 +70,11 @@ const AddProductPage = () => {
     if (field === "price") {
       currentSize.price = unformatCurrency(value);
     } else if (field === "sizeValue") {
-      currentSize.sizeValue = value.replace(/[^\d.]/g, "");
+      if (currentSize.sizeUnit === "custom") {
+        currentSize.sizeValue = value;
+      } else {
+        currentSize.sizeValue = value.replace(/[^\d.]/g, "");
+      }
     } else if (field === "qty") {
       currentSize.qty = value;
     }
@@ -124,10 +128,18 @@ const AddProductPage = () => {
       const qtyNum = parseInt(s.qty, 10);
       const sizeValueNum = parseFloat(s.sizeValue);
 
-      if (!s.sizeValue || isNaN(sizeValueNum) || sizeValueNum <= 0) {
-        validationError = `Size row #${i + 1}: Invalid Size value. Please enter a positive number.`;
-        break;
+      if (s.sizeUnit === "custom") {
+        if (!s.sizeValue || s.sizeValue.trim() === "") {
+          validationError = `Size row #${i + 1}: Size name cannot be empty.`;
+          break;
+        }
+      } else {
+        if (!s.sizeValue || isNaN(sizeValueNum) || sizeValueNum <= 0) {
+          validationError = `Size row #${i + 1}: Invalid Size value. Please enter a positive number.`;
+          break;
+        }
       }
+      
       if (!s.sizeUnit) {
         validationError = `Size row #${i + 1}: Please select a Unit.`;
         break;
@@ -262,22 +274,24 @@ const AddProductPage = () => {
                 >
                   <div className="grid gap-1.5 flex-1 min-w-[100px]">
                     <Label htmlFor={`sizeValue-${index}`} className="text-xs">
-                      Value
+                      {sizeItem.sizeUnit === "custom" ? "Size Name" : "Value"}
                     </Label>
                     <Input
                       id={`sizeValue-${index}`}
                       type="text"
                       value={
-                        sizeItem.sizeValue
-                          ? formatCurrency(sizeItem.sizeValue)
-                          : ""
+                        sizeItem.sizeUnit === "custom" 
+                          ? sizeItem.sizeValue 
+                          : sizeItem.sizeValue
+                            ? formatCurrency(sizeItem.sizeValue)
+                            : ""
                       }
                       onChange={(e) =>
                         handleSizeChange(index, "sizeValue", e.target.value)
                       }
                       required
                       className="text-sm"
-                      placeholder="e.g., 100"
+                      placeholder={sizeItem.sizeUnit === "custom" ? "e.g., Large" : "e.g., 100"}
                     />
                   </div>
                   <div className="grid gap-1.5 min-w-[100px]">
