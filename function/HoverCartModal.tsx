@@ -32,7 +32,8 @@ const useMediaQuery = (query: string) => {
 
 const HoverCartModal: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { cartItems, cartCount, cartTotal, isLoadingCart, fetchCart } =
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { cartItems, cartCount, cartTotal, isLoadingCart, fetchCart, forceRefreshCart, clearCart } =
     useCart();
   const isMobile = useMediaQuery("(max-width: 640px)"); // Check for mobile (adjust breakpoint if needed, sm: 640px)
 
@@ -42,6 +43,31 @@ const HoverCartModal: React.FC = () => {
       fetchCart();
     }
   }, [isModalOpen, fetchCart]);
+  
+  // Handle forced refresh cart
+  const handleForceRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await forceRefreshCart();
+      // Trigger additional browser cache clearing
+      localStorage.setItem("cart_last_fetch_time", "0");
+      window.dispatchEvent(new Event("FORCE_CART_REFRESH"));
+    } catch (error) {
+      console.error("Error refreshing cart:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+  
+  // Handle force clear cart
+  const handleClearCart = () => {
+    clearCart();
+    // Trigger local cache clearing
+    localStorage.setItem("cart_items", "[]");
+    localStorage.setItem("cart_count", "0");
+    localStorage.setItem("cart_total", "0");
+    window.dispatchEvent(new Event("FORCE_CART_RESET"));
+  };
 
   // Skeleton component for cart item
   const CartItemSkeleton = () => (
@@ -162,6 +188,8 @@ const HoverCartModal: React.FC = () => {
               </div>
             </ModalFooter>
           )}
+          
+          {/* Tombol troubleshooting telah diganti dengan sistem otomatis */}
         </ModalContent>
       </Modal>
     </>

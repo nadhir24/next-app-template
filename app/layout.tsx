@@ -1,3 +1,4 @@
+'use client';
 import "@/styles/globals.css";
 import { Metadata, Viewport } from "next";
 import { siteConfig } from "@/config/site";
@@ -20,6 +21,8 @@ import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 import { Toaster } from "@/components/ui/toaster";
 import { SpeedInsights } from '@vercel/speed-insights/next';
+import { resetCartIfNeeded } from './_app';
+import { useEffect } from 'react';
 
 export const metadata: Metadata = {
   title: {
@@ -35,6 +38,15 @@ export const viewport: Viewport = {
     { media: "(prefers-color-scheme: dark)", color: "#8B0000" }, // Dark red for dark mode
   ],
 };
+
+// Client-side component untuk menginisialisasi reset cart otomatis
+function ClientInit() {
+  useEffect(() => {
+    resetCartIfNeeded();
+  }, []);
+  
+  return null;
+}
 
 export default function RootLayout({
   children,
@@ -56,6 +68,7 @@ export default function RootLayout({
           fontSans.variable
         )}
       >
+        <ClientInit />
         <Providers themeProps={{ attribute: "class", defaultTheme: "light" }}>
           <AuthProvider>
             <CartProvider>

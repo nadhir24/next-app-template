@@ -44,6 +44,7 @@ interface CartContextType {
   updateCartItem: (cartId: number, quantity: number) => Promise<void>;
   removeFromCart: (cartId: number) => Promise<void>;
   clearCart: () => void; // Fungsi untuk membersihkan cart
+  forceRefreshCart: () => Promise<number | undefined>; // Force refresh dari server
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -236,6 +237,29 @@ export function CartProvider({ children }: { children: ReactNode }) {
     // Handle guest user case
     else if (storedGuestId) {
       setGuestId(storedGuestId);
+      
+      // Otomatis bersihkan keranjang jika browser baru dibuka
+      // Ini memastikan tidak ada item dari sesi lain yang terbawa
+      const isSessionRestored = localStorage.getItem("session_restored");
+      if (!isSessionRestored) {
+        // Tandai bahwa sesi telah dibersihkan
+        localStorage.setItem("session_restored", "true");
+        
+        // Bersihkan di server
+        axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/cart/clear-guest-cart?guestId=${storedGuestId}`)
+          .then(() => {
+            // Bersihkan di lokal
+            localStorage.setItem("cart_items", JSON.stringify([]));
+            localStorage.setItem("cart_count", "0");
+            localStorage.setItem("cart_total", "0");
+            setCartItems([]);
+            setCartCount(0);
+            setCartTotal(0);
+          })
+          .catch(err => {
+            console.error("Failed to clear guest cart:", err);
+          });
+      }
     }
     // Create new guest session
     else {
@@ -249,6 +273,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
             localStorage.setItem("cart_items", JSON.stringify([]));
             localStorage.setItem("cart_count", "0");
             localStorage.setItem("cart_total", "0");
+            localStorage.setItem("session_restored", "true"); // Tandai bahwa ini adalah sesi baru
             
             // Set the new guest ID
             localStorage.setItem("guestId", response.data.guestId);
@@ -495,17 +520,95 @@ export function CartProvider({ children }: { children: ReactNode }) {
     storeCartData([], 0, 0); // Clear local storage as well
   }, []);
 
+  // Force refresh cart from server, ignoring cache
+  const forceRefreshCart = useCallback(async () => {
+    if (!currentIdentifier) return;
+    
+    try {
+      // Force timestamp to bypass any caching
+      const timestamp = new Date().getTime();
+      const [itemsRes, countRes, totalRes] = await Promise.all([
+        axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?${currentIdentifier}&_t=${timestamp}&force=true`,
+          { headers: { 'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache' } }
+        ),
+        axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/cart/count?${currentIdentifier}&_t=${timestamp}&force=true`,
+          { headers: { 'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache' } }
+        ),
+        axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/cart/total?${currentIdentifier}&_t=${timestamp}&force=true`,
+          { headers: { 'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache' } }
+        ),
+      ]);
+
+      const itemsData = Array.isArray(itemsRes.data) ? itemsRes.data : [];
+      const countData = countRes.data.count || 0;
+      const totalDataNumber = parseTotal(totalRes.data);
+
+      // Update state directly
+      setCartItems(itemsData);
+      setCartCount(countData);
+      setCartTotal(totalDataNumber);
+      
+      // Update localStorage
+      storeCartData(itemsData, countData, totalDataNumber);
+      
+      return itemsData.length;
+    } catch (error) {
+      console.error("Force refresh failed:", error);
+      return 0;
+    }
+  }, [currentIdentifier]);
+
   // Listen for custom event to force cart reset (e.g., on logout)
   useEffect(() => {
     const handleForceReset = (event: CustomEvent) => {
       clearCart();
     };
 
+    // Listen for force refresh event
+    const handleForceRefresh = (event: CustomEvent) => {
+      forceRefreshCart();
+    };
+
     window.addEventListener("FORCE_CART_RESET" as any, handleForceReset);
+    window.addEventListener("FORCE_CART_REFRESH" as any, handleForceRefresh);
+    
     return () => {
       window.removeEventListener("FORCE_CART_RESET" as any, handleForceReset);
+      window.removeEventListener("FORCE_CART_REFRESH" as any, handleForceRefresh);
     };
-  }, [clearCart]);
+  }, [clearCart, forceRefreshCart]);
+
+  // Listen for storage changes
+  useEffect(() => {
+    const handleStorageChange = (event: StorageEvent) => {
+      // Jika terjadi perubahan pada guestId, reset keranjang
+      if (event.key === 'guestId') {
+        if (event.oldValue !== event.newValue) {
+          // Kosongkan keranjang
+          setCartItems([]);
+          setCartCount(0);
+          setCartTotal(0);
+          localStorage.setItem("cart_items", JSON.stringify([]));
+          localStorage.setItem("cart_count", "0");
+          localStorage.setItem("cart_total", "0");
+          
+          // Jika ada guestId baru, kirim perintah clear ke server
+          if (event.newValue) {
+            axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/cart/clear-guest-cart?guestId=${event.newValue}`)
+              .catch(err => console.error("Failed to clear cart for new guest:", err));
+          }
+        }
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
 
   // Context value memoized
   const contextValue = useMemo(
@@ -519,6 +622,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       updateCartItem,
       removeFromCart,
       clearCart,
+      forceRefreshCart,
     }),
     [
       cartItems,
@@ -530,6 +634,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       updateCartItem,
       removeFromCart,
       clearCart,
+      forceRefreshCart,
     ]
   );
 
