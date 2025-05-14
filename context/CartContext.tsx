@@ -245,8 +245,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
             `${process.env.NEXT_PUBLIC_API_URL}/cart/guest-session`
           );
           if (response.data.guestId) {
+            // Clear cart data in localStorage when creating a new guest session
+            localStorage.setItem("cart_items", JSON.stringify([]));
+            localStorage.setItem("cart_count", "0");
+            localStorage.setItem("cart_total", "0");
+            
+            // Set the new guest ID
             localStorage.setItem("guestId", response.data.guestId);
             setGuestId(response.data.guestId);
+            
+            // Update state to show empty cart
+            setCartItems([]);
+            setCartCount(0);
+            setCartTotal(0);
+            
             window.dispatchEvent(new Event("guestIdChange"));
           }
         } catch (err) {
@@ -275,8 +287,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
             `${process.env.NEXT_PUBLIC_API_URL}/cart/guest-session`
           );
           if (response.data.guestId) {
+            // Clear cart data in localStorage when creating a new guest session
+            localStorage.setItem("cart_items", JSON.stringify([]));
+            localStorage.setItem("cart_count", "0");
+            localStorage.setItem("cart_total", "0");
+            
+            // Set the new guest ID
             localStorage.setItem("guestId", response.data.guestId);
             setGuestId(response.data.guestId);
+            
+            // Update state to show empty cart
+            setCartItems([]);
+            setCartCount(0);
+            setCartTotal(0);
+            
             window.dispatchEvent(new Event("guestIdChange"));
           }
         } catch (err) {
