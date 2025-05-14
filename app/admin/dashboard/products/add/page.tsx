@@ -4,6 +4,7 @@ import { useState, ChangeEvent, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import Link from "next/link";
+import Image from "next/image";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,7 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { toast } from "sonner";
-import { ArrowLeft, PlusCircle, Trash2 } from "lucide-react";
+import { ArrowLeft, PlusCircle, Trash2, Star } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -52,8 +53,9 @@ const AddProductPage = () => {
   const [sizes, setSizes] = useState<Size[]>([
     { sizeValue: "", sizeUnit: "gram", price: "", qty: "" },
   ]);
-  const [image, setImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [images, setImages] = useState<File[]>([]);
+  const [imagePreview, setImagePreview] = useState<string[]>([]);
+  const [mainImageIndex, setMainImageIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -104,14 +106,34 @@ const AddProductPage = () => {
   };
 
   const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setImage(file);
-      setImagePreview(URL.createObjectURL(file));
-    } else {
-      setImage(null);
-      setImagePreview(null);
+    if (e.target.files && e.target.files.length > 0) {
+      const selectedFiles = Array.from(e.target.files);
+      setImages(prevImages => [...prevImages, ...selectedFiles]);
+      
+      // Create preview URLs for new images
+      const newPreviews = selectedFiles.map(file => URL.createObjectURL(file));
+      setImagePreview(prevPreviews => [...prevPreviews, ...newPreviews]);
     }
+  };
+  
+  const removeImage = (index: number) => {
+    setImages(prevImages => prevImages.filter((_, i) => i !== index));
+    setImagePreview(prevPreviews => {
+      // Release the object URL to prevent memory leaks
+      URL.revokeObjectURL(prevPreviews[index]);
+      return prevPreviews.filter((_, i) => i !== index);
+    });
+    
+    // Adjust mainImageIndex if necessary
+    if (index === mainImageIndex) {
+      setMainImageIndex(0); // Reset to first image if main image is removed
+    } else if (index < mainImageIndex) {
+      setMainImageIndex(mainImageIndex - 1); // Decrease index if an image before the main one is removed
+    }
+  };
+  
+  const setAsMainImage = (index: number) => {
+    setMainImageIndex(index);
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -170,43 +192,31 @@ const AddProductPage = () => {
     }
 
     try {
-      // Siapkan data dalam format yang diharapkan oleh API
-      const requestData = {
-        name: name,
-        category: category,
-        description: description,
-        isEnabled: isEnabled,
-        sizes: sizesToSend,
-      };
+      // Siapkan form data untuk API
+      const formData = new FormData();
 
-      // Jika ada gambar, gunakan FormData
-      if (image) {
-        const formData = new FormData();
+      // Tambahkan data sebagai string untuk memastikan tipe data benar
+      formData.append("name", String(name));
+      formData.append("category", String(category));
+      formData.append("description", String(description));
+      formData.append("isEnabled", String(isEnabled));
+      formData.append("sizes", JSON.stringify(sizesToSend));
+      formData.append("mainImageIndex", String(mainImageIndex));
 
-        // Tambahkan data sebagai string untuk memastikan tipe data benar
-        formData.append("name", String(name));
-        formData.append("category", String(category));
-        formData.append("description", String(description));
-        formData.append("isEnabled", String(isEnabled));
-        formData.append("sizes", JSON.stringify(sizesToSend));
-        formData.append("image", image);
+      // Tambahkan semua gambar
+      images.forEach(file => {
+        formData.append("images", file);
+      });
 
-        await axios.post(
-          `${process.env.NEXT_PUBLIC_API_URL}/catalog`,
-          formData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          }
-        );
-      } else {
-        // Tanpa gambar, kirim sebagai JSON biasa
-        await axios.post(
-          `${process.env.NEXT_PUBLIC_API_URL}/catalog`,
-          requestData
-        );
-      }
+      await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/catalog`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
 
       toast.success("Product added successfully!");
       router.push("/admin/dashboard/products");
@@ -382,13 +392,68 @@ const AddProductPage = () => {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="image">Product Image</Label>
+              <Label htmlFor="images">Product Images</Label>
               <Input
-                id="image"
+                id="images"
                 type="file"
                 accept="image/*"
                 onChange={handleImageChange}
+                multiple
               />
+              <p className="text-xs text-gray-500 mt-1">
+                You can select multiple images. The first image will be used as the main product image.
+              </p>
+              
+              {imagePreview.length > 0 && (
+                <div className="mt-4">
+                  <Label className="block mb-2">Image Previews</Label>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {imagePreview.map((src, index) => (
+                      <div 
+                        key={index} 
+                        className={`relative border rounded-md overflow-hidden ${
+                          index === mainImageIndex ? 'ring-2 ring-blue-500' : ''
+                        }`}
+                      >
+                        <div className="aspect-square relative">
+                          <Image
+                            src={src}
+                            alt={`Product image ${index + 1}`}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                        <div className="absolute top-2 right-2 flex gap-1">
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => removeImage(index)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={index === mainImageIndex ? "default" : "outline"}
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => setAsMainImage(index)}
+                            title="Set as main image"
+                          >
+                            <Star className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        {index === mainImageIndex && (
+                          <div className="absolute bottom-0 left-0 right-0 bg-blue-500 text-white text-xs py-1 text-center">
+                            Main Image
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="grid gap-2">
