@@ -471,17 +471,31 @@ export default function CheckoutPage() {
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const input = e.target.value;
+    // Ambil nilai dari input
+    const inputVal = e.target.value;
     
-    // Terima semua digit, termasuk 8
-    const digits = input.replace(/[^\d]/g, "");
+    // Jika inputnya kosong, hapus nilai
+    if (!inputVal.trim()) {
+      setPhoneSuffix("");
+      handleInputChange({
+        target: {
+          name: "phone",
+          value: "",
+        },
+      } as React.ChangeEvent<HTMLInputElement>);
+      return;
+    }
     
-    // Simpan di state, tanpa filter tambahan
+    // Filter hanya digit
+    const digits = inputVal.replace(/\D/g, "");
+    
+    // Set nilai ke state
     setPhoneSuffix(digits);
     
-    // Format nomor dengan +62
-    let fullNumber = digits ? `+62${digits}` : "";
+    // Format nomor dengan +62 untuk field phone asli
+    const fullNumber = `+62${digits}`;
     
+    // Perbarui nilai di state utama
     handleInputChange({
       target: {
         name: "phone",
@@ -936,10 +950,20 @@ export default function CheckoutPage() {
                               +62
                             </span>
                             <Input
-                              type="tel"
+                              type="text" 
+                              inputMode="numeric"
+                              pattern="[0-9]*"
                               name="phone"
                               value={phoneSuffix}
                               onChange={handlePhoneChange}
+                              onKeyDown={(e) => {
+                                // Hanya biarkan digit, backspace, delete, dan arrow keys
+                                const allowedKeys = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'];
+                                const isDigit = /^[0-9]$/.test(e.key);
+                                if (!isDigit && !allowedKeys.includes(e.key)) {
+                                  e.preventDefault();
+                                }
+                              }}
                               placeholder="812 3456 7890"
                               className={`pl-14 mb-1 ${errors.phone ? "border-red-500 focus:ring-red-500" : ""}`}
                               required
