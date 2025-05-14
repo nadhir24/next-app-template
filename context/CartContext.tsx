@@ -106,97 +106,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
         : null;
   }, [user?.id, guestId]);
 
-  // Initialize guest session when needed
-  useEffect(() => {
-    const storedGuestId = localStorage.getItem("guestId");
-
-    // Handle user login case
-    if (isLoggedIn) {
-      if (storedGuestId) {
-        // Auto-sync cart if user logs in and has a previous guest session
-        axios.post(
-          `${process.env.NEXT_PUBLIC_API_URL}/cart/sync`,
-          { userId: user?.id, guestId: storedGuestId }
-        )
-        .then(() => {
-          localStorage.removeItem("guestId");
-          setGuestId(null);
-          fetchCartImpl(); // Refresh cart after sync
-          toast.success("Cart synced successfully");
-        })
-        .catch(err => {
-          console.error("Failed to sync cart", err);
-        });
-      }
-      setGuestId(null);
-    }
-    // Handle guest user case
-    else if (storedGuestId) {
-      setGuestId(storedGuestId);
-    }
-    // Create new guest session
-    else {
-      const createGuestSession = async () => {
-        try {
-          const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_API_URL}/cart/guest-session`
-          );
-          if (response.data.guestId) {
-            localStorage.setItem("guestId", response.data.guestId);
-            setGuestId(response.data.guestId);
-            window.dispatchEvent(new Event("guestIdChange"));
-          }
-        } catch (err) {
-          // Silent fail
-        }
-      };
-
-      createGuestSession();
-    }
-
-    setHasInitialized(true);
-  }, [isLoggedIn, user?.id, fetchCartImpl]); // Added user?.id and fetchCartImpl to dependencies
-
-  // Separate effect to listen for create_guest_session events
-  useEffect(() => {
-    const handleCreateGuestSession = (event: CustomEvent) => {
-      // Check if we already have a guest ID
-      if (localStorage.getItem("guestId")) {
-        return;
-      }
-
-      // Create a new guest session
-      const createGuestSession = async () => {
-        try {
-          const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_API_URL}/cart/guest-session`
-          );
-          if (response.data.guestId) {
-            localStorage.setItem("guestId", response.data.guestId);
-            setGuestId(response.data.guestId);
-            window.dispatchEvent(new Event("guestIdChange"));
-          }
-        } catch (err) {
-          // Silent fail
-        }
-      };
-
-      createGuestSession();
-    };
-
-    window.addEventListener(
-      "create_guest_session",
-      handleCreateGuestSession as EventListener
-    );
-
-    return () => {
-      window.removeEventListener(
-        "create_guest_session",
-        handleCreateGuestSession as EventListener
-      );
-    };
-  }, []);
-
   // Fetch cart implementation
   const fetchCartImpl = useCallback(async () => {
     if (!currentIdentifier) {
@@ -299,6 +208,97 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const fetchCart = useCallback(() => {
     return fetchCartImpl();
   }, [fetchCartImpl]);
+
+  // Initialize guest session when needed
+  useEffect(() => {
+    const storedGuestId = localStorage.getItem("guestId");
+
+    // Handle user login case
+    if (isLoggedIn) {
+      if (storedGuestId) {
+        // Auto-sync cart if user logs in and has a previous guest session
+        axios.post(
+          `${process.env.NEXT_PUBLIC_API_URL}/cart/sync`,
+          { userId: user?.id, guestId: storedGuestId }
+        )
+        .then(() => {
+          localStorage.removeItem("guestId");
+          setGuestId(null);
+          fetchCartImpl(); // Refresh cart after sync
+          toast.success("Cart synced successfully");
+        })
+        .catch(err => {
+          console.error("Failed to sync cart", err);
+        });
+      }
+      setGuestId(null);
+    }
+    // Handle guest user case
+    else if (storedGuestId) {
+      setGuestId(storedGuestId);
+    }
+    // Create new guest session
+    else {
+      const createGuestSession = async () => {
+        try {
+          const response = await axios.get(
+            `${process.env.NEXT_PUBLIC_API_URL}/cart/guest-session`
+          );
+          if (response.data.guestId) {
+            localStorage.setItem("guestId", response.data.guestId);
+            setGuestId(response.data.guestId);
+            window.dispatchEvent(new Event("guestIdChange"));
+          }
+        } catch (err) {
+          // Silent fail
+        }
+      };
+
+      createGuestSession();
+    }
+
+    setHasInitialized(true);
+  }, [isLoggedIn, user?.id, fetchCartImpl]); // Added user?.id and fetchCartImpl to dependencies
+
+  // Separate effect to listen for create_guest_session events
+  useEffect(() => {
+    const handleCreateGuestSession = (event: CustomEvent) => {
+      // Check if we already have a guest ID
+      if (localStorage.getItem("guestId")) {
+        return;
+      }
+
+      // Create a new guest session
+      const createGuestSession = async () => {
+        try {
+          const response = await axios.get(
+            `${process.env.NEXT_PUBLIC_API_URL}/cart/guest-session`
+          );
+          if (response.data.guestId) {
+            localStorage.setItem("guestId", response.data.guestId);
+            setGuestId(response.data.guestId);
+            window.dispatchEvent(new Event("guestIdChange"));
+          }
+        } catch (err) {
+          // Silent fail
+        }
+      };
+
+      createGuestSession();
+    };
+
+    window.addEventListener(
+      "create_guest_session",
+      handleCreateGuestSession as EventListener
+    );
+
+    return () => {
+      window.removeEventListener(
+        "create_guest_session",
+        handleCreateGuestSession as EventListener
+      );
+    };
+  }, []);
 
   // Fetch cart when dependencies change
   useEffect(() => {
