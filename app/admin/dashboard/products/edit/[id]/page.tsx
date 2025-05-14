@@ -100,6 +100,7 @@ const EditProductPage = () => {
   const [sizes, setSizes] = useState<Size[]>([
     { sizeValue: "", sizeUnit: "gram", price: "", qty: "" },
   ]);
+  const [sizesToDelete, setSizesToDelete] = useState<number[]>([]);
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
@@ -183,7 +184,7 @@ const EditProductPage = () => {
       if (currentSize.sizeUnit === "custom") {
         currentSize.sizeValue = value; // Allow any text for custom size
       } else {
-        currentSize.sizeValue = value.replace(/[^\d.]/g, "");
+      currentSize.sizeValue = value.replace(/[^\d.]/g, "");
       }
     } else if (field === "qty") {
       currentSize.qty = value;
@@ -208,13 +209,19 @@ const EditProductPage = () => {
 
   const removeSizeField = (index: number) => {
     const sizeToRemove = sizes[index];
-    if (sizeToRemove && !sizeToRemove.id) {
-      const newSizes = sizes.filter((_, i) => i !== index);
-      setSizes(newSizes);
-    } else if (sizeToRemove && sizeToRemove.id) {
-      toast.info(
-        "Cannot remove saved size. Backend deletion feature not implemented."
-      );
+    const newSizes = sizes.filter((_, i) => i !== index);
+    
+    if (sizeToRemove && sizeToRemove.id) {
+      // Add to sizes to delete list
+      setSizesToDelete(prev => [...prev, sizeToRemove.id as number]);
+      toast.info("Size marked for deletion and will be removed when you save.");
+    }
+    
+    setSizes(newSizes);
+    
+    // Ensure we always have at least one size field
+    if (newSizes.length === 0) {
+      setSizes([{ sizeValue: "", sizeUnit: "gram", price: "", qty: "" }]);
     }
   };
 
@@ -258,10 +265,10 @@ const EditProductPage = () => {
         }
       } else {
         // For numeric sizes, validate that it's a positive number
-        if (!s.sizeValue || isNaN(sizeValueNum) || sizeValueNum <= 0) {
-          validationError = `Size row #${i + 1}: Invalid Size value. Please enter a positive number.`;
-          break;
-        }
+      if (!s.sizeValue || isNaN(sizeValueNum) || sizeValueNum <= 0) {
+        validationError = `Size row #${i + 1}: Invalid Size value. Please enter a positive number.`;
+        break;
+      }
       }
       
       if (!s.sizeUnit) {
@@ -304,6 +311,11 @@ const EditProductPage = () => {
       formData.append("isEnabled", String(product.isEnabled));
 
     formData.append("sizes", JSON.stringify(sizesToSend));
+    
+    // Add sizes to delete if there are any
+    if (sizesToDelete.length > 0) {
+      formData.append("sizesToDelete", JSON.stringify(sizesToDelete));
+    }
 
     if (image) {
       formData.append("image", image);
