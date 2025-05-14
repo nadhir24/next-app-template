@@ -87,7 +87,9 @@ export default function Navy() {
       <NavbarContent className="flex items-center justify-between">
         <div className="flex items-center justify-between">
           <NavbarContent className="sm:hidden basis-1 mr-4" justify="start">
-            <NavbarMenuToggle />
+            <div className="p-3 cursor-pointer touch-manipulation">
+              <NavbarMenuToggle className="scale-125" />
+            </div>
           </NavbarContent>
           <NavbarBrand as="li" className="max-w-fit mr-4">
             <Link href="/" className="flex items-center gap-1 mt-2 mb-2">
