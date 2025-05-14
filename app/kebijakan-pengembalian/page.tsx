@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@gmail/context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
 export default function RefundPolicyPage() {
