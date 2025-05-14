@@ -17,6 +17,12 @@ interface Size {
   qty?: number;
 }
 
+interface ProductImage {
+  id: number;
+  imageUrl: string;
+  isMain: boolean;
+}
+
 interface Catalog {
   id: number;
   name: string;
@@ -24,6 +30,7 @@ interface Catalog {
   sizes: Size[];
   qty: string;
   description: string;
+  productImages?: ProductImage[];
 }
 
 const ProductDetailPage = () => {
@@ -32,6 +39,7 @@ const ProductDetailPage = () => {
   const [isCartModalOpen, setIsCartModalOpen] = useState(false);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const params = useParams();
   const router = useRouter();
   const { addToCart: contextAddToCart, cartItems } = useCart();
@@ -65,6 +73,9 @@ const ProductDetailPage = () => {
         if (productData.sizes && productData.sizes.length > 0) {
           setSelectedSize(productData.sizes[0]);
         }
+        
+        // Reset selected image index when loading a new product
+        setSelectedImageIndex(0);
       } catch (error) {
         toast.error("Failed to load product details.");
       } finally {
@@ -129,6 +140,23 @@ const ProductDetailPage = () => {
       router.push(`/katalog?search=${category.replace(/-/g, " ")}`);
     }
   };
+  
+  // Get the current display image URL
+  const getCurrentImageUrl = () => {
+    if (!product) return null;
+    
+    // If product has productImages array and it's not empty
+    if (product.productImages && product.productImages.length > 0) {
+      return `${process.env.NEXT_PUBLIC_API_URL}${product.productImages[selectedImageIndex].imageUrl}`;
+    }
+    
+    // Fallback to legacy single image field
+    if (product.image) {
+      return `${process.env.NEXT_PUBLIC_API_URL}${product.image}`;
+    }
+    
+    return null;
+  };
 
   return (
     <div className="flex flex-col lg:flex-row lg:space-x-8 p-4">
@@ -161,14 +189,14 @@ const ProductDetailPage = () => {
           </ol>
         </nav>
 
-        <div className="relative aspect-square w-full max-w-[500px] mx-auto">
+        <div className="relative aspect-square w-full max-w-[500px] mx-auto mb-3">
           {isLoading ? (
             <div className="w-full h-full rounded-xl bg-gray-200"></div>
           ) : (
-            product?.image && (
+            getCurrentImageUrl() && (
               <Image
-                src={`${process.env.NEXT_PUBLIC_API_URL}${product.image}`}
-                alt={product.name || "Product Image"}
+                src={getCurrentImageUrl() as string}
+                alt={product?.name || "Product Image"}
                 className="object-contain rounded-lg w-full h-auto max-h-[60vh] sm:max-h-[500px]"
                 width={500}
                 height={500}
@@ -177,6 +205,29 @@ const ProductDetailPage = () => {
             )
           )}
         </div>
+        
+        {/* Thumbnails section */}
+        {!isLoading && product?.productImages && product.productImages.length > 1 && (
+          <div className="flex overflow-x-auto gap-2 pb-2 mt-2 max-w-[500px] mx-auto">
+            {product.productImages.map((img, index) => (
+              <button
+                key={img.id}
+                onClick={() => setSelectedImageIndex(index)}
+                className={`relative min-w-[70px] h-[70px] border rounded-md overflow-hidden transition-all ${
+                  selectedImageIndex === index ? 'ring-2 ring-blue-500' : 'opacity-70 hover:opacity-100'
+                }`}
+              >
+                <Image
+                  src={`${process.env.NEXT_PUBLIC_API_URL}${img.imageUrl}`}
+                  alt={`${product.name} image ${index + 1}`}
+                  className="object-cover"
+                  fill
+                  sizes="70px"
+                />
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Product Info */}
