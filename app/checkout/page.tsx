@@ -131,7 +131,7 @@ export default function CheckoutPage() {
     return `${process.env.NEXT_PUBLIC_API_URL}${src}`;
   };
 
-  const shippingMethods: ShippingMethod[] = [
+  const shippingMethods: ShippingMethod[] = React.useMemo(() => [
     {
       id: "free",
       name: "Pengantaran Langsung",
@@ -147,7 +147,7 @@ export default function CheckoutPage() {
       price: null,
       estimatedDays: "Instant (1-2 jam)",
     },
-  ];
+  ], []); // Empty dependency array means it's created once
 
   // Transform cart context data to checkout data format
   useEffect(() => {
@@ -255,7 +255,7 @@ export default function CheckoutPage() {
     } finally {
       setAddressesLoading(false);
     }
-  }, [toast]);
+  }, []);
 
   const handleAddressSelect = useCallback((addressId: string) => {
     try {

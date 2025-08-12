@@ -2,6 +2,7 @@
 
 import { useState, ChangeEvent, FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image"; // Added this line
 import axios from "axios";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -220,11 +221,14 @@ const AddProductPage = () => {
                 <div className="mt-4 flex flex-wrap gap-3">
                   {previewUrls.map((src, idx) => (
                     <div key={idx} className="relative w-28 h-28 border rounded overflow-hidden">
-                      <img
+                      <Image
                         src={src}
                         alt={`Preview ${idx + 1}`}
+                        width={112} // Corresponds to w-28
+                        height={112} // Corresponds to h-28
                         className="w-full h-full object-cover cursor-pointer"
                         onClick={() => handleSetMainImage(idx)}
+                        priority
                       />
                       <button
                         type="button"
