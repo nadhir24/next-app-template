@@ -30,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Spinner } from "@nextui-org/spinner";
+import { Spinner } from "@heroui/spinner";
 import React from "react";
 
 interface ShippingAddress {
@@ -1072,7 +1072,7 @@ export default function CheckoutPage() {
                   <div className="max-h-[300px] overflow-y-auto pr-2 space-y-4">
                     {isLoadingCart ? (
                       // Skeleton loader while checking for items
-                      <div className="space-y-4">
+                      (<div className="space-y-4">
                         {[...Array(3)].map((_, index) => (
                           <div
                             key={index}
@@ -1089,10 +1089,10 @@ export default function CheckoutPage() {
                             </div>
                           </div>
                         ))}
-                      </div>
+                      </div>)
                     ) : checkoutData.items.length === 0 ? (
                       // Empty cart message (only shown after loading)
-                      <div className="flex flex-col items-center justify-center py-8 text-center space-y-4">
+                      (<div className="flex flex-col items-center justify-center py-8 text-center space-y-4">
                         <div className="text-4xl mb-2">🛒</div>
                         <h3 className="font-semibold text-gray-800">
                           Keranjang Anda kosong
@@ -1100,10 +1100,10 @@ export default function CheckoutPage() {
                         <p className="text-gray-500 text-sm mb-4">
                           Silahkan berbelanja untuk melanjutkan checkout
                         </p>
-                      </div>
+                      </div>)
                     ) : (
                       // Render actual items
-                      checkoutData.items.map((item) => {
+                      (checkoutData.items.map((item) => {
                         try {
                           return (
                             <div
@@ -1142,7 +1142,7 @@ export default function CheckoutPage() {
                         } catch (error) {
                           return null;
                         }
-                      })
+                      }))
                     )}
                   </div>
 
@@ -1150,9 +1150,8 @@ export default function CheckoutPage() {
                   <div className="space-y-2 pt-4 border-t">
                     {checkoutData.items.length === 0 ? (
                       // Tidak perlu tampilkan skeleton untuk Subtotal & Total jika keranjang kosong
-                      <div className="text-center text-sm text-gray-500 py-2">
-                        Tambahkan produk untuk melihat total
-                      </div>
+                      (<div className="text-center text-sm text-gray-500 py-2">Tambahkan produk untuk melihat total
+                                              </div>)
                     ) : (
                       <>
                         <div className="flex justify-between text-sm">
@@ -1177,16 +1176,15 @@ export default function CheckoutPage() {
                 <CardFooter>
                   {checkoutData.items.length === 0 ? (
                     // If cart is empty, only show Lihat Katalog button
-                    <Tombol
+                    (<Tombol
                       onPress={() => router.push("/katalog")}
                       className="w-full bg-black hover:bg-gray-800 text-white"
                       size="lg"
-                    >
-                      Lihat Katalog
-                    </Tombol>
+                    >Lihat Katalog
+                                          </Tombol>)
                   ) : (
                     // If cart has items, show the Pay button
-                    <Tombol
+                    (<Tombol
                       onPress={createTransaction}
                       className="w-full bg-black hover:bg-gray-800 text-white relative z-30 cursor-pointer !pointer-events-auto"
                       size="lg"
@@ -1200,7 +1198,7 @@ export default function CheckoutPage() {
                       ) : (
                         "Bayar Sekarang"
                       )}
-                    </Tombol>
+                    </Tombol>)
                   )}
                 </CardFooter>
               </Card>

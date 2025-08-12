@@ -7,7 +7,7 @@ import React, { useState, useEffect, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@heroui/button";
 import { ShoppingCart, ArrowUp } from "lucide-react";
-import { Card, CardBody } from "@nextui-org/card";
+import { Card, CardBody } from "@heroui/card";
 import Tombol from "@/components/button";
 import dynamic from "next/dynamic";
 

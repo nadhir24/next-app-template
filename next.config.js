@@ -13,6 +13,12 @@ const nextConfig = {
         hostname: "bima-back-production.up.railway.app",
         pathname: "/**",
       },
+      {
+        protocol: "http",
+        hostname: "localhost",
+        port: "5000",
+        pathname: "/**",
+      },
     ],
     formats: ["image/webp"],
   },

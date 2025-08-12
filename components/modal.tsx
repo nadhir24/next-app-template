@@ -23,7 +23,7 @@ import {
   DropdownMenu,
   DropdownItem,
 } from "@heroui/dropdown";
-import { Spinner } from "@nextui-org/spinner";
+import { Spinner } from "@heroui/spinner";
 import { useAuth } from "@/context/AuthContext";
 import { title } from "@/components/primitives";
 import { Eye, EyeOff } from "lucide-react";

@@ -1,4 +1,4 @@
-import { Accordion, AccordionItem } from "@nextui-org/accordion";
+import { Accordion, AccordionItem } from "@heroui/accordion";
 import dynamic from 'next/dynamic';
 
 const faqs = [
